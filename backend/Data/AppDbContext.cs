@@ -1,8 +1,8 @@
 
 using Microsoft.EntityFrameworkCore;
-using Ontrack.Backend.Models;
+using Backend.Domain.Entity;
 
-namespace Ontrack.Backend.Data
+namespace Backend.Data
 {
     public class AppDbContext : DbContext
     {

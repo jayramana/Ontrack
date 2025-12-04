@@ -2,12 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Ontrack.Backend.Data;
+using Backend.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
@@ -57,13 +56,11 @@ if (app.Environment.IsDevelopment())
 
 // Use CORS
 app.UseCors("AllowFrontend");
-
+app.MapAuthEndpoints();
 // Use Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map controllers
-app.MapControllers();
 
 app.Run();
 
