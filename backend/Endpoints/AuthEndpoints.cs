@@ -218,6 +218,11 @@ public static class AuthEndpoints
         return Results.Unauthorized();
     }
 
+    if(user.UserEmail != login.Email || user.UserRole != login.Role)
+    {
+        return Results.NotFound("A user with this credentials does not exists");
+    }
+
     var jwt = config.GetSection("JwtSettings");
     var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["SecretKey"]));
     var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
