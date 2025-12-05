@@ -26,6 +26,7 @@ const Login = () => {
         setLoading(true);
 
         const result = await login(formData.email, formData.password, formData.role);
+        console.log(result)
 
         if (!result.success) {
             setError(result.message);
