@@ -12,41 +12,36 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} /> {/* New Signup Route */}
+          <Route path="/signup" element={<Signup />} />
 
-          {/* Protected Customer Route */}
           <Route
             path="/customer/dashboard"
             element={
-              <ProtectedRoute requiredRole="Customer">
+              <ProtectedRoute requiredRole="customer">
                 <CustomerDashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Protected Driver Route */}
           <Route
             path="/driver/dashboard"
             element={
-              <ProtectedRoute requiredRole="Driver">
+              <ProtectedRoute requiredRole="driver">
                 <DriverDashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Protected Admin Route */}
           <Route
             path="/admin/dashboard"
             element={
-              <ProtectedRoute requiredRole="Admin">
+              <ProtectedRoute requiredRole="admin">
                 <AdminDashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Catch all - redirect to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

@@ -48,9 +48,9 @@ export const AuthProvider = ({ children }) => {
 
             // Redirect based on role
             const roleRoutes = {
-                Customer: '/customer/dashboard',
-                Driver: '/driver/dashboard',
-                Admin: '/admin/dashboard',
+                customer: '/customer/dashboard',
+                driver: '/driver/dashboard',
+                admin: '/admin/dashboard',
             };
 
             navigate(roleRoutes[response.role] || '/');
