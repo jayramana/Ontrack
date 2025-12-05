@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import CustomerSidebar from "./CustomerSidebar";
 import SignaturePad from "signature_pad";
-
+import { useNavigate } from "react-router-dom";
 export default function DeliveryConfirm() {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const canvasRef = useRef(null);
   const signaturePadRef = useRef(null);
+  const navigate = useNavigate();
+
 
   // Initialize Signature Pad
   useEffect(() => {

@@ -6,7 +6,7 @@ export default function CustomerSidebar({ active }) {
   const navigate = useNavigate();
 
   const menuItems = [
-    { label: "Dashboard", path: "/customer/customerdashboard", key: "dashboard" },
+    { label: "Dashboard", path: "/customer/dashboard", key: "dashboard" },
     { label: "Live Tracking", path: "/customer/tracking", key: "tracking" },
     { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
     { label: "ID Verification", path: "/customer/idverification", key: "id" },

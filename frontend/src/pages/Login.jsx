@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from "react-router-dom";
+
 
 const Login = () => {
+    const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -26,6 +30,18 @@ const Login = () => {
         setLoading(true);
 
         const result = await login(formData.email, formData.password, formData.role);
+
+        // On successful login, redirect to the appropriate dashboard
+    if (result.success) {
+        if (formData.role === "Customer") {
+            navigate("/customer/dashboard");
+        } else if (formData.role === "Driver") {
+            navigate("/driver/dashboard");
+        } else if (formData.role === "Admin") {
+            navigate("/admin/dashboard");
+        }
+        return;
+    }
 
         if (!result.success) {
             setError(result.message);

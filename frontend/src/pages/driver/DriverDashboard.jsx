@@ -1,148 +1,165 @@
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from "../../context/AuthContext";
+import React from "react";
+import DriverSidebar from "./DriverSidebar";
 
-const DriverDashboard = () => {
+export default function DriverDashboard() {
     const { user, logout } = useAuth();
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
-                            <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.name}!</p>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </header>
+  return (
+    <div className="min-h-screen flex bg-gray-50">
 
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Welcome Card */}
-                    <div className="bg-white rounded-xl shadow-md p-6 md:col-span-3">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-green-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                    />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <h2 className="text-xl font-semibold text-gray-800">
-                                    Welcome to Your Driver Portal
-                                </h2>
-                                <p className="text-gray-600 mt-1">
-                                    You are logged in as: <span className="font-semibold">{user?.role}</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+      {/* Sidebar */}
+      <DriverSidebar active="dashboard" />
 
-                    {/* Stats Cards */}
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Today's Deliveries</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-blue-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-blue-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
+      {/* MAIN CONTENT */}
+      <div className="flex-1 p-10">
+        
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold">Today's Route</h1>
+            <p className="text-gray-500">AI-optimized delivery schedule</p>
+          </div>
 
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Completed</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-green-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">In Transit</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-orange-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-orange-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Placeholder for future features */}
-                    <div className="bg-green-50 rounded-xl border-2 border-dashed border-green-200 p-8 md:col-span-3">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-green-900 mb-2">
-                                🚚 Phase 1 Complete!
-                            </h3>
-                            <p className="text-green-700">
-                                Route management and delivery tracking features coming in Phase 2
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </main>
+          <button className="px-5 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-medium">
+            Start Navigation →
+          </button>
         </div>
-    );
-};
 
-export default DriverDashboard;
+        {/* STATS CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          
+          {/* Stops */}
+          <div className="bg-white rounded-2xl shadow p-6">
+            <p className="text-gray-500">Today's Stops</p>
+            <h2 className="text-4xl font-bold mt-2">12</h2>
+            <p className="text-sm text-gray-400">(5 done)</p>
+          </div>
+
+          {/* ASR Deliveries */}
+          <div className="bg-white rounded-2xl shadow p-6">
+            <p className="text-gray-500">ASR Deliveries</p>
+            <h2 className="text-4xl font-bold mt-2">3</h2>
+          </div>
+
+          {/* Completion Time */}
+          <div className="bg-white rounded-2xl shadow p-6">
+            <p className="text-gray-500">Est. Completion</p>
+            <h2 className="text-4xl font-bold mt-2">4:30 PM</h2>
+          </div>
+
+        </div>
+
+        {/* AI ROUTE OPTIMIZATION */}
+        <div className="bg-white rounded-2xl shadow p-6 border border-teal-200 mb-10">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-xl font-semibold">AI Route Optimization</h2>
+            <span className="px-3 py-1 bg-teal-100 text-teal-600 text-sm rounded-lg">
+              Active
+            </span>
+          </div>
+
+          <p className="text-gray-600 mb-4">
+            Route has been optimized based on traffic, delivery windows, and ASR priorities.
+            Estimated savings: <span className="font-semibold text-teal-600">23 minutes</span>
+          </p>
+
+          <div className="flex gap-4">
+            <button className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">
+              View Changes
+            </button>
+
+            <button className="px-4 py-2 rounded-xl border border-red-300 text-red-500 hover:bg-red-50">
+              Revert to Original
+            </button>
+          </div>
+        </div>
+
+        {/* DELIVERY STOPS LIST */}
+        <h2 className="text-2xl font-bold mb-4">Delivery Stops</h2>
+
+        <div className="space-y-4">
+
+          {/* STOP #1 */}
+          <div className="bg-white p-6 rounded-2xl shadow flex justify-between items-center">
+            <div>
+              <p className="text-lg font-semibold flex items-center gap-2">
+                123 Oak Street
+                <span className="px-2 py-1 text-xs bg-red-100 text-red-500 rounded-lg">Priority</span>
+              </p>
+              <p className="text-gray-500">John Smith</p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-gray-500">9:15 AM</p>
+              <p className="text-green-600 text-sm font-semibold">● Done</p>
+            </div>
+          </div>
+
+          {/* STOP #2 */}
+          <div className="bg-white p-6 rounded-2xl shadow flex justify-between items-center">
+            <div>
+              <p className="text-lg font-semibold flex items-center gap-2">
+                456 Maple Avenue
+                <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-600 rounded-lg">ASR</span>
+                <span className="px-2 py-1 text-xs bg-red-100 text-red-500 rounded-lg">Priority</span>
+              </p>
+              <p className="text-gray-500">Sarah Johnson</p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-gray-500">9:45 AM</p>
+              <p className="text-green-600 text-sm font-semibold">● Done</p>
+            </div>
+          </div>
+
+          {/* STOP #3 - CURRENT */}
+          <div className="bg-teal-50 p-6 rounded-2xl shadow flex justify-between items-center border border-teal-300">
+            <div>
+              <p className="text-lg font-semibold">789 Pine Road</p>
+              <p className="text-gray-600">Mike Wilson</p>
+            </div>
+
+            <div className="text-right">
+              <p className="text-gray-600">10:15 AM</p>
+              <p className="text-yellow-600 text-sm font-semibold">● Current</p>
+            </div>
+
+            <button className="ml-6 px-5 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-xl">
+              Navigate →
+            </button>
+          </div>
+
+          {/* STOP #4 */}
+          <div className="bg-white p-6 rounded-2xl shadow flex justify-between items-center">
+            <div>
+              <p className="text-lg font-semibold flex items-center gap-2">
+                321 Cedar Lane
+                <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-600 rounded-lg">ASR</span>
+                <span className="px-2 py-1 text-xs bg-red-100 text-red-500 rounded-lg">Priority</span>
+              </p>
+              <p className="text-gray-500">Emily Brown</p>
+            </div>
+
+            <button className="px-5 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl">
+              Verify ID →
+            </button>
+          </div>
+
+          {/* STOP #5 */}
+          <div className="bg-white p-6 rounded-2xl shadow flex justify-between items-center">
+            <div>
+              <p className="text-lg font-semibold">654 Birch Street</p>
+              <p className="text-gray-500">David Lee</p>
+            </div>
+
+            <button className="px-5 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl">
+              Navigate →
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
