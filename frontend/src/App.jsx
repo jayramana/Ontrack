@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
-import Signup from './pages/Signup'; // New import
+import Signup from './pages/Signup'; 
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import DriverDashboard from './pages/driver/DriverDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -50,39 +50,35 @@ function App() {
 
 
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} /> {/* New Signup Route */}
+          <Route path="/signup" element={<Signup />} />
 
-          {/* Protected Customer Route */}
           <Route
             path="/customer/dashboard"
             element={
-              <ProtectedRoute requiredRole="Customer">
+              <ProtectedRoute requiredRole="customer">
                 <CustomerDashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Protected Driver Route */}
           <Route
             path="/driver/dashboard"
             element={
-              <ProtectedRoute requiredRole="Driver">
+              <ProtectedRoute requiredRole="driver">
                 <DriverDashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Protected Admin Route */}
           <Route
             path="/admin/dashboard"
             element={
-              <ProtectedRoute requiredRole="Admin">
+              <ProtectedRoute requiredRole="admin">
                 <AdminDashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Catch all - redirect to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>

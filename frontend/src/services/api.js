@@ -11,7 +11,6 @@ const api = axios.create({
     },
 });
 
-// Add request interceptor to include auth token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -30,28 +29,35 @@ export const authAPI = {
     login: async (email, password, role) => {
         try {
             const response = await api.post('/auth/login', {
-                email,
-                password,
-                role,
+                Email : email,
+                Password : password,
+                Role : role,
             });
             return response.data;
         } catch (error) {
             throw error.response?.data?.message || 'Login failed';
         }
     },
-    register: async (name, email, password, role) => {
-        try {
-            const response = await api.post('/auth/register', {
-                name,
-                email,
-                password,
-                role,
-            });
-            return response.data;
-        } catch (error) {
-            throw error.response?.data?.message || 'Registration failed';
-        }
-    },
+register: async (payload) => {
+    try {
+        const response = await api.post('/auth/register', {
+            UserFName: payload.firstName,
+            UserLName: payload.lastName,
+            PhonePrimary: payload.phone_primary,
+            PhoneSecondary: payload.phone_secondary,
+            Email: payload.email,
+            Password: payload.password,
+            Role: payload.role
+        });
+
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Registration failed';
+    }
+}
+
+
+,
 };
 
 export default api;

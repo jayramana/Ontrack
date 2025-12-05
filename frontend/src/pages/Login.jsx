@@ -10,7 +10,7 @@ const Login = () => {
     const [formData, setFormData] = useState({
         email: '',
         password: '',
-        role: 'Customer',
+        role: 'customer',
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -98,9 +98,9 @@ const Login = () => {
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         >
-                            <option value="Customer">Customer</option>
-                            <option value="Driver">Driver</option>
-                            <option value="Admin">Admin</option>
+                            <option value="customer">Customer</option>
+                            <option value="driver">Driver</option>
+                            <option value="seller">Seller</option>
                         </select>
                     </div>
 
@@ -129,17 +129,17 @@ const Login = () => {
                     <p className="text-xs text-center text-gray-400 mb-4">Demo Credentials</p>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
-                            onClick={() => setFormData({ email: 'customer@test.com', password: 'password123', role: 'Customer' })}>
+                            onClick={() => setFormData({ email: 'customer@test.com', password: 'password123', role: 'customer' })}>
                             <div className="font-semibold text-gray-700">Customer</div>
                             <div className="text-gray-500">customer@test.com</div>
                         </div>
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
-                            onClick={() => setFormData({ email: 'driver@test.com', password: 'password123', role: 'Driver' })}>
+                            onClick={() => setFormData({ email: 'driver@test.com', password: 'password123', role: 'driver' })}>
                             <div className="font-semibold text-gray-700">Driver</div>
                             <div className="text-gray-500">driver@test.com</div>
                         </div>
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
-                            onClick={() => setFormData({ email: 'admin@arrivenow.com', password: 'Admin@123', role: 'Admin' })}>
+                            onClick={() => setFormData({ email: 'admin@arrivenow.com', password: 'Admin@123', role: 'admin' })}>
                             <div className="font-semibold text-gray-700">Admin</div>
                             <div className="text-gray-500">admin@arrivenow.com</div>
                         </div>

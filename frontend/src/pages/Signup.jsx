@@ -5,12 +5,16 @@ import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
+        phone_primary: '',
+        phone_secondary: '',
         password: '',
         confirmPassword: '',
-        role: 'Customer'
+        role: 'customer'
     });
+
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -32,6 +36,11 @@ const Signup = () => {
             return;
         }
 
+        if (!formData.phone_primary || formData.phone_primary.trim().length < 7) {
+            setError('Please enter a valid primary phone number');
+            return;
+        }
+
         if (formData.role === 'Admin') {
             setError('Admin registration is not allowed');
             return;
@@ -40,24 +49,38 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            const response = await authAPI.register(
-                formData.name,
-                formData.email,
-                formData.password,
-                formData.role
-            );
+            const payload = {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                phone_primary: formData.phone_primary,
+                phone_secondary: formData.phone_secondary,
+                password: formData.password,
+                role: formData.role
+            };
 
-            // Automatically login after successful registration
-            login(response);
+            const response = await authAPI.register(payload);
 
-            // Redirect based on role
-            if (response.role === 'Customer') {
-                navigate('/customer/dashboard');
-            } else if (response.role === 'Driver') {
-                navigate('/driver/dashboard');
+            if (response?.message === 'Registration successful') {
+
+                login(response);
+
+                if (response.role.toLowerCase() === 'customer') {
+                    navigate('/customer/dashboard');
+                } else if (response.role.toLowerCase() === 'driver') {
+                    navigate('/driver/dashboard');
+                } else if (response.role.toLowerCase() === 'seller') {
+                    navigate('/seller/dashboard');
+                } else {
+                    navigate('/login');
+                }
+
+            } else {
+                setError(response?.message || 'Unexpected server response');
             }
+
         } catch (err) {
-            setError(err);
+            setError(err || 'Registration failed');
         } finally {
             setLoading(false);
         }
@@ -78,29 +101,63 @@ const Signup = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                         <input
                             type="text"
-                            name="name"
-                            value={formData.name}
+                            name="firstName"
+                            value={formData.firstName}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            placeholder="John Doe"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                        <input
+                            type="text"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                         <input
                             type="email"
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            placeholder="you@example.com"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Primary Phone</label>
+                        <input
+                            type="tel"
+                            name="phone_primary"
+                            value={formData.phone_primary}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                            required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Phone</label>
+                        <input
+                            type="tel"
+                            name="phone_secondary"
+                            value={formData.phone_secondary}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />
                     </div>
 
@@ -111,8 +168,7 @@ const Signup = () => {
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            placeholder="••••••••"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
                         />
                     </div>
@@ -124,40 +180,39 @@ const Signup = () => {
                             name="confirmPassword"
                             value={formData.confirmPassword}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            placeholder="••••••••"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">I am a...</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                         <select
                             name="role"
                             value={formData.role}
                             onChange={handleChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         >
-                            <option value="Customer">Customer</option>
-                            <option value="Driver">Driver</option>
+                            <option value="customer">Customer</option>
+                            <option value="driver">Driver</option>
+                            <option value="seller">Seller</option>
                         </select>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className={`w-full py-3 rounded-lg text-white font-semibold shadow-md transition-all ${loading
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:-translate-y-0.5'
-                            }`}
+                        className={`w-full py-3 text-white rounded-lg ${
+                            loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
                     >
                         {loading ? 'Creating Account...' : 'Create Account'}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center text-sm text-gray-600">
+                <div className="mt-6 text-center text-sm">
                     Already have an account?{' '}
-                    <Link to="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+                    <Link to="/login" className="text-blue-600">
                         Sign in
                     </Link>
                 </div>
@@ -167,3 +222,4 @@ const Signup = () => {
 };
 
 export default Signup;
+
