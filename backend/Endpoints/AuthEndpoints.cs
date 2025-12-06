@@ -248,6 +248,8 @@ public static class AuthEndpoints
     {
         message = "Login successful",
         token = tokenString,
+        first_name = user.UserFName,
+        last_name = user.UserLName,
         user_id = user.UserId,
         role = user.UserRole
     });
