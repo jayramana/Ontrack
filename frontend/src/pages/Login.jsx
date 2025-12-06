@@ -32,8 +32,9 @@ const Login = () => {
         const result = await login(formData.email, formData.password, formData.role);
 
         // On successful login, redirect to the appropriate dashboard
-    if (result.success) {
-        if (formData.role === "Customer") {
+        if (result.success) {
+        console.log(formData)
+        if (formData.role === "Customer".toLowerCase()) {
             navigate("/customer/dashboard");
         } else if (formData.role === "Driver") {
             navigate("/driver/dashboard");

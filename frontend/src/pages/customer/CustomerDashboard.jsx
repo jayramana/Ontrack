@@ -3,6 +3,7 @@ import CustomerSidebar from "./CustomerSidebar";
 
 const CustomerDashboard = () => {
     const { user, logout } = useAuth();
+    console.log(user);
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -19,7 +20,7 @@ const CustomerDashboard = () => {
                         <div className="flex justify-between items-center">
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-900">Customer Dashboard</h1>
-                                <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.name}!</p>
+                                <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.first_name} {user.last_name}!</p>
                             </div>
                             <button
                                 onClick={logout}

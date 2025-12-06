@@ -1,8 +1,10 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function DriverSidebar({ active }) {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const menu = [
     { label: "Dashboard", key: "dashboard", path: "/driver/dashboard" },
@@ -38,7 +40,7 @@ export default function DriverSidebar({ active }) {
       </nav>
 
       {/* Footer */}
-      <button className="mt-auto pt-10 text-red-300 hover:text-red-400 text-left">
+      <button onClick={logout} className="mt-auto pt-10 text-red-300 hover:text-red-400 text-left">
         Sign Out
       </button>
     </div>

@@ -23,6 +23,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CustomerQueries from "./pages/admin/CustomerQueries";
 import DeliveryInsights from "./pages/admin/DeliveryInsights";
 
+import "./index.css";
+
 function App() {
   return (
     <Router>
