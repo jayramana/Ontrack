@@ -53,6 +53,7 @@ export const AuthProvider = ({ children }) => {
                 customer: '/customer/dashboard',
                 driver: '/driver/dashboard',
                 admin: '/admin/dashboard',
+                seller: '/seller/dashboard',
             };
 
             navigate(roleRoutes[response.role] || '/');

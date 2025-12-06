@@ -10,7 +10,8 @@ export default function DriverSidebar({ active }) {
     { label: "Dashboard", key: "dashboard", path: "/driver/dashboard" },
     { label: "Route Optimization", key: "route", path: "/driver/route" },
     { label: "Report Issues", key: "issues", path: "/driver/issues" },
-    { label: "Confirm Delivery", key: "confirm", path: "/driver/confirm" }
+    { label: "Confirm Delivery", key: "confirm", path: "/driver/confirm" },
+    {label: "Profile", key: "profile", path: "/driver/profile" }
   ];
 
   return (

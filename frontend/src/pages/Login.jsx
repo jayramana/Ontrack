@@ -41,6 +41,9 @@ const Login = () => {
         } else if (formData.role === "Admin") {
             navigate("/admin/dashboard");
         }
+        else if(formData.role === "Seller"){
+            navigate("/seller/dashboard");
+        }
         return;
     }
 
@@ -52,7 +55,7 @@ const Login = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">ArriveNow</h1>
                     <p className="text-gray-500">Welcome back! Please sign in.</p>
@@ -102,6 +105,7 @@ const Login = () => {
                             <option value="customer">Customer</option>
                             <option value="driver">Driver</option>
                             <option value="seller">Seller</option>
+                            <option value="admin">Admin</option>
                         </select>
                     </div>
 
@@ -128,7 +132,7 @@ const Login = () => {
 
                 <div className="mt-8 pt-6 border-t border-gray-100">
                     <p className="text-xs text-center text-gray-400 mb-4">Demo Credentials</p>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-4 gap-2 text-xs">
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
                             onClick={() => setFormData({ email: 'customer@test.com', password: 'password123', role: 'customer' })}>
                             <div className="font-semibold text-gray-700">Customer</div>
@@ -139,6 +143,12 @@ const Login = () => {
                             <div className="font-semibold text-gray-700">Driver</div>
                             <div className="text-gray-500">driver@test.com</div>
                         </div>
+                        <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
+                            onClick={() => setFormData({ email: 'admin@arrivenow.com', password: 'Admin@123', role: 'admin' })}>
+                            <div className="font-semibold text-gray-700">Seller</div>
+                            <div className="text-gray-500">seller@arrivenow.com</div>
+                        </div>
+
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
                             onClick={() => setFormData({ email: 'admin@arrivenow.com', password: 'Admin@123', role: 'admin' })}>
                             <div className="font-semibold text-gray-700">Admin</div>

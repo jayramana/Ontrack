@@ -129,12 +129,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Footer actions */}
-        <div className="flex gap-4">
-          <button className="px-4 py-3 bg-blue-900 text-white rounded-lg">View Customer Queries</button>
-          <button className="px-4 py-3 bg-white border rounded-lg">View Analytics</button>
-          <button className="px-4 py-3 bg-white border rounded-lg">View Workflow</button>
-        </div>
+
       </div>
     </div>
   );

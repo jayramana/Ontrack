@@ -71,7 +71,10 @@ const Signup = () => {
                     navigate('/driver/dashboard');
                 } else if (response.role.toLowerCase() === 'seller') {
                     navigate('/seller/dashboard');
-                } else {
+                }else if (response.role.toLowerCase() === 'admin') {
+                    navigate('/admin/dashboard');
+                }
+                 else {
                     navigate('/login');
                 }
 
@@ -196,6 +199,7 @@ const Signup = () => {
                             <option value="customer">Customer</option>
                             <option value="driver">Driver</option>
                             <option value="seller">Seller</option>
+                            <option value="admin">Admin</option>
                         </select>
                     </div>
 

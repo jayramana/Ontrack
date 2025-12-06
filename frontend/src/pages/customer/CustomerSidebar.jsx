@@ -11,6 +11,7 @@ export default function CustomerSidebar({ active }) {
     { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
     { label: "ID Verification", path: "/customer/idverification", key: "id" },
     { label: "Delivery Confirm", path: "/customer/deliveryconfirm", key: "confirm" },
+    { label: "Profile ", path: "/customer/profile", key: "profile" },
   ];
 
   return (
