@@ -5,6 +5,7 @@ using System.Text;
 using Backend.Data;
 using Microsoft.AspNetCore.Identity;
 using Backend.Domain.Entity;
+using Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,9 +47,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-
+builder.Services.AddScoped<IEtaservice, LocationService>();
 builder.Services.AddAuthorization();
-
+builder.Services.AddSignalR();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -60,9 +61,11 @@ if (app.Environment.IsDevelopment())
 // Use CORS
 app.UseCors("AllowFrontend");
 app.MapAuthEndpoints();
+app.MapLocationEndpoints();
 // Use Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHub<EtaHub>("/etahub");
 
 
 app.Run();
