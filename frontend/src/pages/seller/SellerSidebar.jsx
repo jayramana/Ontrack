@@ -1,8 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function SellerSidebar({ active }) {
   const navigate = useNavigate();
+
+  const { logout } = useAuth();
 
   const menu = [
     { label: "Dashboard", key: "dashboard", path: "/seller/dashboard" },
@@ -41,7 +44,7 @@ export default function SellerSidebar({ active }) {
         ))}
       </nav>
 
-      <button className="mt-auto text-left text-red-300 hover:text-red-400">
+      <button onClick={logout}  className="mt-auto text-left text-red-300 hover:text-red-400">
         Sign Out
       </button>
     </div>

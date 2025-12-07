@@ -23,6 +23,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CustomerQueries from "./pages/admin/CustomerQueries";
 import DeliveryInsights from "./pages/admin/DeliveryInsights";
 
+import SellerDashboard from "./pages/seller/SellerDashboard";
+
 import "./index.css";
 
 function App() {
@@ -76,8 +78,16 @@ function App() {
                 <AdminDashboard />
               </ProtectedRoute>
             }
+            />
+            <Route
+              path="/seller/dashboard"
+              element={
+                <ProtectedRoute requiredRole="seller">
+                  <SellerDashboard/>
+                </ProtectedRoute>
+              }
           />
-
+          
           {/* Default Redirect */}
           <Route path="*" element={<Navigate to="/login" replace />} />
 

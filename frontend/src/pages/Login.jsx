@@ -33,15 +33,14 @@ const Login = () => {
 
         // On successful login, redirect to the appropriate dashboard
         if (result.success) {
-        console.log(formData)
         if (formData.role === "Customer".toLowerCase()) {
             navigate("/customer/dashboard");
-        } else if (formData.role === "Driver") {
+        } else if (formData.role === "Driver".toLowerCase()) {
             navigate("/driver/dashboard");
-        } else if (formData.role === "Admin") {
+        } else if (formData.role === "Admin".toLowerCase()) {
             navigate("/admin/dashboard");
         }
-        else if(formData.role === "Seller"){
+        else if(formData.role === "Seller".toLowerCase()){
             navigate("/seller/dashboard");
         }
         return;
