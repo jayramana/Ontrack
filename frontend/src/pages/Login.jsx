@@ -84,6 +84,7 @@ const Login = () => {
                         >
                             <option value="Customer">Customer</option>
                             <option value="Driver">Driver</option>
+                            <option value="Sender">Sender</option>
                             <option value="Admin">Admin</option>
                         </select>
                     </div>
@@ -111,11 +112,16 @@ const Login = () => {
 
                 <div className="mt-8 pt-6 border-t border-gray-100">
                     <p className="text-xs text-center text-gray-400 mb-4">Demo Credentials</p>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-4 gap-2 text-xs">
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
                             onClick={() => setFormData({ email: 'customer@test.com', password: 'password123', role: 'Customer' })}>
                             <div className="font-semibold text-gray-700">Customer</div>
                             <div className="text-gray-500">customer@test.com</div>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
+                            onClick={() => setFormData({ email: 'sender@demo.com', password: 'password123', role: 'Sender' })}>
+                            <div className="font-semibold text-gray-700">Sender</div>
+                            <div className="text-gray-500">sender@demo.com</div>
                         </div>
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
                             onClick={() => setFormData({ email: 'driver@test.com', password: 'password123', role: 'Driver' })}>

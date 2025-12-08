@@ -6,6 +6,16 @@ import Signup from './pages/Signup'; // New import
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import DriverDashboard from './pages/driver/DriverDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import SenderDashboard from './pages/sender/SenderDashboard';
+import PlaceOrder from './pages/sender/PlaceOrder';
+import SenderOrders from './pages/sender/SenderOrders';
+import RouteView from './pages/driver/RouteView';
+import LiveMap from './pages/admin/LiveMap';
+import WarehouseDashboard from './pages/admin/WarehouseDashboard';
+import TransportScheduler from './pages/admin/TransportScheduler';
+import CapacityDashboard from './pages/admin/CapacityDashboard';
+import Availability from './pages/customer/Availability';
+import Tracking from './pages/customer/Tracking';
 
 function App() {
   return (
@@ -25,6 +35,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/customer/availability"
+            element={
+              <ProtectedRoute requiredRole="Customer">
+                <Availability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/tracking"
+            element={
+              <ProtectedRoute requiredRole="Customer">
+                <Tracking />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected Driver Route */}
           <Route
@@ -35,6 +61,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/driver/route"
+            element={
+              <ProtectedRoute requiredRole="Driver">
+                <RouteView />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Protected Admin Route */}
           <Route
@@ -42,6 +76,64 @@ function App() {
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/live-map"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <LiveMap />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/warehouses"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <WarehouseDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/transports"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <TransportScheduler />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/capacity"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <CapacityDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected Sender Route */}
+          <Route
+            path="/sender/dashboard"
+            element={
+              <ProtectedRoute requiredRole="Sender">
+                <SenderDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sender/place-order"
+            element={
+              <ProtectedRoute requiredRole="Sender">
+                <PlaceOrder />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sender/orders"
+            element={
+              <ProtectedRoute requiredRole="Sender">
+                <SenderOrders />
               </ProtectedRoute>
             }
           />

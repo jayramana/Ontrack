@@ -8,7 +8,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddSignalR();
+
+// Register Services
+builder.Services.AddScoped<Backend.Services.GeminiService>();
+builder.Services.AddScoped<Backend.Services.RouteOptimizationService>();
+builder.Services.AddScoped<Backend.Services.WarehouseAssignmentService>();
+builder.Services.AddScoped<Backend.Services.DriverRouteOptimizationService>();
+
+builder.Services.AddHttpClient<Backend.Services.GeminiService>();
+builder.Services.AddHttpClient<Backend.Services.GeocodingService>();
 
 // Configure Entity Framework with PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -21,7 +32,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -57,10 +69,11 @@ if (app.Environment.IsDevelopment())
 // Use CORS
 app.UseCors("AllowFrontend");
 app.MapAuthEndpoints();
+
 // Use Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.MapControllers();
+app.MapHub<Backend.Hubs.LogisticsHub>("/hubs/logistics");
 
 app.Run();
-

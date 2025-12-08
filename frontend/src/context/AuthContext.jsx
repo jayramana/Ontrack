@@ -28,33 +28,36 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
+    const handleLoginSuccess = (response) => {
+        // Store token and user data
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify({
+            userId: response.userId,
+            name: response.name,
+            role: response.role,
+        }));
+
+        setUser({
+            userId: response.userId,
+            name: response.name,
+            role: response.role,
+        });
+
+        // Redirect based on role
+        const roleRoutes = {
+            Customer: '/customer/dashboard',
+            Driver: '/driver/dashboard',
+            Admin: '/admin/dashboard',
+            Sender: '/sender/dashboard',
+        };
+
+        navigate(roleRoutes[response.role] || '/');
+    };
+
     const login = async (email, password, role) => {
         try {
             const response = await authAPI.login(email, password, role);
-
-            // Store token and user data
-            localStorage.setItem('token', response.token);
-            localStorage.setItem('user', JSON.stringify({
-                userId: response.userId,
-                name: response.name,
-                role: response.role,
-            }));
-
-            setUser({
-                userId: response.userId,
-                name: response.name,
-                role: response.role,
-            });
-
-            // Redirect based on role
-            const roleRoutes = {
-                Customer: '/customer/dashboard',
-                Driver: '/driver/dashboard',
-                Admin: '/admin/dashboard',
-            };
-
-            navigate(roleRoutes[response.role] || '/');
-
+            handleLoginSuccess(response);
             return { success: true, message: response.message };
         } catch (error) {
             return { success: false, message: error };
@@ -79,6 +82,7 @@ export const AuthProvider = ({ children }) => {
     const value = {
         user,
         login,
+        handleLoginSuccess,
         logout,
         isAuthenticated,
         hasRole,

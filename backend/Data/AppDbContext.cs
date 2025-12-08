@@ -11,6 +11,13 @@ namespace Backend.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<RouteStop> RouteStops { get; set; }
+        public DbSet<RoadIssue> RoadIssues { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Warehouse> Warehouses { get; set; }
+        public DbSet<DriverLocation> DriverLocations { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -25,6 +32,37 @@ namespace Backend.Data
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.Property(e => e.PasswordHash).IsRequired();
                 entity.Property(e => e.Role).IsRequired().HasMaxLength(50);
+            });
+
+            // Configure Order-Warehouse relationships
+            modelBuilder.Entity<Order>(entity =>
+            {
+                // Origin Warehouse relationship
+                entity.HasOne(o => o.OriginWarehouse)
+                    .WithMany(w => w.OriginOrders)
+                    .HasForeignKey(o => o.OriginWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Destination Warehouse relationship
+                entity.HasOne(o => o.DestinationWarehouse)
+                    .WithMany(w => w.DestinationOrders)
+                    .HasForeignKey(o => o.DestinationWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Current Warehouse relationship
+                entity.HasOne(o => o.CurrentWarehouse)
+                    .WithMany(w => w.CurrentOrders)
+                    .HasForeignKey(o => o.CurrentWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure User-Warehouse relationship
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasOne(u => u.AssignedWarehouse)
+                    .WithMany(w => w.AssignedUsers)
+                    .HasForeignKey(u => u.AssignedWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Seed initial users with BCrypt hashed passwords

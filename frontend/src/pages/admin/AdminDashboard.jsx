@@ -1,7 +1,74 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const AdminDashboard = () => {
     const { user, logout } = useAuth();
+    const [drivers, setDrivers] = useState([]);
+    const [selectedDrivers, setSelectedDrivers] = useState({});
+    const [stats, setStats] = useState({
+        totalUsers: 0,
+        activeOrders: 0,
+        drivers: 0,
+        warehouses: 0
+    });
+    const [pendingOrders, setPendingOrders] = useState([]);
+    const [assignedOrders, setAssignedOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [dashboardRes, pendingRes, assignedRes, driversRes] = await Promise.all([
+                    api.get('/admin/dashboard'),
+                    api.get('/orders/pending'),
+                    api.get('/orders/assigned'),
+                    api.get('/admin/drivers')
+                ]);
+
+                setStats({
+                    totalUsers: dashboardRes.data.drivers.length + 5,
+                    activeOrders: dashboardRes.data.orders.length,
+                    drivers: dashboardRes.data.drivers.length,
+                    warehouses: 1
+                });
+                setPendingOrders(pendingRes.data);
+                setAssignedOrders(assignedRes.data);
+                setDrivers(driversRes.data);
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const handleDriverSelect = (orderId, driverId) => {
+        setSelectedDrivers(prev => ({ ...prev, [orderId]: driverId }));
+    };
+
+    const handleAssign = async (orderId) => {
+        const driverId = selectedDrivers[orderId];
+        if (!driverId) {
+            alert("Please select a driver first.");
+            return;
+        }
+
+        try {
+            await api.post(`/orders/${orderId}/assign-driver`, parseInt(driverId));
+            // Refresh pending and assigned orders
+            const pendingRes = await api.get('/orders/pending');
+            const assignedRes = await api.get('/orders/assigned');
+            setPendingOrders(pendingRes.data);
+            setAssignedOrders(assignedRes.data);
+            alert("Order assigned successfully!");
+        } catch (error) {
+            console.error("Error assigning order:", error);
+            alert("Failed to assign order.");
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -25,57 +92,16 @@ const AdminDashboard = () => {
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* Welcome Card */}
-                    <div className="bg-white rounded-xl shadow-md p-6 md:col-span-4">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-purple-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-purple-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                    />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <h2 className="text-xl font-semibold text-gray-800">
-                                    Welcome to Admin Control Panel
-                                </h2>
-                                <p className="text-gray-600 mt-1">
-                                    You are logged in as: <span className="font-semibold">{user?.role}</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     {/* Stats Cards */}
                     <div className="bg-white rounded-xl shadow-md p-6">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-gray-600">Total Users</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">3</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.totalUsers}</p>
                             </div>
                             <div className="bg-blue-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-blue-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                                    />
-                                </svg>
+                                <span className="text-2xl">👥</span>
                             </div>
                         </div>
                     </div>
@@ -84,22 +110,10 @@ const AdminDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-gray-600">Active Orders</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.activeOrders}</p>
                             </div>
                             <div className="bg-green-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-                                    />
-                                </svg>
+                                <span className="text-2xl">📦</span>
                             </div>
                         </div>
                     </div>
@@ -108,22 +122,10 @@ const AdminDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-gray-600">Drivers</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">1</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.drivers}</p>
                             </div>
                             <div className="bg-yellow-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-yellow-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
+                                <span className="text-2xl">🚚</span>
                             </div>
                         </div>
                     </div>
@@ -132,37 +134,149 @@ const AdminDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-gray-600">Warehouses</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.warehouses}</p>
+                                <a href="/admin/warehouses" className="text-sm text-blue-600 hover:underline">Manage</a>
                             </div>
                             <div className="bg-purple-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-purple-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                    />
-                                </svg>
+                                <span className="text-2xl">🏭</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Placeholder for future features */}
-                    <div className="bg-purple-50 rounded-xl border-2 border-dashed border-purple-200 p-8 md:col-span-4">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-purple-900 mb-2">
-                                ⚙️ Phase 1 Complete!
-                            </h3>
-                            <p className="text-purple-700">
-                                User management, warehouse management, and analytics features coming in Phase 2
-                            </p>
+                    {/* Phase 5: Quick Actions */}
+                    <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg shadow-lg p-6 text-white mt-6">
+                        <h3 className="text-xl font-semibold mb-4">🚀 Advanced Features</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            <a
+                                href="/admin/transports"
+                                className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 text-center transition"
+                            >
+                                <div className="text-3xl mb-2">🚚</div>
+                                <div className="font-semibold">Transport Scheduler</div>
+                                <div className="text-sm opacity-90">Hub-to-Hub Routing</div>
+                            </a>
+                            <a
+                                href="/admin/capacity"
+                                className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 text-center transition"
+                            >
+                                <div className="text-3xl mb-2">📊</div>
+                                <div className="font-semibold">Capacity Monitor</div>
+                                <div className="text-sm opacity-90">Real-time Tracking</div>
+                            </a>
+                            <a
+                                href="/admin/warehouses"
+                                className="bg-white bg-opacity-30 hover:bg-opacity-30 rounded-lg p-4 text-center transition"
+                            >
+                                <div className="text-3xl mb-2">🏭</div>
+                                <div className="font-semibold">Warehouses</div>
+                                <div className="text-sm opacity-90">Manage Hubs</div>
+                            </a>
                         </div>
                     </div>
+                </div>
+
+                {/* Pending Orders Section */}
+                <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Unassigned Orders</h2>
+                    {loading ? (
+                        <p>Loading...</p>
+                    ) : pendingOrders.length === 0 ? (
+                        <p className="text-gray-500">No pending orders.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assign Driver</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {pendingOrders.map((order) => (
+                                        <tr key={order.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{order.id}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                                <div className="font-medium">Pickup: {order.pickupAddress}</div>
+                                                <div>Drop: {order.receiverAddress}</div>
+                                                <div className="text-xs text-gray-400">Weight: {order.weight}kg</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.deliveryType === 'ASR' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                                    {order.deliveryType}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <select
+                                                    className="border rounded p-1"
+                                                    value={selectedDrivers[order.id] || ''}
+                                                    onChange={(e) => handleDriverSelect(order.id, e.target.value)}
+                                                >
+                                                    <option value="">Select Driver</option>
+                                                    {drivers.map(d => (
+                                                        <option key={d.id} value={d.id}>{d.name} {d.isAvailable ? '(Avail)' : '(Busy)'}</option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <button
+                                                    onClick={() => handleAssign(order.id)}
+                                                    className="text-blue-600 hover:text-blue-900 font-bold disabled:opacity-50"
+                                                    disabled={!selectedDrivers[order.id]}
+                                                >
+                                                    Assign
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* Assigned Orders Section */}
+                <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Assigned Orders</h2>
+                    {loading ? (
+                        <p>Loading...</p>
+                    ) : assignedOrders.length === 0 ? (
+                        <p className="text-gray-500">No assigned orders.</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {assignedOrders.map((order) => (
+                                        <tr key={order.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{order.id}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">
+                                                <div className="font-medium">Pickup: {order.pickupAddress}</div>
+                                                <div>Drop: {order.receiverAddress}</div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {drivers.find(d => d.id === order.driverId)?.name || 'Unknown'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                    {order.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

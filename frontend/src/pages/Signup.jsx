@@ -14,7 +14,7 @@ const Signup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, handleLoginSuccess } = useAuth();
 
     const handleChange = (e) => {
         setFormData({
@@ -48,7 +48,7 @@ const Signup = () => {
             );
 
             // Automatically login after successful registration
-            login(response);
+            handleLoginSuccess(response);
 
             // Redirect based on role
             if (response.role === 'Customer') {
@@ -140,6 +140,7 @@ const Signup = () => {
                         >
                             <option value="Customer">Customer</option>
                             <option value="Driver">Driver</option>
+                            <option value="Sender">Sender</option>
                         </select>
                     </div>
 
@@ -147,8 +148,8 @@ const Signup = () => {
                         type="submit"
                         disabled={loading}
                         className={`w-full py-3 rounded-lg text-white font-semibold shadow-md transition-all ${loading
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:-translate-y-0.5'
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:-translate-y-0.5'
                             }`}
                     >
                         {loading ? 'Creating Account...' : 'Create Account'}

@@ -33,13 +33,21 @@ public static class AuthEndpoints
             var user = await context.Users
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (user == null)
             {
+                Console.WriteLine($"Login failed: User '{request.Email}' not found.");
+                return Results.Unauthorized();
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                Console.WriteLine($"Login failed: Password mismatch for '{request.Email}'.");
                 return Results.Unauthorized();
             }
 
             if (user.Role != request.Role)
             {
+                Console.WriteLine($"Login failed: Role mismatch for '{request.Email}'. Expected '{user.Role}', got '{request.Role}'.");
                 return Results.Unauthorized();
             }
 
@@ -125,7 +133,8 @@ public static class AuthEndpoints
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Name),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, user.Role)
+            new Claim(ClaimTypes.Role, user.Role),
+            new Claim("id", user.Id.ToString())
         };
 
         var token = new JwtSecurityToken(
