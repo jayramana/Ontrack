@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import { HubConnectionBuilder } from "@microsoft/signalr";
+import * as signalR from "@microsoft/signalr";
+
+
 
 const CustomerDashboard = () => {
     const { user, logout } = useAuth();
@@ -28,6 +32,75 @@ const CustomerDashboard = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+    setupSignalR();
+}, []);
+
+
+    //new
+    // useEffect(() => {
+    //     if (!selectedOrder) return;
+
+    //     let connection;
+
+    //     const startSignalR = async () => {
+    //         connection = new signalR.HubConnectionBuilder()
+    //         .withUrl("http://localhost:5066/hubs/logistics", {
+    //             withCredentials: true,
+    //             transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling
+    //         })
+    //         .withAutomaticReconnect()
+    //         .build();
+
+    //         // When driver sends location -> update modal live
+    //         connection.on("ReceiveDriverLocation", (data) => {
+    //             setTrackingData(prev => ({
+    //                 ...prev,
+    //                 driverLocation: {
+    //                     latitude: data.latitude,
+    //                     longitude: data.longitude,
+    //                     updatedAt: data.updatedAt,
+    //                 }
+    //             }));
+    //         });
+
+    //         await connection.start();
+    //         await connection.invoke("JoinOrderGroup", selectedOrder);
+    //     };
+
+    //     startSignalR();
+
+    //     return () => {
+    //         if (connection) connection.stop();
+    //     };
+    // }, [selectedOrder]);
+const setupSignalR = async () => {
+    try {
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("http://localhost:5066/hubs/logistics")
+            .withAutomaticReconnect()
+            .build();
+
+        connection.on("ReceiveRouteUpdate", (routeData) => {
+            console.log("Received new route update:", routeData);
+            setOptimizedRoute(routeData);
+        });
+
+        await connection.start();
+        console.log("Driver connected to SignalR hub");
+
+        await connection.invoke("JoinDriverRouteGroup", user.id);
+        console.log("Joined route updates group");
+
+    } catch (err) {
+        console.error("SignalR Error:", err);
+    }
+};
+
+
+
+
 
     const trackOrder = async (orderId) => {
         try {
@@ -242,7 +315,7 @@ const CustomerDashboard = () => {
                                 <p className="font-semibold text-lg">{trackingData.order.status}</p>
                             </div>
 
-                            {trackingData.driverLocation && (
+                            {/* {trackingData.driverLocation && (
                                 <div className="bg-green-50 rounded-lg p-4">
                                     <p className="text-sm font-semibold text-green-800 mb-2">🚗 Driver Location</p>
                                     <p className="text-sm">Last updated: {new Date(trackingData.driverLocation.updatedAt).toLocaleString()}</p>
@@ -254,7 +327,21 @@ const CustomerDashboard = () => {
                                         <p className="text-xs text-gray-600">Speed: {trackingData.driverLocation.speed.toFixed(1)} km/h</p>
                                     )}
                                 </div>
+                            )} */}
+
+                            {trackingData.driverLocation && (
+                                <div className="bg-green-50 rounded-lg p-4">
+                                    <p className="text-sm font-semibold text-green-800 mb-2">🚗 Live Driver Location</p>
+                                    <p className="text-xs text-gray-600">Updated: 
+                                        {new Date(trackingData.driverLocation.updatedAt).toLocaleTimeString()}
+                                    </p>
+                                    <p className="text-sm mt-1">
+                                        Lat: {trackingData.driverLocation.latitude.toFixed(5)}, 
+                                        Lng: {trackingData.driverLocation.longitude.toFixed(5)}
+                                    </p>
+                                </div>
                             )}
+
 
                             {trackingData.estimatedDelivery && (
                                 <div>

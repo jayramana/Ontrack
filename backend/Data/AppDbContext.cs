@@ -69,22 +69,7 @@ namespace Backend.Data
             // Password for all users: "password123"
             // Pre-generated hashes to avoid model changes on migration
             modelBuilder.Entity<User>().HasData(
-                new User
-                {
-                    Id = 1,
-                    Name = "John Customer",
-                    Email = "customer@test.com",
-                    PasswordHash = "$2a$11$XZPPqKjhrvOL.nJZqSJJUeWQXM0YqKK0VZ0hRFqVZ6tGHW8Q.JT0K", // password123
-                    Role = UserRoles.Customer
-                },
-                new User
-                {
-                    Id = 2,
-                    Name = "Jane Driver",
-                    Email = "driver@test.com",
-                    PasswordHash = "$2a$11$XZPPqKjhrvOL.nJZqSJJUeWQXM0YqKK0VZ0hRFqVZ6tGHW8Q.JT0K", // password123
-                    Role = UserRoles.Driver
-                },
+                
                 new User
                 {
                     Id = 3,

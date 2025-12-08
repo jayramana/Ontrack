@@ -49,6 +49,28 @@ const AdminDashboard = () => {
         setSelectedDrivers(prev => ({ ...prev, [orderId]: driverId }));
     };
 
+    // const handleAssign = async (orderId) => {
+    //     const driverId = selectedDrivers[orderId];
+    //     if (!driverId) {
+    //         alert("Please select a driver first.");
+    //         return;
+    //     }
+
+    //     try {
+    //         await api.post(`/orders/${orderId}/assign-driver`, parseInt(driverId));
+    //         // Refresh pending and assigned orders
+    //         const pendingRes = await api.get('/orders/pending');
+    //         const assignedRes = await api.get('/orders/assigned');
+    //         setPendingOrders(pendingRes.data);
+    //         setAssignedOrders(assignedRes.data);
+    //         alert("Order assigned successfully!");
+    //     } catch (error) {
+    //         console.error("Error assigning order:", error);
+    //         alert("Failed to assign order.");
+    //     }
+    // };
+
+    // ✅ FIXED: Correct API Endpoint
     const handleAssign = async (orderId) => {
         const driverId = selectedDrivers[orderId];
         if (!driverId) {
@@ -57,12 +79,14 @@ const AdminDashboard = () => {
         }
 
         try {
-            await api.post(`/orders/${orderId}/assign-driver`, parseInt(driverId));
-            // Refresh pending and assigned orders
+            await api.post(`/admin/assign-driver/${orderId}/${driverId}`);
+
             const pendingRes = await api.get('/orders/pending');
             const assignedRes = await api.get('/orders/assigned');
+
             setPendingOrders(pendingRes.data);
             setAssignedOrders(assignedRes.data);
+
             alert("Order assigned successfully!");
         } catch (error) {
             console.error("Error assigning order:", error);

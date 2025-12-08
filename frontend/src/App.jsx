@@ -9,13 +9,14 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import SenderDashboard from './pages/sender/SenderDashboard';
 import PlaceOrder from './pages/sender/PlaceOrder';
 import SenderOrders from './pages/sender/SenderOrders';
-import RouteView from './pages/driver/RouteView';
+
 import LiveMap from './pages/admin/LiveMap';
 import WarehouseDashboard from './pages/admin/WarehouseDashboard';
 import TransportScheduler from './pages/admin/TransportScheduler';
 import CapacityDashboard from './pages/admin/CapacityDashboard';
 import Availability from './pages/customer/Availability';
 import Tracking from './pages/customer/Tracking';
+import DriverRoutePage from './pages/driver/DriverRoutePage';
 
 function App() {
   return (
@@ -61,14 +62,10 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/driver/route"
-            element={
-              <ProtectedRoute requiredRole="Driver">
-                <RouteView />
-              </ProtectedRoute>
-            }
-          />
+          
+
+          <Route path="/driver/route" element={<ProtectedRoute requiredRole="Driver"><DriverRoutePage /></ProtectedRoute>} />
+
 
           {/* Protected Admin Route */}
           <Route

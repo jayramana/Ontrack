@@ -177,26 +177,26 @@ namespace Backend.Endpoints
         // Assign Driver to Order (Admin)
         // ------------------------------
 
-        [HttpPost("{id}/assign-driver")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AssignDriver(int id, [FromBody] int driverId)
-        {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null) return NotFound();
+        // [HttpPost("{id}/assign-driver")]
+        // [Authorize(Roles = "Admin")]
+        // public async Task<IActionResult> AssignDriver(int id, [FromBody] int driverId)
+        // {
+        //     var order = await _context.Orders.FindAsync(id);
+        //     if (order == null) return NotFound();
 
-            var driver = await _context.Users.FindAsync(driverId);
-            if (driver == null || driver.Role != "Driver")
-                return BadRequest("Invalid driver.");
+        //     var driver = await _context.Users.FindAsync(driverId);
+        //     if (driver == null || driver.Role != "Driver")
+        //         return BadRequest("Invalid driver.");
 
-            order.DriverId = driverId;
-            order.Status = "Assigned";
-            await _context.SaveChangesAsync();
+        //     order.DriverId = driverId;
+        //     order.Status = "Assigned";
+        //     await _context.SaveChangesAsync();
 
-            // Trigger route optimization
-            await _optimizationService.OptimizeRouteForDriver(driverId);
+        //     // Trigger route optimization
+        //     await _optimizationService.OptimizeRouteForDriver(driverId);
 
-            return Ok(order);
-        }
+        //     return Ok(order);
+        // }
 
         // ------------------------------
         // Approve Order (optional legacy)

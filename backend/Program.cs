@@ -21,6 +21,10 @@ builder.Services.AddScoped<Backend.Services.DriverRouteOptimizationService>();
 builder.Services.AddHttpClient<Backend.Services.GeminiService>();
 builder.Services.AddHttpClient<Backend.Services.GeocodingService>();
 
+builder.Services.AddHttpClient<Backend.Services.OpenRouteServiceClient>();
+
+
+
 // Configure Entity Framework with PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -58,6 +62,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -65,6 +71,18 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+
+//to verify another hub is here or not
+app.MapGet("/debug/hub-methods", () =>
+{
+    var hub = typeof(Backend.Hubs.LogisticsHub);
+    var methods = hub.GetMethods().Select(m => m.Name).ToList();
+    return methods;
+});
+
+
+
 
 // Use CORS
 app.UseCors("AllowFrontend");

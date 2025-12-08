@@ -42,6 +42,24 @@ namespace Backend.Endpoints
             return Ok(orders);
         }
 
+        // GET: api/driver/route
+        [HttpGet("route")]
+        [Authorize(Roles = "Driver")]
+        public async Task<IActionResult> GetRouteStops()
+        {
+            var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            var driverId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var routeStops = await _context.RouteStops
+                .Where(rs => rs.DriverId == driverId)
+                .Include(rs => rs.Order)
+                .OrderBy(rs => rs.SequenceNumber)
+                .ToListAsync();
+
+            return Ok(routeStops);
+        }
+
+
         // GET: api/driver/route/optimized
         [HttpGet("route/optimized")]
         [Authorize(Roles = "Driver")]
@@ -104,6 +122,86 @@ namespace Backend.Endpoints
 
             return Ok(new { message = "Order marked as delivered" });
         }
+
+        [HttpGet("track/{orderId}")]
+        public async Task<IActionResult> TrackOrder(int orderId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.Driver)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            if (order == null)
+                return NotFound(new { message = "Order not found" });
+
+            // Last driver location
+            var driverLocation = await _context.DriverLocations
+                .Where(dl => dl.DriverId == order.DriverId)
+                .OrderByDescending(dl => dl.UpdatedAt)
+                .FirstOrDefaultAsync();
+
+            return Ok(new
+            {
+                order,
+                driverLocation = driverLocation != null ? new
+                {
+                    latitude = driverLocation.Latitude,
+                    longitude = driverLocation.Longitude,
+                    speed = driverLocation.Speed,
+                    updatedAt = driverLocation.UpdatedAt
+                } : null,
+                estimatedDelivery = order.EstimatedDeliveryDate
+            });
+        }
+
+        // GET: api/driver/route/suggestions
+        [HttpGet("route/suggestions")]
+        [Authorize(Roles = "Driver")]
+        public async Task<IActionResult> GetRouteSuggestions()
+        {
+            var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            var driverId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var orders = await _context.Orders
+                .Where(o => o.DriverId == driverId && o.Status != "Delivered")
+                .ToListAsync();
+
+            if (!orders.Any())
+                return Ok(new { routes = new List<object>() });
+
+            // Simulated ORION strategies
+            var fastest = orders.OrderBy(o => o.Priority).ToList();
+            var shortest = orders.OrderBy(o => o.DeliveryLatitude).ThenBy(o => o.DeliveryLongitude).ToList();
+            var fuelEfficient = orders.OrderBy(o => o.Priority * 2).ThenBy(o => Math.Abs(o.DeliveryLongitude)).ToList();
+
+            var result = new[]
+            {
+                new {
+                    name = "Fastest Route",
+                    description = "Optimized for minimum travel time & traffic",
+                    stops = fastest.Select((o,i)=> new {
+                        sequence = i+1, o.Id, o.ReceiverAddress, o.DeliveryLatitude, o.DeliveryLongitude
+                    })
+                },
+                new {
+                    name = "Shortest Distance Route",
+                    description = "Minimized travel distance based on geospatial clustering",
+                    stops = shortest.Select((o,i)=> new {
+                        sequence = i+1, o.Id, o.ReceiverAddress, o.DeliveryLatitude, o.DeliveryLongitude
+                    })
+                },
+                new {
+                    name = "Fuel Efficient Route",
+                    description = "Avoids unnecessary turns & long detours to reduce fuel consumption",
+                    stops = fuelEfficient.Select((o,i)=> new {
+                        sequence = i+1, o.Id, o.ReceiverAddress, o.DeliveryLatitude, o.DeliveryLongitude
+                    })
+                }
+            };
+
+            return Ok(result);
+        }
+
+
 
         // POST: api/driver/mark-attempted/{orderId}
         [HttpPost("mark-attempted/{orderId}")]
