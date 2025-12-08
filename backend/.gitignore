@@ -1,5 +1,7 @@
-/bin
-/obj
+backend/bin/
+backend/obj/
+bin/
+obj/
 appsettings.json
 appsettings.Development.json
-/Migrations
+Migrations/
