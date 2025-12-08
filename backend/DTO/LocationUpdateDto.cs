@@ -1,5 +1,5 @@
 namespace Backend.DTO;
-public class LocationUpdate
+public class LocationUpdateDto
 {
     public double Latitude { get; set; }
     public double Longitude { get; set; }

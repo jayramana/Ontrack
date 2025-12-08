@@ -1,6 +1,6 @@
 namespace Backend.DTO
 {
-    public class LoginResponse
+    public class LoginResponseDto
     {
         public int UserId { get; set; }
         public required string Name { get; set; }
