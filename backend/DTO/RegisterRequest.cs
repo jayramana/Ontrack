@@ -1,6 +1,6 @@
 namespace Backend.DTO;
 
-public class RegisterRequestDto
+public class RegisterRequest
 {
     public string UserFName { get; set; } = null!;
     public string UserLName { get; set; } = null!;

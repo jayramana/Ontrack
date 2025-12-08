@@ -1,6 +1,6 @@
 namespace Backend.DTO;
 
-public class DeliveryAttemptDto
+public class DeliveryAttempt
 {
     public string Reason { get; set; } = string.Empty;
 }

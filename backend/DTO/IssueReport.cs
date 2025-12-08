@@ -1,5 +1,5 @@
 namespace Backend.DTO;
-public class IssueReportDto
+public class IssueReport
 {
     public string IssueType { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
