@@ -1,148 +1,419 @@
-import { useAuth } from '../../context/AuthContext';
+import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
+import CustomerSidebar from "./CustomerSidebar";
+import api from "../../services/api";
 
 const CustomerDashboard = () => {
-    const { user, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [trackingData, setTrackingData] = useState(null);
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    newDate: "",
+    reason: "",
+  });
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await api.get("/customer/orders");
+      setOrders(response.data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const trackOrder = async (orderId) => {
+    try {
+      const response = await api.get(`/customer/track/${orderId}`);
+      setTrackingData(response.data);
+      setSelectedOrder(orderId);
+    } catch (error) {
+      console.error("Error tracking order:", error);
+      alert("Unable to track order");
+    }
+  };
+
+  const openRescheduleDialog = (orderId) => {
+    setSelectedOrder(orderId);
+    setShowRescheduleDialog(true);
+  };
+
+  const handleReschedule = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/customer/reschedule/${selectedOrder}`, rescheduleForm);
+      alert("Delivery rescheduled successfully!");
+      setShowRescheduleDialog(false);
+      setRescheduleForm({ newDate: "", reason: "" });
+      fetchOrders();
+    } catch (error) {
+      console.error("Error rescheduling:", error);
+      alert("Failed to reschedule delivery");
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      PendingAssignment: "bg-yellow-100 text-yellow-800",
+      AtOriginWarehouse: "bg-blue-100 text-blue-800",
+      Assigned: "bg-purple-100 text-purple-800",
+      InTransit: "bg-indigo-100 text-indigo-800",
+      AtDestinationWarehouse: "bg-cyan-100 text-cyan-800",
+      OutForDelivery: "bg-orange-100 text-orange-800",
+      Delivered: "bg-green-100 text-green-800",
+      DeliveryAttempted: "bg-red-100 text-red-800",
+    };
+    return colors[status] || "bg-gray-100 text-gray-800";
+  };
+
+  if (loading) {
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Customer Dashboard</h1>
-                            <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.name}!</p>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Welcome Card */}
-                    <div className="bg-white rounded-xl shadow-md p-6 md:col-span-3">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-indigo-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-indigo-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                    />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <h2 className="text-xl font-semibold text-gray-800">
-                                    Welcome to Your Customer Portal
-                                </h2>
-                                <p className="text-gray-600 mt-1">
-                                    You are logged in as: <span className="font-semibold">{user?.role}</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stats Cards */}
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Active Orders</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-blue-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-blue-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Delivered</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-green-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Pending</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-yellow-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-yellow-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Placeholder for future features */}
-                    <div className="bg-indigo-50 rounded-xl border-2 border-dashed border-indigo-200 p-8 md:col-span-3">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-indigo-900 mb-2">
-                                🚀 Phase 1 Complete!
-                            </h3>
-                            <p className="text-indigo-700">
-                                Order tracking and management features coming in Phase 2
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
     );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      <CustomerSidebar />
+      <div className="flex-1">
+        <header className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  Welcome, {user?.first_name} {user?.last_name}!
+                </p>
+              </div>
+              <button
+                onClick={logout}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-gray-500 text-sm">Total Orders</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {orders.length}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-gray-500 text-sm">In Transit</p>
+              <p className="text-3xl font-bold text-indigo-600">
+                {
+                  orders.filter(
+                    (o) =>
+                      o.status === "InTransit" || o.status === "OutForDelivery"
+                  ).length
+                }
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-gray-500 text-sm">Delivered</p>
+              <p className="text-3xl font-bold text-green-600">
+                {orders.filter((o) => o.status === "Delivered").length}
+              </p>
+            </div>
+          </div>
+
+          {/* Orders List */}
+          <div className="space-y-4">
+            {orders.length === 0 && (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <p className="text-gray-500">You don't have any orders yet</p>
+              </div>
+            )}
+
+            {orders.map((order) => (
+              <div key={order.id} className="bg-white rounded-lg shadow p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Order #{order.id}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Created: {new Date(order.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
+                      order.status
+                    )}`}
+                  >
+                    {order.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">From (Sender)</p>
+                    <p className="font-medium">{order.senderName || "N/A"}</p>
+                    <p className="text-sm text-gray-600">
+                      {order.pickupAddress}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">To (Receiver)</p>
+                    <p className="font-medium">{order.receiverName}</p>
+                    <p className="text-sm text-gray-600">
+                      {order.receiverAddress}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Warehouse Tracking */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <p className="text-xs font-semibold text-gray-700 mb-2">
+                    📦 Warehouse Tracking
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">Origin</p>
+                      <p className="font-medium text-blue-600">
+                        {order.originWarehouse?.name || "Pending"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {order.originWarehouse?.city}
+                      </p>
+                    </div>
+                    <div className="text-gray-400">→</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Current</p>
+                      <p className="font-medium text-indigo-600">
+                        {order.currentWarehouse?.name || "In Transit"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {order.currentWarehouse?.city}
+                      </p>
+                    </div>
+                    <div className="text-gray-400">→</div>
+                    <div>
+                      <p className="text-xs text-gray-500">Destination</p>
+                      <p className="font-medium text-green-600">
+                        {order.destinationWarehouse?.name || "Pending"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {order.destinationWarehouse?.city}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery Info */}
+                {order.estimatedDeliveryDate && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500">Estimated Delivery</p>
+                    <p className="font-medium text-gray-900">
+                      {new Date(
+                        order.estimatedDeliveryDate
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+
+                {order.driver && (
+                  <div className="bg-blue-50 rounded-lg p-3 mb-4">
+                    <p className="text-xs text-gray-600 mb-1">
+                      🚚 Assigned Driver
+                    </p>
+                    <p className="font-medium">{order.driver.name}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => trackOrder(order.id)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                  >
+                    📍 Track Order
+                  </button>
+                  {order.status !== "Delivered" &&
+                    order.status !== "Cancelled" && (
+                      <button
+                        onClick={() => openRescheduleDialog(order.id)}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                      >
+                        📅 Reschedule
+                      </button>
+                    )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tracking Modal */}
+        {trackingData && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold">
+                  Order Tracking #{selectedOrder}
+                </h3>
+                <button
+                  onClick={() => {
+                    setTrackingData(null);
+                    setSelectedOrder(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-600">Status</p>
+                  <p className="font-semibold text-lg">
+                    {trackingData.order.status}
+                  </p>
+                </div>
+
+                {trackingData.driverLocation && (
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-green-800 mb-2">
+                      🚗 Driver Location
+                    </p>
+                    <p className="text-sm">
+                      Last updated:{" "}
+                      {new Date(
+                        trackingData.driverLocation.updatedAt
+                      ).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Lat: {trackingData.driverLocation.latitude.toFixed(4)},
+                      Lng: {trackingData.driverLocation.longitude.toFixed(4)}
+                    </p>
+                    {trackingData.driverLocation.speed > 0 && (
+                      <p className="text-xs text-gray-600">
+                        Speed: {trackingData.driverLocation.speed.toFixed(1)}{" "}
+                        km/h
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {trackingData.estimatedDelivery && (
+                  <div>
+                    <p className="text-sm text-gray-600">Estimated Delivery</p>
+                    <p className="font-medium">
+                      {new Date(
+                        trackingData.estimatedDelivery
+                      ).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() =>
+                    window.open(
+                      `https://www.openstreetmap.org/?mlat=${
+                        trackingData.driverLocation?.latitude ||
+                        trackingData.order.deliveryLatitude
+                      }&mlon=${
+                        trackingData.driverLocation?.longitude ||
+                        trackingData.order.deliveryLongitude
+                      }`,
+                      "_blank"
+                    )
+                  }
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mt-4"
+                >
+                  View on Map
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reschedule Dialog */}
+        {showRescheduleDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <h3 className="text-xl font-bold mb-4">Reschedule Delivery</h3>
+              <form onSubmit={handleReschedule} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    New Delivery Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={rescheduleForm.newDate}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        newDate: e.target.value,
+                      })
+                    }
+                    className="w-full p-2 border rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason (Optional)
+                  </label>
+                  <textarea
+                    value={rescheduleForm.reason}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        reason: e.target.value,
+                      })
+                    }
+                    className="w-full p-2 border rounded-lg"
+                    rows="3"
+                    placeholder="E.g., Not available on that date"
+                  />
+                </div>
+                <div className="bg-yellow-50 rounded-lg p-3">
+                  <p className="text-xs text-yellow-800">
+                    ⚠️ Rescheduling will lower the priority of your delivery
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRescheduleDialog(false);
+                      setRescheduleForm({ newDate: "", reason: "" });
+                    }}
+                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg"
+                  >
+                    Confirm Reschedule
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default CustomerDashboard;

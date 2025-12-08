@@ -2,14 +2,18 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Ontrack.Backend.Data;
+using Backend.Data;
+using Microsoft.AspNetCore.Identity;
+using Backend.Domain.Entity;
+using Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+
 
 // Configure Entity Framework with PostgreSQL
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -44,9 +48,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
         };
     });
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<IEtaservice, LocationService>();
+builder.Services.AddScoped<Backend.Services.GeminiService>();
+builder.Services.AddScoped<Backend.Services.RouteOptimizationService>();
+builder.Services.AddScoped<Backend.Services.WarehouseAssignmentService>();
+builder.Services.AddScoped<Backend.Services.DriverRouteOptimizationService>();
 
+builder.Services.AddHttpClient<Backend.Services.GeminiService>();
+builder.Services.AddHttpClient<Backend.Services.GeocodingService>();
 builder.Services.AddAuthorization();
-
+builder.Services.AddSignalR();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -58,12 +70,21 @@ if (app.Environment.IsDevelopment())
 // Use CORS
 app.UseCors("AllowFrontend");
 
-// Use Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Map controllers
 app.MapControllers();
+app.MapCustomerEndpoints();
+
+app.MapAuthEndpoints();
+app.MapLocationEndpoints();
+app.MapAdminEndpoints();
+app.MapDriverEndpoints();
+app.MapOrdersEndpoints();
+app.MapWarehouseEndpoints();
+
+app.MapHub<EtaHub>("/etahub");
+
 
 app.Run();
 

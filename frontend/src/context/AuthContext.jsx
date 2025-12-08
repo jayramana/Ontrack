@@ -35,22 +35,25 @@ export const AuthProvider = ({ children }) => {
             // Store token and user data
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify({
-                userId: response.userId,
-                name: response.name,
+                userId: response.user_id,
+                first_name: response.first_name,
+                last_name: response.last_name,
                 role: response.role,
             }));
 
             setUser({
-                userId: response.userId,
-                name: response.name,
+                userId: response.user_id,
+                first_name: response.first_name,
+                last_name: response.last_name,
                 role: response.role,
             });
 
             // Redirect based on role
             const roleRoutes = {
-                Customer: '/customer/dashboard',
-                Driver: '/driver/dashboard',
-                Admin: '/admin/dashboard',
+                customer: '/customer/dashboard',
+                driver: '/driver/dashboard',
+                admin: '/admin/dashboard',
+                seller: '/seller/dashboard',
             };
 
             navigate(roleRoutes[response.role] || '/');
