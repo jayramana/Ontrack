@@ -12,9 +12,19 @@ namespace Backend.Data
         }
 
         public DbSet<User> Users { get; set; }
+<<<<<<< HEAD
         public DbSet<Address> Addresses { get; set; }
         public DbSet<Seller> Sellers { get; set; }
         public DbSet<Driver> Drivers { get; set; }
+=======
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<RouteStop> RouteStops { get; set; }
+        public DbSet<RoadIssue> RoadIssues { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Warehouse> Warehouses { get; set; }
+        public DbSet<DriverLocation> DriverLocations { get; set; }
+
+>>>>>>> origin/route
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -78,6 +88,7 @@ namespace Backend.Data
                 entity.HasIndex(u => u.UserEmail).IsUnique();
             });
 
+<<<<<<< HEAD
             builder.Entity<Address>(entity =>
             {
                 entity.ToTable("address_details");
@@ -167,6 +178,68 @@ namespace Backend.Data
                     .HasForeignKey<Driver>(d => d.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+=======
+            // Configure Order-Warehouse relationships
+            modelBuilder.Entity<Order>(entity =>
+            {
+                // Origin Warehouse relationship
+                entity.HasOne(o => o.OriginWarehouse)
+                    .WithMany(w => w.OriginOrders)
+                    .HasForeignKey(o => o.OriginWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Destination Warehouse relationship
+                entity.HasOne(o => o.DestinationWarehouse)
+                    .WithMany(w => w.DestinationOrders)
+                    .HasForeignKey(o => o.DestinationWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Current Warehouse relationship
+                entity.HasOne(o => o.CurrentWarehouse)
+                    .WithMany(w => w.CurrentOrders)
+                    .HasForeignKey(o => o.CurrentWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure User-Warehouse relationship
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasOne(u => u.AssignedWarehouse)
+                    .WithMany(w => w.AssignedUsers)
+                    .HasForeignKey(u => u.AssignedWarehouseId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Seed initial users with BCrypt hashed passwords
+            // Password for all users: "password123"
+            // Pre-generated hashes to avoid model changes on migration
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    Id = 1,
+                    Name = "John Customer",
+                    Email = "customer@test.com",
+                    PasswordHash = "$2a$11$XZPPqKjhrvOL.nJZqSJJUeWQXM0YqKK0VZ0hRFqVZ6tGHW8Q.JT0K", // password123
+                    Role = UserRoles.Customer
+                },
+                new User
+                {
+                    Id = 2,
+                    Name = "Jane Driver",
+                    Email = "driver@test.com",
+                    PasswordHash = "$2a$11$XZPPqKjhrvOL.nJZqSJJUeWQXM0YqKK0VZ0hRFqVZ6tGHW8Q.JT0K", // password123
+                    Role = UserRoles.Driver
+                },
+                new User
+                {
+                    Id = 3,
+                    Name = "Mike Admin",
+                    Email = "admin@arrivenow.com",
+                    PasswordHash = "$2a$11$DuJo7jxzUwBaDdINcbzgsOGJAYF7iDgJffCmn4AhSmX8VlGbMfF8e", // Admin@123
+                    Role = UserRoles.Admin
+                }
+            );
+>>>>>>> origin/route
         }
     }
 }

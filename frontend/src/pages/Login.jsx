@@ -101,10 +101,17 @@ const Login = () => {
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                         >
+<<<<<<< HEAD
                             <option value="customer">Customer</option>
                             <option value="driver">Driver</option>
                             <option value="seller">Seller</option>
                             <option value="admin">Admin</option>
+=======
+                            <option value="Customer">Customer</option>
+                            <option value="Driver">Driver</option>
+                            <option value="Sender">Sender</option>
+                            <option value="Admin">Admin</option>
+>>>>>>> origin/route
                         </select>
                     </div>
 
@@ -138,7 +145,16 @@ const Login = () => {
                             <div className="text-gray-500">customer@test.com</div>
                         </div>
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
+<<<<<<< HEAD
                             onClick={() => setFormData({ email: 'driver@test.com', password: 'password123', role: 'driver' })}>
+=======
+                            onClick={() => setFormData({ email: 'sender@demo.com', password: 'password123', role: 'Sender' })}>
+                            <div className="font-semibold text-gray-700">Sender</div>
+                            <div className="text-gray-500">sender@demo.com</div>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
+                            onClick={() => setFormData({ email: 'driver@test.com', password: 'password123', role: 'Driver' })}>
+>>>>>>> origin/route
                             <div className="font-semibold text-gray-700">Driver</div>
                             <div className="text-gray-500">driver@test.com</div>
                         </div>

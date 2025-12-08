@@ -20,12 +20,25 @@ import ReportIssues from './pages/driver/ReportIssues';
 
 // Admin imports
 import AdminDashboard from './pages/admin/AdminDashboard';
+<<<<<<< HEAD
 import CustomerQueries from "./pages/admin/CustomerQueries";
 import DeliveryInsights from "./pages/admin/DeliveryInsights";
 
 import SellerDashboard from "./pages/seller/SellerDashboard";
 
 import "./index.css";
+=======
+import SenderDashboard from './pages/sender/SenderDashboard';
+import PlaceOrder from './pages/sender/PlaceOrder';
+import SenderOrders from './pages/sender/SenderOrders';
+import RouteView from './pages/driver/RouteView';
+import LiveMap from './pages/admin/LiveMap';
+import WarehouseDashboard from './pages/admin/WarehouseDashboard';
+import TransportScheduler from './pages/admin/TransportScheduler';
+import CapacityDashboard from './pages/admin/CapacityDashboard';
+import Availability from './pages/customer/Availability';
+import Tracking from './pages/customer/Tracking';
+>>>>>>> origin/route
 
 function App() {
   return (
@@ -52,6 +65,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/customer/availability"
+            element={
+              <ProtectedRoute requiredRole="Customer">
+                <Availability />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/tracking"
+            element={
+              <ProtectedRoute requiredRole="Customer">
+                <Tracking />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Driver Pages */}
           <Route path="/driver/confirm" element={<ConfirmDelivery />} />
@@ -63,6 +92,14 @@ function App() {
             element={
               <ProtectedRoute requiredRole="driver">
                 <DriverDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/driver/route"
+            element={
+              <ProtectedRoute requiredRole="Driver">
+                <RouteView />
               </ProtectedRoute>
             }
           />
@@ -87,8 +124,71 @@ function App() {
                 </ProtectedRoute>
               }
           />
+<<<<<<< HEAD
           
           {/* Default Redirect */}
+=======
+          <Route
+            path="/admin/live-map"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <LiveMap />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/warehouses"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <WarehouseDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/transports"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <TransportScheduler />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/capacity"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <CapacityDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected Sender Route */}
+          <Route
+            path="/sender/dashboard"
+            element={
+              <ProtectedRoute requiredRole="Sender">
+                <SenderDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sender/place-order"
+            element={
+              <ProtectedRoute requiredRole="Sender">
+                <PlaceOrder />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sender/orders"
+            element={
+              <ProtectedRoute requiredRole="Sender">
+                <SenderOrders />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all - redirect to login */}
+>>>>>>> origin/route
           <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>

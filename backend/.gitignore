@@ -1,5 +1,15 @@
+<<<<<<< HEAD
 /bin
 /obj
 appsettings.json
 appsettings.Development.json
 /Migrations
+=======
+backend/bin/
+backend/obj/
+bin/
+obj/
+appsettings.json
+appsettings.Development.json
+Migrations/
+>>>>>>> origin/route

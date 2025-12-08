@@ -18,7 +18,7 @@ const Signup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, handleLoginSuccess } = useAuth();
 
     const handleChange = (e) => {
         setFormData({
@@ -59,7 +59,12 @@ const Signup = () => {
                 role: formData.role
             };
 
+<<<<<<< HEAD
             const response = await authAPI.register(payload);
+=======
+            // Automatically login after successful registration
+            handleLoginSuccess(response);
+>>>>>>> origin/route
 
             if (response?.message === 'Registration successful') {
 
@@ -196,19 +201,32 @@ const Signup = () => {
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         >
+<<<<<<< HEAD
                             <option value="customer">Customer</option>
                             <option value="driver">Driver</option>
                             <option value="seller">Seller</option>
                             <option value="admin">Admin</option>
+=======
+                            <option value="Customer">Customer</option>
+                            <option value="Driver">Driver</option>
+                            <option value="Sender">Sender</option>
+>>>>>>> origin/route
                         </select>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
+<<<<<<< HEAD
                         className={`w-full py-3 text-white rounded-lg ${
                             loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
                         }`}
+=======
+                        className={`w-full py-3 rounded-lg text-white font-semibold shadow-md transition-all ${loading
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transform hover:-translate-y-0.5'
+                            }`}
+>>>>>>> origin/route
                     >
                         {loading ? 'Creating Account...' : 'Create Account'}
                     </button>

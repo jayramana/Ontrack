@@ -28,6 +28,7 @@ api.interceptors.request.use(
 export const authAPI = {
     login: async (email, password, role) => {
         try {
+            console.log('Login Payload:', { email, password, role });
             const response = await api.post('/auth/login', {
                 Email : email,
                 Password : password,
