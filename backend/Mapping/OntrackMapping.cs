@@ -18,7 +18,7 @@ public static class OntrackMapping
             UserPhonePrimary = rrdto.PhonePrimary,
             UserPhoneSecondary = rrdto.PhoneSecondary,
             UserRole = rrdto.Role,
-            IsActive = true
+            IsAvailable = true
         };
     }
 }
