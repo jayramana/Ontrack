@@ -106,7 +106,7 @@ function App() {
           <Route
             path="/admin/live-map"
             element={
-              <ProtectedRoute requiredRole="Admin">
+              <ProtectedRoute requiredRole="admin">
                 <LiveMap />
               </ProtectedRoute>
             }
@@ -114,7 +114,7 @@ function App() {
           <Route
             path="/admin/warehouses"
             element={
-              <ProtectedRoute requiredRole="Admin">
+              <ProtectedRoute requiredRole="admin">
                 <WarehouseDashboard />
               </ProtectedRoute>
             }
@@ -122,7 +122,7 @@ function App() {
           <Route
             path="/admin/transports"
             element={
-              <ProtectedRoute requiredRole="Admin">
+              <ProtectedRoute requiredRole="admin">
                 <TransportScheduler />
               </ProtectedRoute>
             }
@@ -130,7 +130,7 @@ function App() {
           <Route
             path="/admin/capacity"
             element={
-              <ProtectedRoute requiredRole="Admin">
+              <ProtectedRoute requiredRole="admin">
                 <CapacityDashboard />
               </ProtectedRoute>
             }

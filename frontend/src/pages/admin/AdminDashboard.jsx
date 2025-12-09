@@ -1,6 +1,5 @@
 import React from "react";
 import { useState, useEffect } from "react";
-
 import AdminSidebar from "./AdminSidebar";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -8,6 +7,8 @@ import { useAuth } from "../../context/AuthContext";
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [drivers, setDrivers] = useState([]);
+  const [warehouse, setWarehouse] = useState([]);
+
   const [selectedDrivers, setSelectedDrivers] = useState({});
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -18,9 +19,17 @@ export default function AdminDashboard() {
   const [pendingOrders, setPendingOrders] = useState([]);
   const [assignedOrders, setAssignedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-
+      useEffect(() => {
+        const dataFetch = async () => {
+          
+          const data = await api.get("/admin/drivers");
+          console.log(data);
+        }
+        dataFetch();
+      },[])
   useEffect(() => {
     const fetchData = async () => {
+
       try {
         const [dashboardRes, pendingRes, assignedRes, driversRes] =
           await Promise.all([
@@ -34,7 +43,7 @@ export default function AdminDashboard() {
           totalUsers: dashboardRes.data.drivers.length + 5,
           activeOrders: dashboardRes.data.orders.length,
           drivers: dashboardRes.data.drivers.length,
-          warehouses: 1,
+          warehouses: warehouse.length,
         });
         setPendingOrders(pendingRes.data);
         setAssignedOrders(assignedRes.data);
@@ -47,7 +56,7 @@ export default function AdminDashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [warehouse]);
 
   const handleDriverSelect = (orderId, driverId) => {
     setSelectedDrivers((prev) => ({ ...prev, [orderId]: driverId }));
@@ -61,7 +70,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      await api.post(`/orders/${orderId}/assign-driver`, parseInt(driverId));
+      await api.post(`/orders/${orderId}/assign-driver/${driverId}`, parseInt(driverId));
       const pendingRes = await api.get("/orders/pending");
       const assignedRes = await api.get("/orders/assigned");
       setPendingOrders(pendingRes.data);
@@ -72,11 +81,12 @@ export default function AdminDashboard() {
       alert("Failed to assign order.");
     }
   };
+  console.log(drivers);
   return (
     <div className="min-h-screen flex bg-gray-100">
       <AdminSidebar active="dashboard" />
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen w-full bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -86,7 +96,7 @@ export default function AdminDashboard() {
                   Admin Dashboard
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
-                  Welcome back, {user?.name}!
+                  Welcome back, {user?.first_name} {user?.last_name}!
                 </p>
               </div>
               <button
@@ -166,8 +176,8 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg shadow-lg p-6 text-white mt-6">
-              <h3 className="text-xl font-semibold mb-4">
+            {/* <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg shadow-lg p-6 text-white mt-6"> */}
+              {/* <h3 className="text-xl font-semibold mb-4">
                 🚀 Advanced Features
               </h3>
               <div className="grid grid-cols-3 gap-4">
@@ -196,7 +206,7 @@ export default function AdminDashboard() {
                   <div className="text-sm opacity-90">Manage Hubs</div>
                 </a>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Pending Orders Section */}
@@ -266,8 +276,8 @@ export default function AdminDashboard() {
                           >
                             <option value="">Select Driver</option>
                             {drivers.map((d) => (
-                              <option key={d.id} value={d.id}>
-                                {d.name} {d.isAvailable ? "(Avail)" : "(Busy)"}
+                              <option key={d.userId} value={d.userFName + d.userLName}>
+                                {d.UserFName} {d.isAvailable ? `(Avail)` : `(Busy)`}
                               </option>
                             ))}
                           </select>

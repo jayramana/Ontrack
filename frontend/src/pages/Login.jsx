@@ -56,7 +56,7 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">ArriveNow</h1>
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2">OnTrack</h1>
                     <p className="text-gray-500">Welcome back! Please sign in.</p>
                 </div>
 
@@ -129,7 +129,7 @@ const Login = () => {
                     </div>
                 )}
 
-                <div className="mt-8 pt-6 border-t border-gray-100">
+                {/* <div className="mt-8 pt-6 border-t border-gray-100">
                     <p className="text-xs text-center text-gray-400 mb-4">Demo Credentials</p>
                     <div className="grid grid-cols-4 gap-2 text-xs">
                         <div className="bg-gray-50 p-2 rounded text-center cursor-pointer hover:bg-gray-100"
@@ -154,7 +154,7 @@ const Login = () => {
                             <div className="text-gray-500">admin@arrivenow.com</div>
                         </div>
                     </div>
-                </div>
+                </div> */}
             </div>
         </div>
     );
