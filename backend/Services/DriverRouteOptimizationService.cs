@@ -102,11 +102,19 @@ namespace Backend.Services
         // ---------------------------------------------
         public async Task<object> GenerateRouteForDriver(int driverId)
         {
+            // var orders = await _context.Orders
+            //     .Where(o => o.DriverId == driverId &&
+            //                (o.Status == "Assigned" || o.Status == "OutForDelivery" || o.Status == "InTransit"))
+            //     .OrderBy(o => o.Priority)
+            //     .ToListAsync();
             var orders = await _context.Orders
                 .Where(o => o.DriverId == driverId &&
-                           (o.Status == "Assigned" || o.Status == "OutForDelivery" || o.Status == "InTransit"))
-                .OrderBy(o => o.Priority)
+                    o.Status != "Delivered" &&
+                    o.Status != "Cancelled")
                 .ToListAsync();
+
+            orders = orders.Where(HasValidCoordinates).ToList();
+
 
             var routeStops = orders.Select((order, index) => new
             {
@@ -179,6 +187,17 @@ namespace Backend.Services
 
             return R * c;
         }
+
+        //new for lat and lnt
+        public bool HasValidCoordinates(Order o)
+        {
+            return 
+                o.DeliveryLatitude != 0 &&
+                o.DeliveryLongitude != 0 &&
+                !double.IsNaN(o.DeliveryLatitude) &&
+                !double.IsNaN(o.DeliveryLongitude);
+        }
+
 
         private double DegreesToRadians(double degrees)
         {

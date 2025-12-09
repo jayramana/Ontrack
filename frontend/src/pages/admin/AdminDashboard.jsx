@@ -167,7 +167,7 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Phase 5: Quick Actions */}
+                    {/* Phase 5: Quick Actions
                     <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg shadow-lg p-6 text-white mt-6">
                         <h3 className="text-xl font-semibold mb-4">🚀 Advanced Features</h3>
                         <div className="grid grid-cols-3 gap-4">
@@ -196,7 +196,7 @@ const AdminDashboard = () => {
                                 <div className="text-sm opacity-90">Manage Hubs</div>
                             </a>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Pending Orders Section */}

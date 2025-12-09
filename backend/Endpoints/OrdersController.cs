@@ -33,55 +33,229 @@ namespace Backend.Endpoints
         // CREATE ORDER (Sender)
         // ------------------------------
 
+        // [HttpPost]
+        // [Authorize(Roles = "Sender")]
+        // public async Task<IActionResult> CreateOrder(Order order)
+        // {
+        //     try
+        //     {
+        //         // Fix DateTime for PostgreSQL
+        //         if (order.ScheduledDate.HasValue)
+        //         {
+        //             order.ScheduledDate = DateTime.SpecifyKind(order.ScheduledDate.Value, DateTimeKind.Utc);
+        //         }
+
+        //         // Get Sender ID
+        //         var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+        //         var userId = int.Parse(userIdClaim?.Value ?? "0");
+        //         order.SenderId = userId;
+
+        //         order.Status = "PendingAssignment"; // for phase-2
+
+        //         // ------------------------------
+        //         // Geocode Pickup Address  
+        //         // ------------------------------
+        //         var pickupCoords = await _geocodingService.GetCoordinatesAsync(order.PickupAddress);
+
+        //         if (pickupCoords.HasValue)
+        //         {
+        //             order.PickupLatitude = pickupCoords.Value.Latitude;
+        //             order.PickupLongitude = pickupCoords.Value.Longitude;
+        //         }
+        //         else if (!string.IsNullOrEmpty(order.ReceiverPhone))
+        //         {
+        //             // Future: Lookup by phone number
+        //         }
+
+        //         _context.Orders.Add(order);
+        //         await _context.SaveChangesAsync();
+        //         return Ok(order);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         Console.WriteLine($"Error creating order: {ex.Message}");
+        //         return BadRequest(new
+        //         {
+        //             message = ex.Message,
+        //             innerException = ex.InnerException?.Message,
+        //             stackTrace = ex.StackTrace
+        //         });
+        //     }
+        // }
+
+        // Backend/Endpoints/OrdersController.cs (only the CreateOrder method and small helpers shown)
+// [HttpPost]
+// [Authorize(Roles = "Sender")]
+// public async Task<IActionResult> CreateOrder(Order order)
+// {
+//     try
+//     {
+//         // Fix DateTime for PostgreSQL
+//         if (order.ScheduledDate.HasValue)
+//         {
+//             order.ScheduledDate = DateTime.SpecifyKind(order.ScheduledDate.Value, DateTimeKind.Utc);
+//         }
+
+//         // Get Sender ID from token
+//         var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+//         var userId = int.Parse(userIdClaim?.Value ?? "0");
+//         order.SenderId = userId;
+
+//         // Default status
+//         order.Status = "PendingAssignment";
+
+//         // If pickup coordinates NOT provided -> attempt geocoding using address
+//         var pickupCoordsProvided = !(order.PickupLatitude == 0 && order.PickupLongitude == 0) && !(order.PickupLatitude == 0.0 && order.PickupLongitude == 0.0);
+//         if (!pickupCoordsProvided)
+//         {
+//             if (!string.IsNullOrWhiteSpace(order.PickupAddress))
+//             {
+//                 var pickupCoords = await _geocodingService.GetCoordinatesAsync(order.PickupAddress);
+//                 if (pickupCoords.HasValue)
+//                 {
+//                     order.PickupLatitude = pickupCoords.Value.Latitude;
+//                     order.PickupLongitude = pickupCoords.Value.Longitude;
+//                     // Try to fill pincode if empty
+//                     if (string.IsNullOrWhiteSpace(order.PickupPincode))
+//                     {
+//                         var pinCoords = await _geocodingService.GetPincodeFromAddressAsync(order.PickupAddress);
+//                         if (!string.IsNullOrWhiteSpace(pinCoords)) order.PickupPincode = pinCoords;
+//                     }
+//                 }
+//                 else
+//                 {
+                    
+//                     order.PickupLatitude = 0;
+//                     order.PickupLongitude = 0;
+//                 }
+//             }
+//         }
+
+//         // Delivery / receiver coordinates fallback (same logic)
+//         var deliveryCoordsProvided = !(order.DeliveryLatitude == 0 && order.DeliveryLongitude == 0);
+//         if (!deliveryCoordsProvided)
+//         {
+//             if (!string.IsNullOrWhiteSpace(order.ReceiverAddress))
+//             {
+//                 var deliveryCoords = await _geocodingService.GetCoordinatesAsync(order.ReceiverAddress);
+//                 if (deliveryCoords.HasValue)
+//                 {
+//                     order.DeliveryLatitude = deliveryCoords.Value.Latitude;
+//                     order.DeliveryLongitude = deliveryCoords.Value.Longitude;
+//                     if (string.IsNullOrWhiteSpace(order.DeliveryPincode))
+//                     {
+//                         var pin = await _geocodingService.GetPincodeFromAddressAsync(order.ReceiverAddress);
+//                         if (!string.IsNullOrWhiteSpace(pin)) order.DeliveryPincode = pin;
+//                     }
+//                 }
+//                 else
+//                 {
+//                     order.DeliveryLatitude = 0;
+//                     order.DeliveryLongitude = 0;
+//                 }
+//             }
+//         }
+
+//         _context.Orders.Add(order);
+//         await _context.SaveChangesAsync();
+
+//         return Ok(order);
+//     }
+//     catch (Exception ex)
+//     {
+//         Console.WriteLine($"Error creating order: {ex.Message}");
+//         return BadRequest(new
+//         {
+//             message = ex.Message,
+//             innerException = ex.InnerException?.Message,
+//             stackTrace = ex.StackTrace
+//         });
+//     }
+// }
+
+
         [HttpPost]
-        [Authorize(Roles = "Sender")]
-        public async Task<IActionResult> CreateOrder(Order order)
+[Authorize(Roles = "Sender")]
+public async Task<IActionResult> CreateOrder(Order order)
+{
+    try
+    {
+        if (order.ScheduledDate.HasValue)
         {
-            try
+            order.ScheduledDate = DateTime.SpecifyKind(order.ScheduledDate.Value, DateTimeKind.Utc);
+        }
+
+        // Identify sender
+        var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+        var userId = int.Parse(userIdClaim?.Value ?? "0");
+        order.SenderId = userId;
+
+        order.Status = "PendingAssignment";
+
+        // --------------------------------
+        // Assign customer from ReceiverEmail
+        // --------------------------------
+        if (!string.IsNullOrWhiteSpace(order.ReceiverEmail))
+        {
+            var customer = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == order.ReceiverEmail && u.Role == "Customer");
+
+            if (customer != null)
             {
-                // Fix DateTime for PostgreSQL
-                if (order.ScheduledDate.HasValue)
-                {
-                    order.ScheduledDate = DateTime.SpecifyKind(order.ScheduledDate.Value, DateTimeKind.Utc);
-                }
-
-                // Get Sender ID
-                var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
-                var userId = int.Parse(userIdClaim?.Value ?? "0");
-                order.SenderId = userId;
-
-                order.Status = "PendingAssignment"; // for phase-2
-
-                // ------------------------------
-                // Geocode Pickup Address  
-                // ------------------------------
-                var pickupCoords = await _geocodingService.GetCoordinatesAsync(order.PickupAddress);
-
-                if (pickupCoords.HasValue)
-                {
-                    order.PickupLatitude = pickupCoords.Value.Latitude;
-                    order.PickupLongitude = pickupCoords.Value.Longitude;
-                }
-                else if (!string.IsNullOrEmpty(order.ReceiverPhone))
-                {
-                    // Future: Lookup by phone number
-                }
-
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
-                return Ok(order);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error creating order: {ex.Message}");
-                return BadRequest(new
-                {
-                    message = ex.Message,
-                    innerException = ex.InnerException?.Message,
-                    stackTrace = ex.StackTrace
-                });
+                order.CustomerId = customer.Id;
             }
         }
+
+        // --------------------------------
+        // Geocode pickup if no coords
+        // --------------------------------
+        var pickupCoordsProvided = !(order.PickupLatitude == 0 && order.PickupLongitude == 0);
+
+        if (!pickupCoordsProvided && !string.IsNullOrWhiteSpace(order.PickupAddress))
+        {
+            var pickupCoords = await _geocodingService.GetCoordinatesAsync(order.PickupAddress);
+
+            if (pickupCoords.HasValue)
+            {
+                order.PickupLatitude = pickupCoords.Value.Latitude;
+                order.PickupLongitude = pickupCoords.Value.Longitude;
+            }
+        }
+
+        // --------------------------------
+        // Geocode delivery if no coords
+        // --------------------------------
+        var deliveryCoordsProvided = !(order.DeliveryLatitude == 0 && order.DeliveryLongitude == 0);
+
+        if (!deliveryCoordsProvided && !string.IsNullOrWhiteSpace(order.ReceiverAddress))
+        {
+            var deliveryCoords = await _geocodingService.GetCoordinatesAsync(order.ReceiverAddress);
+
+            if (deliveryCoords.HasValue)
+            {
+                order.DeliveryLatitude = deliveryCoords.Value.Latitude;
+                order.DeliveryLongitude = deliveryCoords.Value.Longitude;
+            }
+        }
+
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync();
+
+        return Ok(order);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(new
+        {
+            message = ex.Message,
+            innerException = ex.InnerException?.Message,
+            stackTrace = ex.StackTrace
+        });
+    }
+}
+
+
+
 
         // ------------------------------
         // Utility: Distance Calculation

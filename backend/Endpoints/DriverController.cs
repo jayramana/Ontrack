@@ -68,10 +68,41 @@ namespace Backend.Endpoints
             var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
             var driverId = int.Parse(userIdClaim?.Value ?? "0");
 
-            var optimizedRoute = await _routeService.GetOptimizedRouteForDriver(driverId);
-            
-            return Ok(optimizedRoute);
+            var orders = await _context.Orders
+                .Where(o => o.DriverId == driverId &&
+                    o.Status != "Delivered" &&
+                    o.Status != "Cancelled")
+                .ToListAsync();
+
+            // Filter orders with invalid or missing coordinates
+            var validOrders = orders
+                .Where(o =>
+                    o.DeliveryLatitude != 0 &&
+                    o.DeliveryLongitude != 0 &&
+                    !double.IsNaN(o.DeliveryLatitude) &&
+                    !double.IsNaN(o.DeliveryLongitude))
+                .Select(o => new
+                {
+                    id = o.Id,
+                    o.ReceiverAddress,
+                    o.PickupAddress,
+                    deliveryLatitude = o.DeliveryLatitude,
+                    deliveryLongitude = o.DeliveryLongitude,
+                    pickupLatitude = o.PickupLatitude,
+                    pickupLongitude = o.PickupLongitude,
+                    priority = o.Priority,
+                    scheduledDate = o.ScheduledDate
+                })
+                .ToList();
+
+            if (!validOrders.Any())
+            {
+                return Ok(new { message = "No valid geocoded orders found", orders = new List<object>() });
+            }
+
+            return Ok(validOrders);
         }
+
 
         // POST: api/driver/location
         [HttpPost("location")]
