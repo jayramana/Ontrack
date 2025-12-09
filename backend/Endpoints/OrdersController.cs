@@ -52,12 +52,12 @@ public static class OrdersEndpoints
                 });
             }
         })
-        .RequireAuthorization("seller");
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "seller" });
 
         group.MapGet("/pending", async (AppDbContext context) =>
         {
             var orders = await context.Orders
-                .Where(o => o.Status == "PendingAssignment")
+                .Where(o => o.Status == "Pending")
                 .ToListAsync();
 
             return Results.Ok(orders);
@@ -72,7 +72,7 @@ public static class OrdersEndpoints
 
             return Results.Ok(orders);
         })
-        .RequireAuthorization("admin");
+        .RequireAuthorization(new AuthorizeAttribute{Roles = "admin"});
 
         group.MapGet("/my-orders", async (HttpContext http, AppDbContext context) =>
         {
@@ -98,19 +98,19 @@ public static class OrdersEndpoints
 
             return Results.Ok(orders);
         })
-        .RequireAuthorization("seller");
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "seller" });
 
-        group.MapPost("/{id}/assign-driver", async (
-            int id,
+        group.MapPost("/{orderId}/assign-driver/{driverId}", async (
+            int orderId,
             int driverId,
             AppDbContext context,
             RouteOptimizationService optimizationService) =>
         {
-            var order = await context.Orders.FindAsync(id);
+            var order = await context.Orders.FindAsync(orderId);
             if (order == null) return Results.NotFound();
 
             var driver = await context.Users.FindAsync(driverId);
-            if (driver == null || driver.UserRole != "Driver")
+            if (driver == null || driver.UserRole != "driver")
                 return Results.BadRequest("Invalid driver.");
 
             order.DriverId = driverId;
@@ -121,7 +121,7 @@ public static class OrdersEndpoints
 
             return Results.Ok(order);
         })
-        .RequireAuthorization("admin");
+        .RequireAuthorization(new AuthorizeAttribute{Roles = "admin"});
 
         group.MapPost("/{id}/approve", async (
             int id,
@@ -134,7 +134,7 @@ public static class OrdersEndpoints
             order.Status = "Approved";
 
             var driver = await context.Users
-                .FirstOrDefaultAsync(u => u.UserRole == "Driver" && u.IsAvailable);
+                .FirstOrDefaultAsync(u => u.UserRole == "driver" && u.IsAvailable);
 
             if (driver != null)
             {
@@ -151,6 +151,6 @@ public static class OrdersEndpoints
 
             return Results.Ok(order);
         })
-        .RequireAuthorization("admin");
+        .RequireAuthorization(new AuthorizeAttribute{Roles = "admin"});
     }
 }

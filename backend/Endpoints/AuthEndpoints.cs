@@ -39,8 +39,8 @@ public static class AuthEndpoints
                     return Results.BadRequest(new { message = "Email already registered" });
                 }
 
-                var hash_Pass = hasher.HashPassword(new User(), request.Password);
-                var user = request.ToEntity(hash_Pass);
+                var user = request.ToEntity(request.Password);
+                user.UserPass = hasher.HashPassword(user, request.Password);
 
                 db.Users.Add(user);
                 await db.SaveChangesAsync();

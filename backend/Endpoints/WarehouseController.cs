@@ -42,7 +42,7 @@ public static class WarehouseEndpoints
 
             return Results.Ok(orders);
         })
-        .RequireAuthorization("Admin");
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
 
         group.MapGet("/{id}/statistics", async (int id, AppDbContext context) =>
         {
@@ -95,11 +95,12 @@ public static class WarehouseEndpoints
         group.MapGet("/{id}/drivers", async (int id, AppDbContext context) =>
         {
             var drivers = await context.Users
-                .Where(u => u.UserRole == "Driver" && u.AssignedWarehouseId == id)
+                .Where(u => u.UserRole == "driver" && u.AssignedWarehouseId == id)
                 .Select(u => new
                 {
                     u.UserId,
                     u.UserFName,
+                    u.UserLName,
                     u.UserEmail,
                     u.IsAvailable,
                     u.CurrentLatitude,
@@ -109,7 +110,7 @@ public static class WarehouseEndpoints
 
             return Results.Ok(drivers);
         })
-        .RequireAuthorization("Admin");
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
 
         group.MapPost("/seed", async (AppDbContext context) =>
         {
@@ -173,7 +174,7 @@ public static class WarehouseEndpoints
             await warehouseService.GeocodeWarehousesAsync();
             return Results.Ok(new { message = "Warehouses geocoded successfully" });
         })
-        .RequireAuthorization("Admin");
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
 
         group.MapGet("/by-pincode/{pincode}", async (string pincode, WarehouseAssignmentService warehouseService) =>
         {

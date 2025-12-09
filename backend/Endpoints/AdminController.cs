@@ -9,13 +9,13 @@ public static class AdminEndpoints
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin")
-                       .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" });
+                       .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
 
 
         admin.MapGet("/dashboard", async (AppDbContext context) =>
         {
             var drivers = await context.Users
-                .Where(u => u.UserRole == "Driver")
+                .Where(u => u.UserRole == "driver")
                 .Select(u => new { u.UserId, u.UserFName, u.UserLName, u.CurrentLatitude, u.CurrentLongitude, u.IsAvailable })
                 .ToListAsync();
 
@@ -40,7 +40,7 @@ public static class AdminEndpoints
         admin.MapGet("/drivers", async (AppDbContext context) =>
         {
             var drivers = await context.Users
-                .Where(u => u.UserRole == "Driver")
+                .Where(u => u.UserRole == "driver")
                 .Select(u => new { u.UserId, u.UserFName, u.UserLName, u.IsAvailable })
                 .ToListAsync();
 
@@ -53,15 +53,16 @@ public static class AdminEndpoints
             RouteOptimizationService optimizationService) =>
         {
             // 1. Sender setup
-            var sender = await context.Users.FirstOrDefaultAsync(u => u.UserRole == "Sender");
+            var sender = await context.Users.FirstOrDefaultAsync(u => u.UserRole == "seller");
             if (sender == null)
             {
                 sender = new User
                 {
-                    UserFName = "Demo Sender",
+                    UserFName = "Demo",
+                    UserLName = "Sender",
                     UserEmail = "sender@demo.com",
                     UserPass = BCrypt.Net.BCrypt.HashPassword("password123"),
-                    UserRole = "Sender"
+                    UserRole = "seller"
                 };
                 context.Users.Add(sender);
                 await context.SaveChangesAsync();
@@ -77,7 +78,8 @@ public static class AdminEndpoints
             {
                 driver = new User
                 {
-                    UserFName = "Demo Driver",
+                    UserFName = "Demo",
+                    UserLName = "Driver",
                     UserEmail = "driver@demo.com",
                     UserPass = BCrypt.Net.BCrypt.HashPassword("password123"),
                     UserRole = "Driver",
