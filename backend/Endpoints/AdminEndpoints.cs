@@ -9,7 +9,7 @@ public static class AdminEndpoints
     public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin")
-                       .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
+                       .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" }).WithTags("Admin");
 
 
         admin.MapGet("/dashboard", async (AppDbContext context) =>
@@ -48,7 +48,7 @@ public static class AdminEndpoints
         });
 
 
-        app.MapPost("/api/admin/seed-demo-data", async (
+        admin.MapPost("/seed-demo-data", async (
             AppDbContext context,
             RouteOptimizationService optimizationService) =>
         {

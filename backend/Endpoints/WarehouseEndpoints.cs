@@ -8,7 +8,7 @@ public static class WarehouseEndpoints
 {
     public static void MapWarehouseEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/warehouse");
+        var group = app.MapGroup("/api/warehouse").WithTags("Warehouse");
 
         group.MapGet("/", async (AppDbContext context) =>
         {

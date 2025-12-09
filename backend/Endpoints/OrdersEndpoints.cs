@@ -9,7 +9,7 @@ public static class OrdersEndpoints
 {
     public static void MapOrdersEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/orders");
+        var group = app.MapGroup("/api/orders").WithTags("Orders");
 
         group.MapPost("/", async (
             HttpContext http,

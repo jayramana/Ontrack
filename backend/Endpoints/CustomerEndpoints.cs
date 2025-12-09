@@ -11,7 +11,7 @@ public static class CustomerEndpoints
 {
     public static RouteGroupBuilder MapCustomerEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/customer");
+        var group = app.MapGroup("/api/customer").WithTags("Customer");
 
         // Require Customer role for all protected customer actions
         group.RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
@@ -97,9 +97,8 @@ public static class CustomerEndpoints
             });
         });
 
-        // GET: api/customer/orders/by-email/{email}
-        // This does NOT require authorization
-        app.MapGet("/api/customer/orders/by-email", async (string email, AppDbContext context) =>
+        
+        group.MapGet("/orders/by-email", async (string email, AppDbContext context) =>
         {
             var customer = await context.Users
                 .Where(u => u.UserEmail == email && u.UserRole == "customer")

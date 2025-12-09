@@ -11,7 +11,7 @@ public static class DriverEndpoints
     public static void MapDriverEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/driver")
-                       .RequireAuthorization(new AuthorizeAttribute { Roles = "driver" });
+                       .RequireAuthorization(new AuthorizeAttribute { Roles = "driver" }).WithTags("Driver");
 
         group.MapGet("/orders/today", async (HttpContext http, AppDbContext context) =>
         {
