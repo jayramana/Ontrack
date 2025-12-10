@@ -20,7 +20,6 @@ export default function AdminDashboard() {
   const [assignedOrders, setAssignedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-<<<<<<< HEAD
   useEffect(() => {
     const loadInitial = async () => {
       try {
@@ -50,20 +49,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-=======
-  // Load basic driver data on mount
-  useEffect(() => {
-    const dataFetch = async () => {
-      const data = await api.get("/admin/drivers");
-      console.log("DRIVERS:", data.data);
-    };
-    dataFetch();
-  }, []);
-
-  // Load dashboard + orders + drivers
-  useEffect(() => {
-    const fetchData = async () => {
->>>>>>> static
       try {
         const [dashboardRes, pendingRes, assignedRes, driversRes] =
           await Promise.all([
@@ -92,29 +77,8 @@ export default function AdminDashboard() {
           warehouses: warehouse.length,
         });
 
-<<<<<<< HEAD
         setPendingOrders(pendingRes.data || []);
         setAssignedOrders(assignedRes.data || []);
-=======
-        // Backend returns empty pending list, so build it manually:
-const fallbackPending = dashboardRes.data.orders.filter(o =>
-  !o.driverId && (
-    o.status === "Pending" ||
-    o.status === "PendingAssignment" ||
-    o.status === "Created"
-  )
-);
-
-// If backend returns empty, use fallback
-setPendingOrders(
-  pendingRes.data.length > 0 ? pendingRes.data : fallbackPending
-);
-
-// Assigned orders work fine
-setAssignedOrders(assignedRes.data);
-
-        setDrivers(driversRes.data);
->>>>>>> static
       } catch (error) {
         console.error("Error loading dashboard:", error);
       } finally {
@@ -125,34 +89,19 @@ setAssignedOrders(assignedRes.data);
     fetchData();
   }, [warehouse]);
 
-<<<<<<< HEAD
   const handleDriverSelect = (orderId, driverIdValue) => {
     const numeric = driverIdValue === "" ? undefined : Number(driverIdValue);
     setSelectedDrivers((prev) => ({ ...prev, [orderId]: numeric }));
-=======
-  const handleDriverSelect = (orderId, driverId) => {
-    setSelectedDrivers((prev) => ({
-      ...prev,
-      [orderId]: driverId,
-    }));
->>>>>>> static
   };
 
   const handleAssign = async (orderId) => {
     const driverId = selectedDrivers[orderId];
-<<<<<<< HEAD
     if (!driverId && driverId !== 0) {
       alert("Please select a driver first.");
-=======
-
-    if (!driverId) {
-      alert("Please select a driver.");
->>>>>>> static
       return;
     }
 
     try {
-<<<<<<< HEAD
       await api.post(`/orders/${orderId}/assign-driver/${driverId}`, {
         driverId: driverId,
       });
@@ -163,16 +112,6 @@ setAssignedOrders(assignedRes.data);
       ]);
       setPendingOrders(pendingRes.data || []);
       setAssignedOrders(assignedRes.data || []);
-=======
-      await api.post(`/orders/${orderId}/assign-driver/${driverId}`);
-
-      const pendingRes = await api.get("/orders/pending");
-      const assignedRes = await api.get("/orders/assigned");
-
-      setPendingOrders(pendingRes.data);
-      setAssignedOrders(assignedRes.data);
-
->>>>>>> static
       alert("Order assigned successfully!");
     } catch (error) {
       console.error("Error assigning order:", error);
@@ -341,13 +280,8 @@ setAssignedOrders(assignedRes.data);
 
                         <td className="px-6 py-4">
                           <select
-<<<<<<< HEAD
                             className="border rounded p-1"
                             value={selectedDrivers[order.id] ?? ""}
-=======
-                            className="border rounded p-2"
-                            value={selectedDrivers[order.id] || ""}
->>>>>>> static
                             onChange={(e) =>
                               handleDriverSelect(order.id, e.target.value)
                             }
@@ -356,11 +290,7 @@ setAssignedOrders(assignedRes.data);
                             {drivers.map((d) => (
                               <option key={d.userId} value={d.userId}>
                                 {d.userFName} {d.userLName}{" "}
-<<<<<<< HEAD
                                 {d.isAvailable ? "(Available)" : "(Busy)"}
-=======
-                                {d.isAvailable ? "(Avail)" : "(Busy)"}
->>>>>>> static
                               </option>
                             ))}
                           </select>
@@ -401,7 +331,6 @@ setAssignedOrders(assignedRes.data);
                       <th className="px-6 py-3">Status</th>
                     </tr>
                   </thead>
-<<<<<<< HEAD
                   <tbody className="bg-white divide-y divide-gray-200">
                     {assignedOrders.map((order) => (
                       <tr key={order.id}>
@@ -436,40 +365,6 @@ setAssignedOrders(assignedRes.data);
                         </td>
                       </tr>
                     ))}
-=======
-
-                  <tbody className="divide-y divide-gray-200">
-                    {assignedOrders.map((order) => {
-                      const driver = drivers.find(
-                        (d) => d.userId === order.driverId
-                      );
-
-                      return (
-                        <tr key={order.id}>
-                          <td className="px-6 py-4 font-medium">
-                            #{order.id}
-                          </td>
-
-                          <td className="px-6 py-4">
-                            <div>Pickup: {order.pickupAddress}</div>
-                            <div>Drop: {order.receiverAddress}</div>
-                          </td>
-
-                          <td className="px-6 py-4">
-                            {driver
-                              ? `${driver.userFName} ${driver.userLName}`
-                              : "Unknown"}
-                          </td>
-
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
-                              {order.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
->>>>>>> static
                   </tbody>
 
                 </table>

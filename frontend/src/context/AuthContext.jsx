@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // Check if user is already logged in on mount
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
