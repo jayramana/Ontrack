@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Backend.Data;
+using Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,10 @@ builder.Services.AddHttpClient<Backend.Services.GeminiService>();
 builder.Services.AddHttpClient<Backend.Services.GeocodingService>();
 
 builder.Services.AddHttpClient<Backend.Services.OpenRouteServiceClient>();
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 
 
 

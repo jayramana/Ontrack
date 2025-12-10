@@ -1,21 +1,43 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Backend.Domain.Entity
 {
     public class RoadIssue
     {
+        [Key]
         public int Id { get; set; }
 
+        [Required]
         public int DriverId { get; set; }
+
         [ForeignKey("DriverId")]
         public User? Driver { get; set; }
 
+        [Required]
         public double Latitude { get; set; }
+
+        [Required]
         public double Longitude { get; set; }
-        public string IssueType { get; set; } = string.Empty; // Accident, Traffic, Construction
-        public string Severity { get; set; } = "Medium"; // Low, Medium, High
+
+        [Required]
+        [MaxLength(100)]
+        public string IssueType { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string Severity { get; set; } = "Medium";
+
+        [MaxLength(500)]
         public string Description { get; set; } = string.Empty;
+
+        [Required]
         public DateTime ReportedAt { get; set; } = DateTime.UtcNow;
-        public string Status { get; set; } = "Active"; // Active, Resolved
+
+        [Required]
+        [MaxLength(50)]
+        public string Status { get; set; } = "Active";  // Active, Resolved
+
+        // 🆕 REQUIRED FIELD (Fixes your build error)
+        public bool IsResolved { get; set; } = false;
     }
 }
