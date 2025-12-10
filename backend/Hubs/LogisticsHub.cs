@@ -1,32 +1,190 @@
+// // // // // // using Microsoft.AspNetCore.SignalR;
+
+// // // // // // namespace Backend.Hubs
+// // // // // // {
+// // // // // //     public class LogisticsHub : Hub
+// // // // // //     {
+// // // // // //         public async Task SendDriverLocation(int driverId, double lat, double lng)
+// // // // // //         {
+// // // // // //             await Clients.Group("Admins").SendAsync("ReceiveDriverLocation", driverId, lat, lng);
+// // // // // //             await Clients.Group($"Driver_{driverId}_Tracking").SendAsync("ReceiveDriverLocation", driverId, lat, lng);
+// // // // // //         }
+
+// // // // // //         public async Task JoinAdminGroup()
+// // // // // //         {
+// // // // // //             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+// // // // // //         }
+
+// // // // // //         public async Task JoinDriverTrackingGroup(int driverId)
+// // // // // //         {
+// // // // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Tracking");
+// // // // // //         }
+
+// // // // // //         public async Task SendRouteUpdate(int driverId, object routeData)
+// // // // // //         {
+// // // // // //             await Clients.Group($"Driver_{driverId}").SendAsync("ReceiveRouteUpdate", routeData);
+// // // // // //         }
+// // // // // //     }
+// // // // // // }
+
+
+// // // // // using Microsoft.AspNetCore.SignalR;
+// // // // // using Backend.Data;
+// // // // // using Microsoft.EntityFrameworkCore;
+
+// // // // // namespace Backend.Hubs
+// // // // // {
+// // // // //     public class LogisticsHub : Hub
+// // // // //     {
+// // // // //         private readonly AppDbContext _context;
+
+// // // // //         public LogisticsHub(AppDbContext context)
+// // // // //         {
+// // // // //             _context = context;
+// // // // //         }
+
+// // // // //         // CUSTOMER JOINS ORDER-GROUP FOR LIVE TRACKING
+// // // // //         public async Task JoinOrderGroup(int orderId)
+// // // // //         {
+// // // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Order_{orderId}");
+// // // // //         }
+
+// // // // //         // // DRIVER JOINS THEIR GROUP
+// // // // //         // public async Task JoinDriverGroup(int driverId)
+// // // // //         // {
+// // // // //         //     await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}");
+// // // // //         // }
+
+// // // // //         // Driver joins route update group
+// // // // //         public async Task JoinDriverRouteGroup(int driverId)
+// // // // //         {
+// // // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Route");
+// // // // //         }
+
+// // // // //         // Broadcast route update to driver
+// // // // //         public async Task SendRouteUpdate(int driverId, object routeData)
+// // // // //         {
+// // // // //             await Clients.Group($"Driver_{driverId}_Route")
+// // // // //                 .SendAsync("ReceiveRouteUpdate", routeData);
+// // // // //         }
+
+// // // // //         // ADMIN GROUP
+// // // // //         public async Task JoinAdminGroup()
+// // // // //         {
+// // // // //             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+// // // // //         }
+
+// // // // //         // DRIVER LOCATION UPDATE
+// // // // //         public async Task SendDriverLocation(int driverId, double lat, double lng)
+// // // // //         {
+// // // // //             // 1. Send to Admin Dashboard
+// // // // //             await Clients.Group("Admins").SendAsync("ReceiveDriverLocation", driverId, lat, lng);
+
+// // // // //             // 2. Send to Driver-Specific Tracking Group
+// // // // //             await Clients.Group($"Driver_{driverId}_Tracking")
+// // // // //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
+
+// // // // //             // 3. Send to all orders assigned to this driver
+// // // // //             var orderIds = await _context.Orders
+// // // // //                 .Where(o => o.DriverId == driverId)
+// // // // //                 .Select(o => o.Id)
+// // // // //                 .ToListAsync();
+
+// // // // //             foreach (var orderId in orderIds)
+// // // // //             {
+// // // // //                 await Clients.Group($"Order_{orderId}")
+// // // // //                     .SendAsync("ReceiveDriverLocation", new
+// // // // //                     {
+// // // // //                         latitude = lat,
+// // // // //                         longitude = lng,
+// // // // //                         updatedAt = DateTime.UtcNow
+// // // // //                     });
+// // // // //             }
+// // // // //         }
+// // // // //     }
+// // // // // }
+
 // // // // using Microsoft.AspNetCore.SignalR;
+// // // // using Backend.Data;
+// // // // using Microsoft.EntityFrameworkCore;
 
 // // // // namespace Backend.Hubs
 // // // // {
 // // // //     public class LogisticsHub : Hub
 // // // //     {
-// // // //         public async Task SendDriverLocation(int driverId, double lat, double lng)
+// // // //         private readonly AppDbContext _context;
+
+// // // //         public LogisticsHub(AppDbContext context)
 // // // //         {
-// // // //             await Clients.Group("Admins").SendAsync("ReceiveDriverLocation", driverId, lat, lng);
-// // // //             await Clients.Group($"Driver_{driverId}_Tracking").SendAsync("ReceiveDriverLocation", driverId, lat, lng);
+// // // //             _context = context;
 // // // //         }
 
+// // // //         // ------------------------------
+// // // //         // CUSTOMER JOINS ORDER TRACKING
+// // // //         // ------------------------------
+// // // //         public async Task JoinOrderGroup(int orderId)
+// // // //         {
+// // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Order_{orderId}");
+// // // //         }
+
+// // // //         // ------------------------------
+// // // //         // DRIVER JOINS ROUTE GROUP
+// // // //         // ------------------------------
+// // // //         public async Task JoinDriverRouteGroup(int driverId)
+// // // //         {
+// // // //             Console.WriteLine($"Driver connected to route group: {driverId}");
+// // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Route");
+// // // //         }
+
+// // // //         // ------------------------------
+// // // //         // SEND ROUTE UPDATE TO DRIVER
+// // // //         // ------------------------------
+// // // //         public async Task SendRouteUpdate(int driverId, object routeData)
+// // // //         {
+// // // //             await Clients.Group($"Driver_{driverId}_Route")
+// // // //                 .SendAsync("ReceiveRouteUpdate", routeData);
+// // // //         }
+
+// // // //         // ------------------------------
+// // // //         // ADMIN GROUP
+// // // //         // ------------------------------
 // // // //         public async Task JoinAdminGroup()
 // // // //         {
 // // // //             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
 // // // //         }
 
-// // // //         public async Task JoinDriverTrackingGroup(int driverId)
+// // // //         // ------------------------------
+// // // //         // DRIVER LOCATION BROADCASTING
+// // // //         // ------------------------------
+// // // //         public async Task SendDriverLocation(int driverId, double lat, double lng)
 // // // //         {
-// // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Tracking");
-// // // //         }
+// // // //             // 1. Admin Dashboard
+// // // //             await Clients.Group("Admins")
+// // // //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
 
-// // // //         public async Task SendRouteUpdate(int driverId, object routeData)
-// // // //         {
-// // // //             await Clients.Group($"Driver_{driverId}").SendAsync("ReceiveRouteUpdate", routeData);
+// // // //             // 2. Driver Tracking Group
+// // // //             await Clients.Group($"Driver_{driverId}_Tracking")
+// // // //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
+
+// // // //             // 3. Customers following this order
+// // // //             var orderIds = await _context.Orders
+// // // //                 .Where(o => o.DriverId == driverId)
+// // // //                 .Select(o => o.Id)
+// // // //                 .ToListAsync();
+
+// // // //             foreach (var orderId in orderIds)
+// // // //             {
+// // // //                 await Clients.Group($"Order_{orderId}")
+// // // //                     .SendAsync("ReceiveDriverLocation", new
+// // // //                     {
+// // // //                         latitude = lat,
+// // // //                         longitude = lng,
+// // // //                         updatedAt = DateTime.UtcNow
+// // // //                     });
+// // // //             }
 // // // //         }
 // // // //     }
 // // // // }
-
 
 // // // using Microsoft.AspNetCore.SignalR;
 // // // using Backend.Data;
@@ -43,56 +201,47 @@
 // // //             _context = context;
 // // //         }
 
-// // //         // CUSTOMER JOINS ORDER-GROUP FOR LIVE TRACKING
+// // //         // CUSTOMER JOINS ORDER GROUP
 // // //         public async Task JoinOrderGroup(int orderId)
 // // //         {
 // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Order_{orderId}");
 // // //         }
 
-// // //         // // DRIVER JOINS THEIR GROUP
-// // //         // public async Task JoinDriverGroup(int driverId)
-// // //         // {
-// // //         //     await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}");
-// // //         // }
-
-// // //         // Driver joins route update group
+// // //         // DRIVER JOINS ROUTE GROUP
 // // //         public async Task JoinDriverRouteGroup(int driverId)
 // // //         {
 // // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Route");
 // // //         }
 
-// // //         // Broadcast route update to driver
+// // //         // BROADCAST ROUTE UPDATES
 // // //         public async Task SendRouteUpdate(int driverId, object routeData)
 // // //         {
 // // //             await Clients.Group($"Driver_{driverId}_Route")
 // // //                 .SendAsync("ReceiveRouteUpdate", routeData);
 // // //         }
 
-// // //         // ADMIN GROUP
+// // //         // ADMIN JOINS GROUP
 // // //         public async Task JoinAdminGroup()
 // // //         {
 // // //             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
 // // //         }
 
-// // //         // DRIVER LOCATION UPDATE
+// // //         // DRIVER LOCATION BROADCAST
 // // //         public async Task SendDriverLocation(int driverId, double lat, double lng)
 // // //         {
-// // //             // 1. Send to Admin Dashboard
-// // //             await Clients.Group("Admins").SendAsync("ReceiveDriverLocation", driverId, lat, lng);
-
-// // //             // 2. Send to Driver-Specific Tracking Group
-// // //             await Clients.Group($"Driver_{driverId}_Tracking")
+// // //             // Admin dashboard
+// // //             await Clients.Group("Admins")
 // // //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
 
-// // //             // 3. Send to all orders assigned to this driver
+// // //             // Orders assigned to driver
 // // //             var orderIds = await _context.Orders
 // // //                 .Where(o => o.DriverId == driverId)
 // // //                 .Select(o => o.Id)
 // // //                 .ToListAsync();
 
-// // //             foreach (var orderId in orderIds)
+// // //             foreach (var id in orderIds)
 // // //             {
-// // //                 await Clients.Group($"Order_{orderId}")
+// // //                 await Clients.Group($"Order_{id}")
 // // //                     .SendAsync("ReceiveDriverLocation", new
 // // //                     {
 // // //                         latitude = lat,
@@ -119,62 +268,71 @@
 // //             _context = context;
 // //         }
 
-// //         // ------------------------------
-// //         // CUSTOMER JOINS ORDER TRACKING
-// //         // ------------------------------
+// //         // CUSTOMER JOINS ORDER GROUP
 // //         public async Task JoinOrderGroup(int orderId)
 // //         {
 // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Order_{orderId}");
 // //         }
 
-// //         // ------------------------------
 // //         // DRIVER JOINS ROUTE GROUP
-// //         // ------------------------------
 // //         public async Task JoinDriverRouteGroup(int driverId)
 // //         {
-// //             Console.WriteLine($"Driver connected to route group: {driverId}");
 // //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Route");
 // //         }
 
-// //         // ------------------------------
-// //         // SEND ROUTE UPDATE TO DRIVER
-// //         // ------------------------------
+// //         // 🆕 DRIVER JOINS NOTIFICATION GROUP
+// //         public async Task JoinDriverGroup(int driverId)
+// //         {
+// //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}");
+// //         }
+
+// //         // BROADCAST ROUTE UPDATES
 // //         public async Task SendRouteUpdate(int driverId, object routeData)
 // //         {
 // //             await Clients.Group($"Driver_{driverId}_Route")
 // //                 .SendAsync("ReceiveRouteUpdate", routeData);
 // //         }
 
-// //         // ------------------------------
-// //         // ADMIN GROUP
-// //         // ------------------------------
+// //         // 🆕 FEATURE 1: ORDER RESCHEDULED NOTIFICATION
+// //         public async Task NotifyOrderRescheduled(int driverId, object rescheduleData)
+// //         {
+// //             await Clients.Group($"Driver_{driverId}")
+// //                 .SendAsync("OrderRescheduled", rescheduleData);
+// //         }
+
+// //         // ADMIN JOINS GROUP
 // //         public async Task JoinAdminGroup()
 // //         {
 // //             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
 // //         }
 
-// //         // ------------------------------
-// //         // DRIVER LOCATION BROADCASTING
-// //         // ------------------------------
+// //         // ✅ FIXED: ROAD ISSUE BROADCAST TO ALL DRIVERS
+// //         public async Task NotifyRoadIssue(object issueData)
+// //         {
+// //             await Clients.Group("AllDrivers")
+// //                 .SendAsync("RoadIssueAlert", issueData);
+
+// //             // Also notify admins
+// //             await Clients.Group("Admins")
+// //                 .SendAsync("RoadIssueReported", issueData);
+// //         }
+
+// //         // DRIVER LOCATION BROADCAST
 // //         public async Task SendDriverLocation(int driverId, double lat, double lng)
 // //         {
-// //             // 1. Admin Dashboard
+// //             // Admin dashboard
 // //             await Clients.Group("Admins")
 // //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
 
-// //             // 2. Driver Tracking Group
-// //             await Clients.Group($"Driver_{driverId}_Tracking")
-// //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
-
-// //             // 3. Customers following this order
+// //             // Orders assigned to driver
 // //             var orderIds = await _context.Orders
 // //                 .Where(o => o.DriverId == driverId)
 // //                 .Select(o => o.Id)
 // //                 .ToListAsync();
 
-// //             foreach (var orderId in orderIds)
+// //             foreach (var id in orderIds)
 // //             {
-// //                 await Clients.Group($"Order_{orderId}")
+// //                 await Clients.Group($"Order_{id}")
 // //                     .SendAsync("ReceiveDriverLocation", new
 // //                     {
 // //                         latitude = lat,
@@ -182,6 +340,17 @@
 // //                         updatedAt = DateTime.UtcNow
 // //                     });
 // //             }
+// //         }
+
+// //         // CONNECTION MANAGEMENT
+// //         public override async Task OnConnectedAsync()
+// //         {
+// //             await base.OnConnectedAsync();
+// //         }
+
+// //         public override async Task OnDisconnectedAsync(Exception? exception)
+// //         {
+// //             await base.OnDisconnectedAsync(exception);
 // //         }
 // //     }
 // // }
@@ -213,17 +382,46 @@
 //             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Route");
 //         }
 
-//         // BROADCAST ROUTE UPDATES
+//         // DRIVER JOINS NOTIFICATION GROUP (per-driver)
+//         public async Task JoinDriverGroup(int driverId)
+//         {
+//             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}");
+//         }
+
+//         // DRIVER JOINS BROADCAST GROUP (all drivers)
+//         public async Task JoinDriverBroadcastGroup()
+//         {
+//             await Groups.AddToGroupAsync(Context.ConnectionId, "AllDrivers");
+//         }
+
+//         // BROADCAST ROUTE UPDATES (to specific driver's route group)
 //         public async Task SendRouteUpdate(int driverId, object routeData)
 //         {
 //             await Clients.Group($"Driver_{driverId}_Route")
 //                 .SendAsync("ReceiveRouteUpdate", routeData);
 //         }
 
+//         // ORDER RESCHEDULED NOTIFICATION -> send to a specific driver
+//         public async Task NotifyOrderRescheduled(int driverId, object rescheduleData)
+//         {
+//             await Clients.Group($"Driver_{driverId}")
+//                 .SendAsync("OrderRescheduled", rescheduleData);
+//         }
+
 //         // ADMIN JOINS GROUP
 //         public async Task JoinAdminGroup()
 //         {
 //             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
+//         }
+
+//         // ROAD ISSUE REPORTED -> notify both admins and all drivers
+//         public async Task NotifyRoadIssue(object issueData)
+//         {
+//             // To admins (detailed)
+//             await Clients.Group("Admins").SendAsync("RoadIssueReported", issueData);
+
+//             // To all drivers (light-weight alert)
+//             await Clients.Group("AllDrivers").SendAsync("RoadIssueAlert", issueData);
 //         }
 
 //         // DRIVER LOCATION BROADCAST
@@ -233,7 +431,7 @@
 //             await Clients.Group("Admins")
 //                 .SendAsync("ReceiveDriverLocation", driverId, lat, lng);
 
-//             // Orders assigned to driver
+//             // Orders assigned to driver: broadcast to each order group
 //             var orderIds = await _context.Orders
 //                 .Where(o => o.DriverId == driverId)
 //                 .Select(o => o.Id)
@@ -250,9 +448,21 @@
 //                     });
 //             }
 //         }
+
+//         // CONNECTION MANAGEMENT - keep default behavior
+//         public override async Task OnConnectedAsync()
+//         {
+//             await base.OnConnectedAsync();
+//         }
+
+//         public override async Task OnDisconnectedAsync(Exception? exception)
+//         {
+//             await base.OnDisconnectedAsync(exception);
+//         }
 //     }
 // }
 
+// Backend/Hubs/LogisticsHub.cs
 using Microsoft.AspNetCore.SignalR;
 using Backend.Data;
 using Microsoft.EntityFrameworkCore;
@@ -274,26 +484,26 @@ namespace Backend.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, $"Order_{orderId}");
         }
 
-        // DRIVER JOINS ROUTE GROUP
+        // DRIVER JOINS ROUTE GROUP (route updates)
         public async Task JoinDriverRouteGroup(int driverId)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}_Route");
         }
 
-        // 🆕 DRIVER JOINS NOTIFICATION GROUP
+        // DRIVER JOINS NOTIFICATION GROUP (reschedule, etc.)
         public async Task JoinDriverGroup(int driverId)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"Driver_{driverId}");
         }
 
-        // BROADCAST ROUTE UPDATES
+        // BROADCAST ROUTE UPDATES TO ONE DRIVER
         public async Task SendRouteUpdate(int driverId, object routeData)
         {
             await Clients.Group($"Driver_{driverId}_Route")
                 .SendAsync("ReceiveRouteUpdate", routeData);
         }
 
-        // 🆕 FEATURE 1: ORDER RESCHEDULED NOTIFICATION
+        // ORDER RESCHEDULED NOTIFICATION TO ONE DRIVER
         public async Task NotifyOrderRescheduled(int driverId, object rescheduleData)
         {
             await Clients.Group($"Driver_{driverId}")
@@ -306,14 +516,14 @@ namespace Backend.Hubs
             await Groups.AddToGroupAsync(Context.ConnectionId, "Admins");
         }
 
-        // 🆕 FEATURE 3: ROAD ISSUE REPORTED NOTIFICATION
+        // ROAD ISSUE REPORTED → ADMINS
         public async Task NotifyRoadIssue(object issueData)
         {
             await Clients.Group("Admins")
                 .SendAsync("RoadIssueReported", issueData);
         }
 
-        // DRIVER LOCATION BROADCAST
+        // DRIVER LOCATION BROADCAST (Admins + Customers tracking)
         public async Task SendDriverLocation(int driverId, double lat, double lng)
         {
             // Admin dashboard
@@ -338,7 +548,6 @@ namespace Backend.Hubs
             }
         }
 
-        // CONNECTION MANAGEMENT
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
@@ -350,3 +559,4 @@ namespace Backend.Hubs
         }
     }
 }
+

@@ -9,6 +9,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import SenderDashboard from './pages/sender/SenderDashboard';
 import PlaceOrder from './pages/sender/PlaceOrder';
 import SenderOrders from './pages/sender/SenderOrders';
+import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 
 import LiveMap from './pages/admin/LiveMap';
 import WarehouseDashboard from './pages/admin/WarehouseDashboard';
@@ -52,6 +53,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/driver/report-issue" element={<ReportRoadIssue />} />
 
           {/* Protected Driver Route */}
           <Route

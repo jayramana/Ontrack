@@ -6,7 +6,9 @@ namespace Backend.DTOs
     {
         [Required]
         public DateTime NewDate { get; set; }
-        
+
         public string? Reason { get; set; }
     }
+
+    
 }
