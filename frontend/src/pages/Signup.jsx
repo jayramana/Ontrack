@@ -4,16 +4,18 @@ import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone_primary: '',
-        phone_secondary: '',
-        password: '',
-        confirmPassword: '',
-        role: 'customer'
-    });
+const [formData, setFormData] = useState({
+    userFName: '',
+    userLName: '',
+    email: '',
+    phonePrimary: '',
+    phoneSecondary: '',
+    password: '',
+    confirmPassword: '',
+    role: 'customer'
+});
+
+
 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -36,10 +38,11 @@ const Signup = () => {
             return;
         }
 
-        if (!formData.phone_primary || formData.phone_primary.trim().length < 7) {
-            setError('Please enter a valid primary phone number');
-            return;
-        }
+        if (!formData.phonePrimary || formData.phonePrimary.trim().length < 7) {
+             setError('Please enter a valid primary phone number');
+             return;
+       }
+
 
         if (formData.role === 'Admin') {
             setError('Admin registration is not allowed');
@@ -50,14 +53,16 @@ const Signup = () => {
 
         try {
             const payload = {
-                firstName: formData.firstName,
-                lastName: formData.lastName,
-                email: formData.email,
-                phone_primary: formData.phone_primary,
-                phone_secondary: formData.phone_secondary,
-                password: formData.password,
-                role: formData.role
-            };
+              userFName: formData.userFName,
+              userLName: formData.userLName,
+              phonePrimary: formData.phonePrimary,
+              phoneSecondary: formData.phoneSecondary,
+              email: formData.email,
+              password: formData.password,
+              role: formData.role
+        };
+
+
 
             const response = await authAPI.register(payload);
 
@@ -109,8 +114,8 @@ const Signup = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                         <input
                             type="text"
-                            name="firstName"
-                            value={formData.firstName}
+                            name="userFName"
+                            value={formData.userFName}
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
@@ -121,8 +126,8 @@ const Signup = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                         <input
                             type="text"
-                            name="lastName"
-                            value={formData.lastName}
+                            name="userLName"
+                            value={formData.userLName}
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
@@ -145,8 +150,8 @@ const Signup = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Primary Phone</label>
                         <input
                             type="tel"
-                            name="phone_primary"
-                            value={formData.phone_primary}
+                            name="phonePrimary"
+                            value={formData.phonePrimary}
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                             required
@@ -157,8 +162,8 @@ const Signup = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Phone</label>
                         <input
                             type="tel"
-                            name="phone_secondary"
-                            value={formData.phone_secondary}
+                            name="phoneSecondary"
+                            value={formData.phoneSecondary}
                             onChange={handleChange}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                         />

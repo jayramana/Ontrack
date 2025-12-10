@@ -219,7 +219,7 @@ export default function DriverDashboard() {
                 </p>
                 {warehouse && (
                   <p className="text-sm text-blue-600 font-medium mt-1">
-                    📍 Assigned to: {warehouse.name}, {warehouse.city}
+                    📍 Assigned to: {warehouse.warehouseName}, {warehouse.city}
                   </p>
                 )}
               </div>
