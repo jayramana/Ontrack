@@ -21,9 +21,7 @@ const CustomerDashboard = () => {
 
 const fetchOrders = async () => {
   try {
-    const response = await api.get(`/customer/orders/by-email`, {
-      params: { email: user.email }
-    });
+    const response = await api.get(`/customer/orders`);
     setOrders(response.data);
   } catch (error) {
     console.error("Error fetching orders:", error);
