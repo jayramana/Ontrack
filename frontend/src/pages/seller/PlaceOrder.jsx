@@ -19,7 +19,7 @@ function PlaceOrder() {
         parcelSize: 'Small',
         weight: '',
         deliveryNotes: '',
-        scheduledDate: formData.scheduledDate ? new Date(formData.scheduledDate).toISOString() : null,
+        scheduledDate: "",
         scheduledTimeSlot: '',
         price: 0
     });

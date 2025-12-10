@@ -15,9 +15,13 @@ const CustomerDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
   const fetchOrders = async () => {
     try {
-      const response = await api.get(`/customer/orders`);
+      const response = await api.get("/customer/orders");
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -25,11 +29,6 @@ const CustomerDashboard = () => {
       setLoading(false);
     }
   };
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-
 
   const trackOrder = async (orderId) => {
     try {
@@ -47,26 +46,19 @@ const CustomerDashboard = () => {
     setShowRescheduleDialog(true);
   };
 
-const handleReschedule = async (e) => {
-  e.preventDefault();
-
-  const payload = {
-    newDate: new Date(rescheduleForm.newDate).toISOString(), 
-    reason: rescheduleForm.reason
+  const handleReschedule = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post(`/customer/reschedule/${selectedOrder}`, rescheduleForm);
+      alert("Delivery rescheduled successfully!");
+      setShowRescheduleDialog(false);
+      setRescheduleForm({ newDate: "", reason: "" });
+      fetchOrders();
+    } catch (error) {
+      console.error("Error rescheduling:", error);
+      alert("Failed to reschedule delivery");
+    }
   };
-
-  try {
-    await api.post(`/customer/reschedule/${selectedOrder}`, payload);
-    alert("Delivery rescheduled successfully!");
-    setShowRescheduleDialog(false);
-    setRescheduleForm({ newDate: "", reason: "" });
-    fetchOrders();
-  } catch (error) {
-    console.error("Error rescheduling:", error);
-    alert("Failed to reschedule delivery");
-  }
-};
-
 
   const getStatusColor = (status) => {
     const colors = {

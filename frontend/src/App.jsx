@@ -92,7 +92,7 @@ function App() {
           <Route path="/driver/confirm" element={<ConfirmDelivery />} />
           <Route path="/driver/route" element={<RouteView />} />
           <Route path="/driver/issues" element={<ReportIssues />} />
-
+          
           <Route
             path="/driver/dashboard"
             element={
