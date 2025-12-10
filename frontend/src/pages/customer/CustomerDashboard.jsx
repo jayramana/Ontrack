@@ -15,22 +15,20 @@ const CustomerDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  const fetchOrders = async () => {
+    try {
+      const response = await api.get(`/customer/orders`);
+      setOrders(response.data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
     fetchOrders();
   }, []);
 
-const fetchOrders = async () => {
-  try {
-    const response = await api.get(`/customer/orders/by-email`, {
-      params: { email: user.email }
-    });
-    setOrders(response.data);
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-  } finally {
-    setLoading(false);
-  }
-};
 
 
   const trackOrder = async (orderId) => {
@@ -53,7 +51,7 @@ const handleReschedule = async (e) => {
   e.preventDefault();
 
   const payload = {
-    newDate: new Date(rescheduleForm.newDate).toISOString(), // 🔥 FIX
+    newDate: new Date(rescheduleForm.newDate).toISOString(), 
     reason: rescheduleForm.reason
   };
 

@@ -20,7 +20,7 @@ public static class DriverEndpoints
 
             var orders = await context.Orders
                 .Where(o => o.DriverId == driverId)
-                .Where(o => o.Status == "Delivered" && o.Status != "Cancelled")
+                .Where(o => o.Status != "Delivered" && o.Status != "Cancelled")
                 .Include(o => o.Sender)
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.DestinationWarehouse)

@@ -8,7 +8,6 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [drivers, setDrivers] = useState([]);
   const [warehouse, setWarehouse] = useState([]);
-
   const [selectedDrivers, setSelectedDrivers] = useState({});
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -19,17 +18,36 @@ export default function AdminDashboard() {
   const [pendingOrders, setPendingOrders] = useState([]);
   const [assignedOrders, setAssignedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-      useEffect(() => {
-        const dataFetch = async () => {
-          
-          const data = await api.get("/admin/drivers");
-          console.log(data);
-        }
-        dataFetch();
-      },[])
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      try {
+        const [driversRes, warehouseRes] = await Promise.all([
+          api.get("/admin/drivers"),
+          api.get("/warehouse"),
+        ]);
+
+        const normalizedDrivers = (driversRes.data || []).map((d) => ({
+          userId: Number(d.userId ?? d.id ?? d.userId),
+          userFName: d.userFName ?? d.firstName ?? d.userFName ?? "",
+          userLName: d.userLName ?? d.lastName ?? d.userLName ?? "",
+          isAvailable: Boolean(d.isAvailable),
+          ...d,
+        }));
+
+        setDrivers(normalizedDrivers);
+        setWarehouse(warehouseRes.data || []);
+      } catch (err) {
+        console.error("Error fetching drivers/warehouse:", err);
+      }
+    };
+
+    loadInitial();
+  }, []);
+
   useEffect(() => {
     const fetchData = async () => {
-
+      setLoading(true);
       try {
         const [dashboardRes, pendingRes, assignedRes, driversRes] =
           await Promise.all([
@@ -39,15 +57,27 @@ export default function AdminDashboard() {
             api.get("/admin/drivers"),
           ]);
 
+        const fetchedDrivers = (driversRes?.data || []).map((d) => ({
+          userId: Number(d.userId ?? d.id),
+          userFName: d.userFName ?? d.firstName ?? "",
+          userLName: d.userLName ?? d.lastName ?? "",
+          isAvailable: Boolean(d.isAvailable),
+          ...d,
+        }));
+
+        setDrivers(fetchedDrivers);
+
         setStats({
-          totalUsers: dashboardRes.data.drivers.length + 5,
-          activeOrders: dashboardRes.data.orders.length,
-          drivers: dashboardRes.data.drivers.length,
+          totalUsers:
+            dashboardRes.data?.usersCount ??
+            (dashboardRes.data?.drivers?.length ?? 0) + 5,
+          activeOrders: dashboardRes.data?.orders?.length ?? 0,
+          drivers: fetchedDrivers.length,
           warehouses: warehouse.length,
         });
-        setPendingOrders(pendingRes.data);
-        setAssignedOrders(assignedRes.data);
-        setDrivers(driversRes.data);
+
+        setPendingOrders(pendingRes.data || []);
+        setAssignedOrders(assignedRes.data || []);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -58,30 +88,36 @@ export default function AdminDashboard() {
     fetchData();
   }, [warehouse]);
 
-  const handleDriverSelect = (orderId, driverId) => {
-    setSelectedDrivers((prev) => ({ ...prev, [orderId]: driverId }));
+  const handleDriverSelect = (orderId, driverIdValue) => {
+    const numeric = driverIdValue === "" ? undefined : Number(driverIdValue);
+    setSelectedDrivers((prev) => ({ ...prev, [orderId]: numeric }));
   };
 
   const handleAssign = async (orderId) => {
     const driverId = selectedDrivers[orderId];
-    if (!driverId) {
+    if (!driverId && driverId !== 0) {
       alert("Please select a driver first.");
       return;
     }
 
     try {
-      await api.post(`/orders/${orderId}/assign-driver/${driverId}`, parseInt(driverId));
-      const pendingRes = await api.get("/orders/pending");
-      const assignedRes = await api.get("/orders/assigned");
-      setPendingOrders(pendingRes.data);
-      setAssignedOrders(assignedRes.data);
+      await api.post(`/orders/${orderId}/assign-driver/${driverId}`, {
+        driverId: driverId,
+      });
+
+      const [pendingRes, assignedRes] = await Promise.all([
+        api.get("/orders/pending"),
+        api.get("/orders/assigned"),
+      ]);
+      setPendingOrders(pendingRes.data || []);
+      setAssignedOrders(assignedRes.data || []);
       alert("Order assigned successfully!");
     } catch (error) {
       console.error("Error assigning order:", error);
       alert("Failed to assign order.");
     }
   };
-  console.log(drivers);
+
   return (
     <div className="min-h-screen flex bg-gray-100">
       <AdminSidebar active="dashboard" />
@@ -111,104 +147,90 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* ... stats cards unchanged ... */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {/* Stats Cards */}
+            {" "}
+            {/* Stats Cards */}{" "}
             <div className="bg-white rounded-xl shadow-md p-6">
+              {" "}
               <div className="flex items-center justify-between">
+                {" "}
                 <div>
-                  <p className="text-sm text-gray-600">Total Users</p>
+                  {" "}
+                  <p className="text-sm text-gray-600">Total Users</p>{" "}
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.totalUsers}
-                  </p>
-                </div>
+                    {" "}
+                    {stats.totalUsers}{" "}
+                  </p>{" "}
+                </div>{" "}
                 <div className="bg-blue-100 rounded-full p-3">
-                  <span className="text-2xl">👥</span>
-                </div>
-              </div>
-            </div>
-
+                  {" "}
+                  <span className="text-2xl">👥</span>{" "}
+                </div>{" "}
+              </div>{" "}
+            </div>{" "}
             <div className="bg-white rounded-xl shadow-md p-6">
+              {" "}
               <div className="flex items-center justify-between">
+                {" "}
                 <div>
-                  <p className="text-sm text-gray-600">Active Orders</p>
+                  {" "}
+                  <p className="text-sm text-gray-600">Active Orders</p>{" "}
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.activeOrders}
-                  </p>
-                </div>
+                    {" "}
+                    {stats.activeOrders}{" "}
+                  </p>{" "}
+                </div>{" "}
                 <div className="bg-green-100 rounded-full p-3">
-                  <span className="text-2xl">📦</span>
-                </div>
-              </div>
-            </div>
-
+                  {" "}
+                  <span className="text-2xl">📦</span>{" "}
+                </div>{" "}
+              </div>{" "}
+            </div>{" "}
             <div className="bg-white rounded-xl shadow-md p-6">
+              {" "}
               <div className="flex items-center justify-between">
+                {" "}
                 <div>
-                  <p className="text-sm text-gray-600">Drivers</p>
+                  {" "}
+                  <p className="text-sm text-gray-600">Drivers</p>{" "}
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.drivers}
-                  </p>
-                </div>
+                    {" "}
+                    {stats.drivers}{" "}
+                  </p>{" "}
+                </div>{" "}
                 <div className="bg-yellow-100 rounded-full p-3">
-                  <span className="text-2xl">🚚</span>
-                </div>
-              </div>
-            </div>
-
+                  {" "}
+                  <span className="text-2xl">🚚</span>{" "}
+                </div>{" "}
+              </div>{" "}
+            </div>{" "}
             <div className="bg-white rounded-xl shadow-md p-6">
+              {" "}
               <div className="flex items-center justify-between">
+                {" "}
                 <div>
-                  <p className="text-sm text-gray-600">Warehouses</p>
+                  {" "}
+                  <p className="text-sm text-gray-600">Warehouses</p>{" "}
                   <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.warehouses}
-                  </p>
+                    {" "}
+                    {stats.warehouses}{" "}
+                  </p>{" "}
                   <a
                     href="/admin/warehouses"
                     className="text-sm text-blue-600 hover:underline"
                   >
-                    Manage
-                  </a>
-                </div>
+                    {" "}
+                    Manage{" "}
+                  </a>{" "}
+                </div>{" "}
                 <div className="bg-purple-100 rounded-full p-3">
-                  <span className="text-2xl">🏭</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            {/* <div className="bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg shadow-lg p-6 text-white mt-6"> */}
-              {/* <h3 className="text-xl font-semibold mb-4">
-                🚀 Advanced Features
-              </h3>
-              <div className="grid grid-cols-3 gap-4">
-                <a
-                  href="/admin/transports"
-                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 text-center transition"
-                >
-                  <div className="text-3xl mb-2">🚚</div>
-                  <div className="font-semibold">Transport Scheduler</div>
-                  <div className="text-sm opacity-90">Hub-to-Hub Routing</div>
-                </a>
-                <a
-                  href="/admin/capacity"
-                  className="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 text-center transition"
-                >
-                  <div className="text-3xl mb-2">📊</div>
-                  <div className="font-semibold">Capacity Monitor</div>
-                  <div className="text-sm opacity-90">Real-time Tracking</div>
-                </a>
-                <a
-                  href="/admin/warehouses"
-                  className="bg-white bg-opacity-30 hover:bg-opacity-30 rounded-lg p-4 text-center transition"
-                >
-                  <div className="text-3xl mb-2">🏭</div>
-                  <div className="font-semibold">Warehouses</div>
-                  <div className="text-sm opacity-90">Manage Hubs</div>
-                </a>
-              </div>
-            </div> */}
+                  {" "}
+                  <span className="text-2xl">🏭</span>{" "}
+                </div>{" "}
+              </div>{" "}
+            </div>{" "}
           </div>
-
           {/* Pending Orders Section */}
           <div className="bg-white rounded-xl shadow-md p-6 mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4">
@@ -269,15 +291,16 @@ export default function AdminDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <select
                             className="border rounded p-1"
-                            value={selectedDrivers[order.id] || ""}
+                            value={selectedDrivers[order.id] ?? ""}
                             onChange={(e) =>
                               handleDriverSelect(order.id, e.target.value)
                             }
                           >
                             <option value="">Select Driver</option>
                             {drivers.map((d) => (
-                              <option key={d.userId} value={d.userFName + d.userLName}>
-                                {d.UserFName} {d.isAvailable ? `(Avail)` : `(Busy)`}
+                              <option key={d.userId} value={d.userId}>
+                                {d.userFName} {d.userLName}{" "}
+                                {d.isAvailable ? "(Available)" : "(Busy)"}
                               </option>
                             ))}
                           </select>
@@ -340,8 +363,19 @@ export default function AdminDashboard() {
                           <div>Drop: {order.receiverAddress}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {drivers.find((d) => d.id === order.driverId)?.name ||
-                            "Unknown"}
+                          {drivers.find(
+                            (d) => d.userId === Number(order.driverId)
+                          )
+                            ? `${
+                                drivers.find(
+                                  (d) => d.userId === Number(order.driverId)
+                                ).userFName
+                              } ${
+                                drivers.find(
+                                  (d) => d.userId === Number(order.driverId)
+                                ).userLName
+                              }`
+                            : "Unknown"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">

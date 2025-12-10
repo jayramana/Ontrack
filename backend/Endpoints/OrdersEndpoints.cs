@@ -43,6 +43,14 @@ public static class OrdersEndpoints
                     order.PickupLongitude = pickupCoords.Value.Longitude;
                 }
 
+                var deliveryCoords = await geocodingService.GetCoordinatesAsync(order.ReceiverAddress);
+
+                if (deliveryCoords.HasValue)
+                {
+                    order.DeliveryLatitude = deliveryCoords.Value.Latitude;
+                    order.DeliveryLongitude = deliveryCoords.Value.Longitude;
+                }
+
                 context.Orders.Add(order);
                 await context.SaveChangesAsync();
                 return Results.Ok(order);
@@ -110,10 +118,22 @@ public static class OrdersEndpoints
             int driverId,
             AppDbContext context,
             RouteOptimizationService optimizationService,
-            GeofenceService geofenceService) =>
+            GeofenceService geofenceService,
+            GeocodingService geocodingService) =>
         {
             var order = await context.Orders.FindAsync(orderId);
             if (order == null) return Results.NotFound();
+
+            // Fallback: Geocode if missing
+            if (order.DeliveryLatitude == 0 && order.DeliveryLongitude == 0 && !string.IsNullOrEmpty(order.ReceiverAddress))
+            {
+                var coords = await geocodingService.GetCoordinatesAsync(order.ReceiverAddress);
+                if (coords.HasValue)
+                {
+                   order.DeliveryLatitude = coords.Value.Latitude;
+                   order.DeliveryLongitude = coords.Value.Longitude;
+                }
+            }
 
             var driver = await context.Users.FindAsync(driverId);
             if (driver == null || driver.UserRole != "driver")

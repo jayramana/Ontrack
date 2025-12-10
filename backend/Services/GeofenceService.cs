@@ -42,8 +42,7 @@ public class GeofenceService
 
     public async Task CreateGeofenceForOrderAsync(Order order)
     {
-        // Default radius 1000m (1km) or customized
-        // Geofence is centered at the DELIVERY location
+
         var geofence = new Geofence
         {
             Name = $"Order-{order.Id}-{order.ReceiverName}",
@@ -51,7 +50,7 @@ public class GeofenceService
             CenterLon = order.DeliveryLongitude,
             RadiusMeters = 1000, 
             OrderId = order.Id,
-            OwnerUserId = order.CustomerId, // Link to customer
+            OwnerUserId = order.CustomerId, 
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

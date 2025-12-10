@@ -105,6 +105,7 @@ public static class AuthEndpoints
         token = tokenString,
         first_name = user.UserFName,
         last_name = user.UserLName,
+        email = user.UserEmail,
         user_id = user.UserId,
         role = user.UserRole
     });
