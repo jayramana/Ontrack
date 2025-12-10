@@ -74,7 +74,7 @@ public static class AuthEndpoints
         return Results.Unauthorized();
     }
 
-    if(user.UserEmail != login.Email || user.UserRole != login.Role)
+    if (user.UserEmail != login.Email || user.UserRole != login.Role)
     {
         return Results.NotFound("A user with this credentials does not exists");
     }
@@ -105,9 +105,21 @@ public static class AuthEndpoints
         token = tokenString,
         first_name = user.UserFName,
         last_name = user.UserLName,
+        email = user.UserEmail,
         user_id = user.UserId,
         role = user.UserRole
     });
 });
+
+        group.MapGet("/", async (AppDbContext db) =>
+        {
+            var users = await db.Users.ToListAsync();
+            return Results.Ok(users);
+        });
+        group.MapGet("/{id}", async (int id, AppDbContext db) =>
+        {
+            var users = await db.Users.FirstOrDefaultAsync(u => u.UserId == id);
+            return Results.Ok(users);
+        });
     }
 }

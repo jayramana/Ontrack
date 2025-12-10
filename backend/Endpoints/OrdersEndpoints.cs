@@ -11,6 +11,11 @@ public static class OrdersEndpoints
     {
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
+        // Use normalized statuses (enum/string constants recommended)
+        const string STATUS_PENDING = "Pending";
+        const string STATUS_ASSIGNED = "Assigned";
+        const string STATUS_APPROVED = "Approved";
+
         group.MapPost("/", async (
             HttpContext http,
             Order order,
@@ -28,7 +33,7 @@ public static class OrdersEndpoints
                 var userId = int.Parse(userIdClaim?.Value ?? "0");
                 order.SenderId = userId;
 
-                order.Status = "PendingAssignment";
+                order.Status = STATUS_PENDING;
 
                 var pickupCoords = await geocodingService.GetCoordinatesAsync(order.PickupAddress);
 
@@ -36,6 +41,14 @@ public static class OrdersEndpoints
                 {
                     order.PickupLatitude = pickupCoords.Value.Latitude;
                     order.PickupLongitude = pickupCoords.Value.Longitude;
+                }
+
+                var deliveryCoords = await geocodingService.GetCoordinatesAsync(order.ReceiverAddress);
+
+                if (deliveryCoords.HasValue)
+                {
+                    order.DeliveryLatitude = deliveryCoords.Value.Latitude;
+                    order.DeliveryLongitude = deliveryCoords.Value.Longitude;
                 }
 
                 context.Orders.Add(order);
@@ -57,7 +70,7 @@ public static class OrdersEndpoints
         group.MapGet("/pending", async (AppDbContext context) =>
         {
             var orders = await context.Orders
-                .Where(o => o.Status == "Pending")
+                .Where(o => o.Status == STATUS_PENDING)
                 .ToListAsync();
 
             return Results.Ok(orders);
@@ -67,12 +80,12 @@ public static class OrdersEndpoints
         group.MapGet("/assigned", async (AppDbContext context) =>
         {
             var orders = await context.Orders
-                .Where(o => o.Status == "Assigned")
+                .Where(o => o.Status == STATUS_ASSIGNED)
                 .ToListAsync();
 
             return Results.Ok(orders);
         })
-        .RequireAuthorization(new AuthorizeAttribute{Roles = "admin"});
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
 
         group.MapGet("/my-orders", async (HttpContext http, AppDbContext context) =>
         {
@@ -82,7 +95,7 @@ public static class OrdersEndpoints
                 .Where(o => o.CustomerId == userId)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
-            System.Console.WriteLine(userId);
+
             return Results.Ok(orders);
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
@@ -104,34 +117,55 @@ public static class OrdersEndpoints
             int orderId,
             int driverId,
             AppDbContext context,
-            RouteOptimizationService optimizationService) =>
+            RouteOptimizationService optimizationService,
+            GeofenceService geofenceService,
+            GeocodingService geocodingService) =>
         {
             var order = await context.Orders.FindAsync(orderId);
             if (order == null) return Results.NotFound();
+
+            // Fallback: Geocode if missing
+            if (order.DeliveryLatitude == 0 && order.DeliveryLongitude == 0 && !string.IsNullOrEmpty(order.ReceiverAddress))
+            {
+                var coords = await geocodingService.GetCoordinatesAsync(order.ReceiverAddress);
+                if (coords.HasValue)
+                {
+                   order.DeliveryLatitude = coords.Value.Latitude;
+                   order.DeliveryLongitude = coords.Value.Longitude;
+                }
+            }
 
             var driver = await context.Users.FindAsync(driverId);
             if (driver == null || driver.UserRole != "driver")
                 return Results.BadRequest("Invalid driver.");
 
             order.DriverId = driverId;
-            order.Status = "Assigned";
+            order.Status = STATUS_ASSIGNED;
             await context.SaveChangesAsync();
 
             await optimizationService.OptimizeRouteForDriver(driverId);
 
+            // Create Geofence for order if not already present
+            var exists = await context.Geofences.AnyAsync(g => g.OrderId == orderId && g.IsActive);
+            if (!exists)
+            {
+                await geofenceService.CreateGeofenceForOrderAsync(order);
+            }
+
             return Results.Ok(order);
         })
-        .RequireAuthorization(new AuthorizeAttribute{Roles = "admin"});
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
 
         group.MapPost("/{id}/approve", async (
             int id,
             AppDbContext context,
-            RouteOptimizationService optimizationService) =>
+            RouteOptimizationService optimizationService,
+            GeofenceService geofenceService) =>
         {
             var order = await context.Orders.FindAsync(id);
             if (order == null) return Results.NotFound();
 
-            order.Status = "Approved";
+            order.Status = STATUS_APPROVED;
 
             var driver = await context.Users
                 .FirstOrDefaultAsync(u => u.UserRole == "driver" && u.IsAvailable);
@@ -139,10 +173,17 @@ public static class OrdersEndpoints
             if (driver != null)
             {
                 order.DriverId = driver.UserId;
-                order.Status = "Assigned";
+                order.Status = STATUS_ASSIGNED;
                 await context.SaveChangesAsync();
 
                 await optimizationService.OptimizeRouteForDriver(driver.UserId);
+
+                // Create geofence if missing
+                var exists = await context.Geofences.AnyAsync(g => g.OrderId == order.Id && g.IsActive);
+                if (!exists)
+                {
+                    await geofenceService.CreateGeofenceForOrderAsync(order);
+                }
             }
             else
             {
@@ -151,6 +192,6 @@ public static class OrdersEndpoints
 
             return Results.Ok(order);
         })
-        .RequireAuthorization(new AuthorizeAttribute{Roles = "admin"});
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
     }
 }

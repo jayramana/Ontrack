@@ -31,6 +31,23 @@ public static class DriverEndpoints
             return Results.Ok(orders);
         });
 
+        group.MapGet("/orders/all", async (HttpContext http, AppDbContext context) =>
+        {
+            var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+            var driverId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var orders = await context.Orders
+                .Where(o => o.DriverId == driverId)
+                .Include(o => o.Sender)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .OrderByDescending(o => o.ScheduledDate)
+                .ToListAsync();
+
+            return Results.Ok(orders);
+        });
+
         group.MapGet("/route/optimized", async (HttpContext http, DriverRouteOptimizationService routeService) =>
         {
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);

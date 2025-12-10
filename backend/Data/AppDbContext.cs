@@ -22,6 +22,10 @@ namespace Backend.Data
         public DbSet<Warehouse> Warehouses { get; set; }
         public DbSet<DriverLocation> DriverLocations { get; set; }
 
+        public DbSet<Geofence> Geofences { get; set; }
+        public DbSet<GeofenceEvent> geofenceEvents { get; set; }
+        public DbSet<PushSubscriptionEntity> pushSubscriptions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

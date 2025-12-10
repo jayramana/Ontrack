@@ -13,9 +13,9 @@ import Signup from "./pages/Signup";
 // Customer imports
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import DeliveryConfirm from "./pages/customer/DeliveryConfirm";
-import GeofenceAlerts from "./pages/customer/GeofenceAlerts";
 import IDVerification from "./pages/customer/IDVerification";
 import Tracking from "./pages/customer/Tracking";
+import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
 
 // Driver imports
 import DriverDashboard from "./pages/driver/DriverDashboard";
@@ -41,6 +41,7 @@ import CapacityDashboard from "./pages/admin/CapacityDashboard";
 import Availability from "./pages/customer/Availability";
 
 import "./index.css";
+import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
 
 function App() {
   return (
@@ -56,7 +57,6 @@ function App() {
             path="/customer/deliveryconfirm"
             element={<DeliveryConfirm />}
           />
-          <Route path="/customer/geofencealerts" element={<GeofenceAlerts />} />
           <Route path="/customer/idverification" element={<IDVerification />} />
           <Route path="/customer/tracking" element={<Tracking />} />
           <Route
@@ -77,6 +77,17 @@ function App() {
             }
           />
 
+          <Route
+            path="/customer/geofencealerts"
+            element={
+              <ProtectedRoute requiredRole="customer">
+                  <CustomerGeofenceAlerts />
+              </ProtectedRoute>
+            }
+          >
+            
+          </Route>
+
           {/* Driver Pages */}
           <Route path="/driver/confirm" element={<ConfirmDelivery />} />
           <Route path="/driver/route" element={<RouteView />} />
@@ -89,6 +100,11 @@ function App() {
                 <DriverDashboard />
               </ProtectedRoute>
             }
+          />
+
+          <Route
+            path="/driver/geofencealerts" element={<DriverGeofenceAlerts />}
+            
           />
 
           {/* Admin Pages */}
