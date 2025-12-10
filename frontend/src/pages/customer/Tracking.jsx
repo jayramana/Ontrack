@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import MapComponent from '../../components/MapComponent';
 import * as signalR from '@microsoft/signalr';
+import { useParams } from 'react-router-dom';
 
 function Tracking() {
+  const { orderId } = useParams();
+
   const [driverLocation, setDriverLocation] = useState(null);
   const [orderStatus] = useState('Out for Delivery');
   const [connection, setConnection] = useState(null);
@@ -23,7 +26,7 @@ function Tracking() {
 
     try {
       await newConnection.start();
-      await newConnection.invoke("JoinDriverTrackingGroup", driverId);
+      await newConnection.invoke("JoinDriverTrackingGroup", driverId, Number(orderId));
       setConnection(newConnection);
     } catch (err) {
       console.error("SignalR Connection Error:", err);

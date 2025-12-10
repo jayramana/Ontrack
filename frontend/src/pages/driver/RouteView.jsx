@@ -5,9 +5,12 @@ import MapComponent from "../../components/MapComponent";
 function RouteView() {
   const [stops, setStops] = useState([]);
   const [currentLocation, setCurrentLocation] = useState({
-    lat: 13.0827,
-    lng: 80.2707,
+  latitude: 13.0827,
+  longitude: 80.2707,
+  speed: 0,
+  heading: 0,
   });
+
 
   const fetchRoute = async () => {
     try {
@@ -38,7 +41,8 @@ function RouteView() {
   const polyline = stops.map((stop) => [stop.latitude, stop.longitude]);
   // Prepend current location
   if (stops.length > 0) {
-    polyline.unshift([currentLocation.lat, currentLocation.lng]);
+    polyline.unshift([currentLocation.latitude, currentLocation.longitude]);
+
   }
 
   return (
