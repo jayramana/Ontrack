@@ -9,6 +9,7 @@ export default function DriverSidebar({ active }) {
   const menu = [
     { label: "Dashboard", key: "dashboard", path: "/driver/dashboard" },
     { label: "Route Optimization", key: "route", path: "/driver/route" },
+    { label: "Geofence Alerts", key: "geofence", path: "/driver/geofencealerts" },
     { label: "Report Issues", key: "issues", path: "/driver/issues" },
     { label: "Confirm Delivery", key: "confirm", path: "/driver/confirm" },
     {label: "Profile", key: "profile", path: "/driver/profile" }

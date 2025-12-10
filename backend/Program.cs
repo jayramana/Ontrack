@@ -27,7 +27,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -51,15 +52,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IEtaservice, LocationService>();
-builder.Services.AddScoped<Backend.Services.GeminiService>();
-builder.Services.AddScoped<Backend.Services.RouteOptimizationService>();
-builder.Services.AddScoped<Backend.Services.WarehouseAssignmentService>();
-builder.Services.AddScoped<Backend.Services.DriverRouteOptimizationService>();
+builder.Services.AddScoped<GeminiService>();
+builder.Services.AddScoped<RouteOptimizationService>();
+builder.Services.AddScoped<WarehouseAssignmentService>();
+builder.Services.AddScoped<DriverRouteOptimizationService>();
 
-builder.Services.AddHttpClient<Backend.Services.GeminiService>();
-builder.Services.AddHttpClient<Backend.Services.GeocodingService>();
+
+builder.Services.AddHttpClient<GeminiService>();
+builder.Services.AddHttpClient<GeocodingService>();
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<GeofenceService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -87,7 +91,10 @@ app.MapAdminEndpoints();
 app.MapDriverEndpoints();
 app.MapOrdersEndpoints();
 app.MapWarehouseEndpoints();
+app.MapGeofenceEndpoints();
 
+
+app.MapHub<GeofenceHub>("/geofencehub");
 app.MapHub<EtaHub>("/etahub");
 
 

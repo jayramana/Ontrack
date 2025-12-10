@@ -1,50 +1,42 @@
-
-
 using Backend.Services;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
+using Backend.DTO;
 
 public static class LocationEndpoints
 {
-    private static double driverLat, driverLon, cusLat, cusLon, speed;
+    // This endpoint calculates ETA given driver & customer coordinates in request body.
+    // Use this when you want an immediate ETA response without relying on global state.
     public static void MapLocationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/loc").WithTags("Location");
-    
-                group.MapPost("/update-driver", async (
-            double lat,
-            double lon,
-            double spd,
-            IEtaservice eta,
-            IHubContext<EtaHub> hub) =>
+
+        group.MapPost("/calculate-eta", (EtaRequestDto dto, IEtaservice etaService) =>
         {
-            driverLat = lat;
-            driverLon = lon;
-            speed = spd;
+            if (dto == null)
+                return Results.BadRequest(new { message = "Invalid request" });
 
-            string etaString = "";
+            if (dto.SpeedKmph <= 0)
+                return Results.BadRequest(new { message = "Invalid speed" });
 
-            if (cusLat != 0 && cusLon != 0 && speed > 0)
+            double distance = etaService.GetDistance(dto.DriverLat, dto.DriverLon, dto.CustomerLat, dto.CustomerLon);
+            string etaString = etaService.GetETA(distance, dto.SpeedKmph);
+
+            return Results.Ok(new
             {
-                double distance = eta.GetDistance(driverLat, driverLon, cusLat, cusLon);
-                etaString = eta.GetETA(distance, speed);
+                distance_km = Math.Round(distance, 3),
+                speed_kmph = dto.SpeedKmph,
+                eta = etaString
+            });
+        })
+        .RequireAuthorization();
 
-                await hub.Clients.All.SendAsync("ReceiveEtaUpdate", new {
-                    distance_km = Math.Round(distance, 2),
-                    speed_kmph = Math.Round(speed, 1),
-                    eta = etaString
-                });
-            }
-
-            return Results.Ok(new { message = "Driver update received", eta = etaString });
-        });
-
-        group.MapPost("/customer/location", (double lat, double lon) =>
+        group.MapPost("/customer/location", (CustomerLocationDto dto) =>
         {
-            cusLat = lat;
-            cusLon = lon;
-
-            return Results.Ok(new { message = "Customer location updated" });
-        });
-    
+            if (dto == null) return Results.BadRequest();
+            return Results.Ok(new { message = "Customer location accepted" });
+        })
+        .RequireAuthorization();
     }
 }
+
