@@ -19,7 +19,7 @@ function PlaceOrder() {
         parcelSize: 'Small',
         weight: '',
         deliveryNotes: '',
-        scheduledDate: '',
+        scheduledDate: "",
         scheduledTimeSlot: '',
         price: 0
     });

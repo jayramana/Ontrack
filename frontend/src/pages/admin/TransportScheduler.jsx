@@ -125,7 +125,7 @@ const TransportScheduler = () => {
                                 >
                                     <option value="">Select Origin</option>
                                     {warehouses.map(w => (
-                                        <option key={w.id} value={w.id}>{w.name}</option>
+                                        <option key={w.id} value={w.id}>{w.warehouseName}</option>
                                     ))}
                                 </select>
                             </div>

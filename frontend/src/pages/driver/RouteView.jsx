@@ -4,14 +4,18 @@ import MapComponent from "../../components/MapComponent";
 
 function RouteView() {
   const [stops, setStops] = useState([]);
+
   const [currentLocation, setCurrentLocation] = useState({
-    lat: 13.0827,
-    lng: 80.2707,
+    latitude: 13.0827,
+    longitude: 80.2707,
+    speed: 0,
+    heading: 0,
   });
 
   const fetchRoute = async () => {
     try {
-      const response = await api.get("/driver/route");
+      // FIXED ENDPOINT
+      const response = await api.get("/driver/route/optimized");
       setStops(response.data);
     } catch (error) {
       console.error("Error fetching route:", error);
@@ -22,6 +26,7 @@ function RouteView() {
     fetchRoute();
   }, []);
 
+  // FIXED: use correct property names
   const markers = stops.map((stop) => ({
     position: [stop.latitude, stop.longitude],
     popup: `Stop #${stop.sequenceNumber} - ${
@@ -29,40 +34,46 @@ function RouteView() {
     }`,
   }));
 
-  // Add current location marker
+  // FIX: Add current location using correct fields
   markers.push({
-    position: [currentLocation.lat, currentLocation.lng],
+    position: [currentLocation.latitude, currentLocation.longitude],
     popup: "My Location",
   });
 
+  // Build route polyline
   const polyline = stops.map((stop) => [stop.latitude, stop.longitude]);
-  // Prepend current location
+
+  // Start from current location
   if (stops.length > 0) {
-    polyline.unshift([currentLocation.lat, currentLocation.lng]);
+    polyline.unshift([currentLocation.latitude, currentLocation.longitude]);
   }
 
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold mb-4">My Route</h2>
+
       <div className="mb-6">
         <MapComponent
-          center={[currentLocation.lat, currentLocation.lng]}
+          center={[currentLocation.latitude, currentLocation.longitude]}
           zoom={13}
           markers={markers}
           polyline={polyline}
         />
       </div>
+
       <div>
         <h3 className="text-xl font-semibold mb-2">Stops</h3>
         <ul className="space-y-2">
           {stops.map((stop) => (
             <li key={stop.id} className="p-3 border rounded bg-white shadow-sm">
-              <span className="font-bold">#{stop.sequenceNumber}</span> -{" "}
+              <span className="font-bold">#{stop.sequenceNumber}</span> –{" "}
               {stop.order ? stop.order.receiverAddress : "Pickup"}
               <br />
-              <span className="text-sm text-gray-500">
-                ETA: {new Date(stop.estimatedArrival).toLocaleTimeString()}
-              </span>
+              {stop.estimatedArrival && (
+                <span className="text-sm text-gray-500">
+                  ETA: {new Date(stop.estimatedArrival).toLocaleTimeString()}
+                </span>
+              )}
             </li>
           ))}
         </ul>
