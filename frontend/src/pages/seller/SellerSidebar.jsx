@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { FiPackage, FiUser, FiPlusCircle, FiList, FiHome } from "react-icons/fi";
+// import { FiPackage, FiUser, FiPlusCircle, FiList, FiHome } from "";
 
 export default function SellerSidebar({ active }) {
   const navigate = useNavigate();

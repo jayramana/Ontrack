@@ -114,7 +114,7 @@ export default function DriverDashboard() {
 
   const fetchOptimizedRoute = async () => {
     try {
-      const response = await api.get("/driver/route/optimized/full");
+      const response = await api.get("/driver/route/optimized");
       setOptimizedRoute(response.data || []);
     } catch (error) {
       console.error("Error fetching optimized route:", error);
@@ -163,7 +163,7 @@ export default function DriverDashboard() {
 
   const markDelivered = async (id) => {
     try {
-      await api.post(`/driver/mark-delivered/${orderId}`);
+      await api.post(`/driver/mark-delivered/${id}`);
       await fetchTodaysOrders();
       await fetchOptimizedRoute();
       alert("✅ Order Delivered!");
@@ -217,7 +217,7 @@ export default function DriverDashboard() {
     }
   };
 
-  const renderOrder = (o, idx) => (
+  const renderOrder = (order, idx) => (
     <div
       key={order.id}
       className="bg-white rounded-lg shadow p-4 hover:shadow-md transition"
@@ -227,7 +227,7 @@ export default function DriverDashboard() {
       <div className="flex justify-between items-start mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg font-semibold text-gray-900">#{index + 1}</span>
+            <span className="text-lg font-semibold text-gray-900">#{idx + 1}</span>
             {getPriorityBadge(order.priority)}
           </div>
           <p className="text-sm text-gray-600">Order ID: {order.id}</p>
@@ -235,14 +235,14 @@ export default function DriverDashboard() {
 
         <span
           className={`px-3 py-1 rounded-full text-sm font-medium ${
-            o.status === "Delivered"
+            order.status === "Delivered"
               ? "bg-green-100 text-green-700"
-              : o.status === "InTransit"
+              : order.status === "InTransit"
               ? "bg-blue-100 text-blue-700"
               : "bg-yellow-100 text-yellow-700"
           }`}
         >
-          {o.status}
+          {order.status}
         </span>
       </div>
 
@@ -250,16 +250,16 @@ export default function DriverDashboard() {
       <div className="space-y-3 mb-4">
         <div>
           <p className="text-xs text-gray-500">Receiver</p>
-          <p className="font-medium text-[#351c15]">{o.receiverName}</p>
-          <p className="text-sm text-gray-600">{o.receiverPhone}</p>
+          <p className="font-medium text-[#351c15]">{order.receiverName}</p>
+          <p className="text-sm text-gray-600">{order.receiverPhone}</p>
         </div>
 
         <div>
           <p className="text-xs text-gray-500">Delivery Address</p>
-          <p className="text-sm">{o.receiverAddress}</p>
+          <p className="text-sm">{order.receiverAddress}</p>
         </div>
 
-        {o.destinationWarehouse && (
+        {order.destinationWarehouse && (
           <div>
             <p className="text-xs text-gray-500">Warehouse</p>
             <p className="text-sm font-medium text-blue-600">

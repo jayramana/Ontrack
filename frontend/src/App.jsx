@@ -27,7 +27,6 @@ import Availability from "./pages/customer/Availability";
 // --- DRIVER PAGES ---
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import ConfirmDelivery from "./pages/driver/ConfirmDelivery";
-import RouteOptimization from "./pages/driver/RouteOptimization";
 import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
 import DriverRoutePage from "./pages/driver/DriverRoutePage";
@@ -135,10 +134,6 @@ function App() {
 
             <Route path="/driver/route" element={<DriverRoutePage />} />
 
-            <Route
-              path="/driver/route-optimized"
-              element={<RouteOptimization />}
-            />
 
             <Route
               path="/driver/dashboard"
