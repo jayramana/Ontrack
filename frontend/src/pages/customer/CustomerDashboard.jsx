@@ -21,239 +21,225 @@ const CustomerDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get("/customer/orders");
-      setOrders(response.data);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
+      const res = await api.get(`/customer/orders`);
+      setOrders(res.data);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const trackOrder = async (orderId) => {
+  const trackOrder = async (id) => {
     try {
-      const response = await api.get(`/customer/track/${orderId}`);
-      setTrackingData(response.data);
-      setSelectedOrder(orderId);
-    } catch (error) {
-      console.error("Error tracking order:", error);
+      const res = await api.get(`/customer/track/${id}`);
+      setTrackingData(res.data);
+      setSelectedOrder(id);
+    } catch {
       alert("Unable to track order");
     }
   };
 
-  const openRescheduleDialog = (orderId) => {
-    setSelectedOrder(orderId);
+  const openRescheduleDialog = (id) => {
+    setSelectedOrder(id);
     setShowRescheduleDialog(true);
   };
 
   const handleReschedule = async (e) => {
     e.preventDefault();
+
     try {
-      await api.post(`/customer/reschedule/${selectedOrder}`, rescheduleForm);
-      alert("Delivery rescheduled successfully!");
+      await api.post(`/customer/reschedule/${selectedOrder}`, {
+        newDate: new Date(rescheduleForm.newDate).toISOString(),
+        reason: rescheduleForm.reason,
+      });
+
+      alert("Delivery rescheduled!");
       setShowRescheduleDialog(false);
       setRescheduleForm({ newDate: "", reason: "" });
       fetchOrders();
-    } catch (error) {
-      console.error("Error rescheduling:", error);
-      alert("Failed to reschedule delivery");
+    } catch {
+      alert("Unable to reschedule");
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      PendingAssignment: "bg-yellow-100 text-yellow-800",
-      AtOriginWarehouse: "bg-blue-100 text-blue-800",
-      Assigned: "bg-purple-100 text-purple-800",
-      InTransit: "bg-indigo-100 text-indigo-800",
-      AtDestinationWarehouse: "bg-cyan-100 text-cyan-800",
-      OutForDelivery: "bg-orange-100 text-orange-800",
+  const getStatusColor = (s) => {
+    const base = "px-3 py-1 text-sm rounded-full font-semibold";
+    const map = {
+      PendingAssignment: "bg-gray-300 text-[#351c15]",
+      AtOriginWarehouse: "bg-[#f7e8d0] text-[#3b241c]",
+      Assigned: "bg-[#f6d8a8] text-[#3b241c]",
+      InTransit: "bg-[#f9b400]/20 text-[#3b241c]",
+      AtDestinationWarehouse: "bg-[#f7e8d0] text-[#3b241c]",
+      OutForDelivery: "bg-[#f6d8a8] text-[#3b241c]",
       Delivered: "bg-green-100 text-green-800",
       DeliveryAttempted: "bg-red-100 text-red-800",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return `${base} ${map[s] || "bg-gray-400 text-white"}`;
   };
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        Loading...
+      <div className="min-h-screen flex justify-center items-center">
+        Loading…
       </div>
     );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <CustomerSidebar />
+    <div className="min-h-screen flex bg-[#f7f3ef]">
+      <CustomerSidebar active="dashboard" />
+
       <div className="flex-1">
-        <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Welcome, {user?.first_name} {user?.last_name}!
-                </p>
-              </div>
-              <button
-                onClick={logout}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200"
-              >
-                Logout
-              </button>
+
+        {/* HEADER */}
+        <header className="bg-[#f7f3ef] shadow-sm border-b border-[#e8dfd6]">
+          <div className="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
+
+            <div>
+              <h1 className="text-3xl font-bold text-[#351c15]">My Orders</h1>
+              <p className="text-[#6f4e37] text-sm mt-1">
+                Welcome, {user?.first_name} {user?.last_name}!
+              </p>
             </div>
+
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-[#351c15] hover:bg-[#4a2a21] text-white rounded-lg shadow"
+            >
+              Logout
+            </button>
           </div>
         </header>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* MAIN CONTENT */}
+        <div className="max-w-7xl mx-auto px-6 py-10">
+
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">Total Orders</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {orders.length}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">In Transit</p>
-              <p className="text-3xl font-bold text-indigo-600">
-                {
-                  orders.filter(
-                    (o) =>
-                      o.status === "InTransit" || o.status === "OutForDelivery"
-                  ).length
-                }
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">Delivered</p>
-              <p className="text-3xl font-bold text-green-600">
-                {orders.filter((o) => o.status === "Delivered").length}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {[
+              ["Total Orders", orders.length],
+              [
+                "In Transit",
+                orders.filter(
+                  (o) => o.status === "InTransit" || o.status === "OutForDelivery"
+                ).length,
+              ],
+              [
+                "Delivered",
+                orders.filter((o) => o.status === "Delivered").length,
+              ],
+            ].map(([label, count], i) => (
+              <div
+                key={i}
+                className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6 shadow"
+              >
+                <p className="text-[#6f4e37] text-sm">{label}</p>
+                <p className="text-3xl font-bold text-[#351c15]">{count}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Orders List */}
-          <div className="space-y-4">
+          {/* Orders */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {orders.length === 0 && (
-              <div className="bg-white rounded-lg shadow p-8 text-center">
-                <p className="text-gray-500">You don't have any orders yet</p>
+              <div className="bg-white rounded-xl p-8 text-center shadow">
+                <p className="text-[#6f4e37]">No orders found</p>
               </div>
             )}
 
-            {orders.map((order) => (
-              <div key={order.id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-start mb-4">
+            {orders.map((o) => (
+              <div
+                key={o.id}
+                className="bg-[#fff8e7] border border-[#e6ddc5] shadow p-6 rounded-xl"
+              >
+                {/* Top */}
+                <div className="flex justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Order #{order.id}
+                    <h3 className="text-lg font-bold text-[#351c15]">
+                      Order #{o.id}
                     </h3>
-                    <p className="text-sm text-gray-600">
-                      Created: {new Date(order.createdAt).toLocaleDateString()}
+                    <p className="text-sm text-[#6f4e37]">
+                      {new Date(o.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                      order.status
-                    )}`}
-                  >
-                    {order.status}
-                  </span>
+
+                  <span className={getStatusColor(o.status)}>{o.status}</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                {/* Sender / Receiver */}
+                <div className="grid grid-cols-2 gap-6 mb-4">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">From (Sender)</p>
-                    <p className="font-medium">{order.senderName || "N/A"}</p>
-                    <p className="text-sm text-gray-600">
-                      {order.pickupAddress}
-                    </p>
+                    <p className="text-xs text-[#6f4e37]">Sender</p>
+                    <p className="font-medium text-[#351c15]">{o.senderName}</p>
+                    <p className="text-sm">{o.pickupAddress}</p>
                   </div>
+
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">To (Receiver)</p>
-                    <p className="font-medium">{order.receiverName}</p>
-                    <p className="text-sm text-gray-600">
-                      {order.receiverAddress}
-                    </p>
+                    <p className="text-xs text-[#6f4e37]">Receiver</p>
+                    <p className="font-medium text-[#351c15]">{o.receiverName}</p>
+                    <p className="text-sm">{o.receiverAddress}</p>
                   </div>
                 </div>
 
                 {/* Warehouse Tracking */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <p className="text-xs font-semibold text-gray-700 mb-2">
+                <div className="bg-white rounded-xl p-4 border border-[#e6ddc5] mb-4">
+                  <p className="text-xs font-semibold text-[#351c15] mb-2">
                     📦 Warehouse Tracking
                   </p>
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="text-xs text-gray-500">Origin</p>
-                      <p className="font-medium text-blue-600">
-                        {order.originWarehouse?.name || "Pending"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {order.originWarehouse?.city}
-                      </p>
-                    </div>
-                    <div className="text-gray-400">→</div>
-                    <div>
-                      <p className="text-xs text-gray-500">Current</p>
-                      <p className="font-medium text-indigo-600">
-                        {order.currentWarehouse?.name || "In Transit"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {order.currentWarehouse?.city}
-                      </p>
-                    </div>
-                    <div className="text-gray-400">→</div>
-                    <div>
-                      <p className="text-xs text-gray-500">Destination</p>
-                      <p className="font-medium text-green-600">
-                        {order.destinationWarehouse?.name || "Pending"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {order.destinationWarehouse?.city}
-                      </p>
-                    </div>
+
+                  <div className="grid grid-cols-3 text-center text-sm">
+                    {[o.originWarehouse, o.currentWarehouse, o.destinationWarehouse].map(
+                      (w, i) => (
+                        <div key={i}>
+                          <p className="text-xs text-[#6f4e37]">
+                            {["Origin", "Current", "Destination"][i]}
+                          </p>
+                          <p className="font-bold text-[#351c15]">
+                            {w?.name || "—"}
+                          </p>
+                          <p className="text-xs text-[#6f4e37]">
+                            {w?.city || ""}
+                          </p>
+                        </div>
+                      )
+                    )}
                   </div>
                 </div>
 
-                {/* Delivery Info */}
-                {order.estimatedDeliveryDate && (
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-500">Estimated Delivery</p>
-                    <p className="font-medium text-gray-900">
-                      {new Date(
-                        order.estimatedDeliveryDate
-                      ).toLocaleDateString()}
+                {/* Estimated Delivery */}
+                {o.estimatedDeliveryDate && (
+                  <p className="text-sm font-medium text-[#351c15] mb-4">
+                    Estimated:{" "}
+                    {new Date(o.estimatedDeliveryDate).toLocaleDateString()}
+                  </p>
+                )}
+
+                {/* Driver */}
+                {o.driver && (
+                  <div className="bg-[#f7e8d0] rounded-lg p-3 mb-4">
+                    <p className="text-xs font-semibold text-[#351c15]">
+                      🚚 Driver: {o.driver.name}
                     </p>
                   </div>
                 )}
 
-                {order.driver && (
-                  <div className="bg-blue-50 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-gray-600 mb-1">
-                      🚚 Assigned Driver
-                    </p>
-                    <p className="font-medium">{order.driver.name}</p>
-                  </div>
-                )}
-
-                {/* Actions */}
+                {/* Buttons */}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => trackOrder(order.id)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                    onClick={() => trackOrder(o.id)}
+                    className="flex-1 bg-[#351c15] hover:bg-[#4a2a21] text-white py-2 rounded-lg shadow"
                   >
-                    📍 Track Order
+                    📍 Track
                   </button>
-                  {order.status !== "Delivered" &&
-                    order.status !== "Cancelled" && (
-                      <button
-                        onClick={() => openRescheduleDialog(order.id)}
-                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                      >
-                        📅 Reschedule
-                      </button>
-                    )}
+
+                  {o.status !== "Delivered" && (
+                    <button
+                      onClick={() => openRescheduleDialog(o.id)}
+                      className="flex-1 bg-[#f9b400] hover:bg-[#e0a200] text-[#351c15] py-2 rounded-lg shadow"
+                    >
+                      📅 Reschedule
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -262,18 +248,16 @@ const CustomerDashboard = () => {
 
         {/* Tracking Modal */}
         {trackingData && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold">
-                  Order Tracking #{selectedOrder}
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-lg">
+              <div className="flex justify-between mb-4">
+                <h3 className="text-xl font-bold text-[#351c15]">
+                  Tracking #{selectedOrder}
                 </h3>
+
                 <button
-                  onClick={() => {
-                    setTrackingData(null);
-                    setSelectedOrder(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
+                  onClick={() => setTrackingData(null)}
+                  className="text-gray-600 hover:text-black"
                 >
                   ✕
                 </button>
@@ -281,43 +265,27 @@ const CustomerDashboard = () => {
 
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <p className="font-semibold text-lg">
+                  <p className="text-sm text-[#6f4e37]">Status</p>
+                  <p className="text-lg font-semibold text-[#351c15]">
                     {trackingData.order.status}
                   </p>
                 </div>
 
                 {trackingData.driverLocation && (
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-green-800 mb-2">
-                      🚗 Driver Location
-                    </p>
+                  <div className="bg-[#fff8e7] p-4 rounded-xl border border-[#e6ddc5]">
+                    <p className="font-semibold text-[#351c15] mb-1">Driver Location</p>
+
                     <p className="text-sm">
                       Last updated:{" "}
                       {new Date(
                         trackingData.driverLocation.updatedAt
                       ).toLocaleString()}
                     </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Lat: {trackingData.driverLocation.latitude.toFixed(4)},
-                      Lng: {trackingData.driverLocation.longitude.toFixed(4)}
-                    </p>
-                    {trackingData.driverLocation.speed > 0 && (
-                      <p className="text-xs text-gray-600">
-                        Speed: {trackingData.driverLocation.speed.toFixed(1)}{" "}
-                        km/h
-                      </p>
-                    )}
-                  </div>
-                )}
 
-                {trackingData.estimatedDelivery && (
-                  <div>
-                    <p className="text-sm text-gray-600">Estimated Delivery</p>
-                    <p className="font-medium">
-                      {new Date(
-                        trackingData.estimatedDelivery
-                      ).toLocaleString()}
+                    <p className="text-xs text-[#6f4e37]">
+                      Lat: {trackingData.driverLocation.latitude.toFixed(4)}
+                      {" • "}
+                      Lng: {trackingData.driverLocation.longitude.toFixed(4)}
                     </p>
                   </div>
                 )}
@@ -326,16 +294,12 @@ const CustomerDashboard = () => {
                   onClick={() =>
                     window.open(
                       `https://www.openstreetmap.org/?mlat=${
-                        trackingData.driverLocation?.latitude ||
-                        trackingData.order.deliveryLatitude
-                      }&mlon=${
-                        trackingData.driverLocation?.longitude ||
-                        trackingData.order.deliveryLongitude
-                      }`,
+                        trackingData.driverLocation?.latitude
+                      }&mlon=${trackingData.driverLocation?.longitude}`,
                       "_blank"
                     )
                   }
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg mt-4"
+                  className="w-full bg-[#351c15] hover:bg-[#4a2a21] text-white py-2 rounded-lg shadow"
                 >
                   View on Map
                 </button>
@@ -344,73 +308,67 @@ const CustomerDashboard = () => {
           </div>
         )}
 
-        {/* Reschedule Dialog */}
+        {/* Reschedule Modal */}
         {showRescheduleDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h3 className="text-xl font-bold mb-4">Reschedule Delivery</h3>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-lg">
+              <h3 className="text-xl font-bold text-[#351c15] mb-4">
+                Reschedule Delivery
+              </h3>
+
               <form onSubmit={handleReschedule} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    New Delivery Date
-                  </label>
+                  <label className="text-sm text-[#6f4e37]">New Delivery Date</label>
                   <input
                     type="datetime-local"
+                    className="w-full p-3 border rounded-xl mt-1"
                     value={rescheduleForm.newDate}
                     onChange={(e) =>
-                      setRescheduleForm({
-                        ...rescheduleForm,
-                        newDate: e.target.value,
-                      })
+                      setRescheduleForm({ ...rescheduleForm, newDate: e.target.value })
                     }
-                    className="w-full p-2 border rounded-lg"
                     required
                   />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Reason (Optional)
-                  </label>
+                  <label className="text-sm text-[#6f4e37]">Reason (Optional)</label>
                   <textarea
+                    rows="3"
+                    className="w-full p-3 border rounded-xl mt-1"
                     value={rescheduleForm.reason}
                     onChange={(e) =>
-                      setRescheduleForm({
-                        ...rescheduleForm,
-                        reason: e.target.value,
-                      })
+                      setRescheduleForm({ ...rescheduleForm, reason: e.target.value })
                     }
-                    className="w-full p-2 border rounded-lg"
-                    rows="3"
-                    placeholder="E.g., Not available on that date"
                   />
                 </div>
-                <div className="bg-yellow-50 rounded-lg p-3">
+
+                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
                   <p className="text-xs text-yellow-800">
-                    ⚠️ Rescheduling will lower the priority of your delivery
+                    ⚠️ Rescheduling reduces delivery priority.
                   </p>
                 </div>
+
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowRescheduleDialog(false);
-                      setRescheduleForm({ newDate: "", reason: "" });
-                    }}
-                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                    onClick={() => setShowRescheduleDialog(false)}
+                    className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded-lg"
                   >
                     Cancel
                   </button>
+
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg"
+                    className="flex-1 bg-[#351c15] hover:bg-[#4a2a21] text-white py-2 rounded-lg"
                   >
-                    Confirm Reschedule
+                    Confirm
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

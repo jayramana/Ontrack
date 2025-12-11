@@ -16,57 +16,93 @@ import DeliveryConfirm from "./pages/customer/DeliveryConfirm";
 import IDVerification from "./pages/customer/IDVerification";
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
+import Profile from "./pages/customer/Profile";
+import Availability from "./pages/customer/Availability";
 
 // Driver imports
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import ConfirmDelivery from "./pages/driver/ConfirmDelivery";
-import RouteOptimization from "./pages/driver/RouteOptimization";
 import ReportIssues from "./pages/driver/ReportIssues";
+import RouteView from "./pages/driver/RouteView";
+import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
+import AgentProfile from "./pages/driver/AgentProfile";
 
 // Admin imports
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CustomerQueries from "./pages/admin/CustomerQueries";
 import DeliveryInsights from "./pages/admin/DeliveryInsights";
-
-import SellerDashboard from "./pages/seller/SellerDashboard";
-
-// Misc
-import PlaceOrder from "./pages/seller/PlaceOrder";
-import SenderOrders from "./pages/seller/SenderOrders";
-import RouteView from "./pages/driver/RouteView";
 import LiveMap from "./pages/admin/LiveMap";
 import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
 import TransportScheduler from "./pages/admin/TransportScheduler";
 import CapacityDashboard from "./pages/admin/CapacityDashboard";
-import Availability from "./pages/customer/Availability";
+
+// Seller imports
+import SellerDashboard from "./pages/seller/SellerDashboard";
+import CreateShipment from "./pages/seller/CreateShipment";
+import SellerProfile from "./pages/seller/SellerProfile";
+import ShipmentList from "./pages/seller/ShipmentList";
+import PlaceOrder from "./pages/seller/PlaceOrder";
+import SenderOrders from "./pages/seller/SenderOrders";
 
 import "./index.css";
-import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
+
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
 
-          {/* Customer Pages */}
+
+          {/* ---------------- CUSTOMER ROUTES ---------------- */}
           <Route
-            path="/customer/deliveryconfirm"
-            element={<DeliveryConfirm />}
-          />
-          <Route path="/customer/idverification" element={<IDVerification />} />
-          <Route path="/customer/tracking" element={<Tracking />} />
-          <Route
-            path="/customer/availability"
-            element={
-              <ProtectedRoute requiredRole="Customer">
-                <Availability />
-              </ProtectedRoute>
-            }
-          />
+  path="/customer/deliveryconfirm"
+  element={
+    <ProtectedRoute requiredRole="customer">
+      <DeliveryConfirm />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/customer/idverification"
+  element={
+    <ProtectedRoute requiredRole="customer">
+      <IDVerification />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/customer/tracking"
+  element={
+    <ProtectedRoute requiredRole="customer">
+      <Tracking />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/customer/profile"
+  element={
+    <ProtectedRoute requiredRole="customer">
+      <Profile />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/customer/availability"
+  element={
+    <ProtectedRoute requiredRole="customer">
+      <Availability />
+    </ProtectedRoute>
+  }
+/>
+
 
           <Route
             path="/customer/dashboard"
@@ -81,18 +117,17 @@ function App() {
             path="/customer/geofencealerts"
             element={
               <ProtectedRoute requiredRole="customer">
-                  <CustomerGeofenceAlerts />
+                <CustomerGeofenceAlerts />
               </ProtectedRoute>
             }
-          >
-            
-          </Route>
+          />
 
-          {/* Driver Pages */}
+
+          {/* ---------------- DRIVER ROUTES ---------------- */}
           <Route path="/driver/confirm" element={<ConfirmDelivery />} />
           <Route path="/driver/route" element={<RouteView />} />
           <Route path="/driver/issues" element={<ReportIssues />} />
-          
+
           <Route
             path="/driver/dashboard"
             element={
@@ -102,14 +137,14 @@ function App() {
             }
           />
 
-          <Route
-            path="/driver/geofencealerts" element={<DriverGeofenceAlerts />}
-            
-          />
+          <Route path="/driver/geofencealerts" element={<DriverGeofenceAlerts />} />
+          <Route path="/driver/agentprofile" element={<AgentProfile />} />
 
-          {/* Admin Pages */}
+
+          {/* ---------------- ADMIN ROUTES ---------------- */}
           <Route path="/admin/queries" element={<CustomerQueries />} />
           <Route path="/admin/insights" element={<DeliveryInsights />} />
+          <Route path="/admin/scheduler" element={<TransportScheduler />} />
 
           <Route
             path="/admin/dashboard"
@@ -119,6 +154,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/live-map"
             element={
@@ -127,6 +163,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/warehouses"
             element={
@@ -135,14 +172,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/admin/transports"
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <TransportScheduler />
-              </ProtectedRoute>
-            }
-          />
+
           <Route
             path="/admin/capacity"
             element={
@@ -152,6 +182,9 @@ function App() {
             }
           />
 
+
+          {/* ---------------- SELLER ROUTES ---------------- */}
+
           <Route
             path="/seller/dashboard"
             element={
@@ -160,16 +193,45 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/sender/place-order"
+            path="/seller/shipments"
+            element={
+              <ProtectedRoute requiredRole="seller">
+                <ShipmentList />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/seller/create-shipment"
+            element={
+              <ProtectedRoute requiredRole="seller">
+                <CreateShipment />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/seller/sellerprofile"
+            element={
+              <ProtectedRoute requiredRole="seller">
+                <SellerProfile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/seller/placeorder"
             element={
               <ProtectedRoute requiredRole="seller">
                 <PlaceOrder />
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/sender/orders"
+            path="/seller/senderorders"
             element={
               <ProtectedRoute requiredRole="seller">
                 <SenderOrders />
@@ -177,8 +239,10 @@ function App() {
             }
           />
 
+
           {/* Default Redirect */}
           <Route path="*" element={<Navigate to="/login" replace />} />
+
         </Routes>
       </AuthProvider>
     </Router>

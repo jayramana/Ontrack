@@ -1,4 +1,4 @@
-//used in all customer the pages as sidebar 
+// src/components/CustomerSidebar.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -11,43 +11,53 @@ export default function CustomerSidebar({ active }) {
     { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
     { label: "ID Verification", path: "/customer/idverification", key: "id" },
     { label: "Delivery Confirm", path: "/customer/deliveryconfirm", key: "confirm" },
-    { label: "Profile ", path: "/customer/profile", key: "profile" },
+    { label: "Set Availability", path: "/customer/availability", key: "availability" },
+    { label: "Profile", path: "/customer/profile", key: "profile" },
   ];
 
   return (
-    <div className="w-64 bg-[#0d1b2a] text-white flex flex-col p-6 min-h-screen">
-      
+    <div className="w-64 bg-[#351c15] text-white flex flex-col p-6 min-h-screen shadow-xl">
       {/* Logo */}
       <div className="flex items-center space-x-3 mb-10">
-        <div className="bg-teal-400 p-2 rounded-lg"></div>
-        <h1 className="text-xl font-bold">DeliverAI</h1>
+        <h1 className="text-xl font-extrabold tracking-wide text-[#f9b400]">
+          OnTrack
+        </h1>
       </div>
 
-      <p className="text-gray-400 text-sm mb-4">CUSTOMER PORTAL</p>
+      <p className="text-gray-300 text-sm mb-4 tracking-wider">CUSTOMER PORTAL</p>
 
       {/* Menu */}
-      <nav className="space-y-3">
-        {menuItems.map((item) => (
-          <button
-            key={item.key}
-            onClick={() => navigate(item.path)}
-            className={`w-full text-left p-3 rounded-lg transition
-              ${
-                active === item.key
-                  ? "bg-white/10 text-white"
-                  : "hover:bg-white/10 text-gray-300"
-              }
-            `}
-          >
-            {item.label}
-          </button>
-        ))}
+      <nav className="space-y-2">
+        {menuItems.map((item) => {
+          const isActive = active === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => navigate(item.path)}
+              className={[
+                "w-full text-left p-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2",
+                // active styles
+                isActive
+                  ? "bg-[#6f4e37] text-[#f9b400]"
+                  // hover styles when NOT active
+                  : "text-white hover:bg-[#6f4e37]/80 hover:text-[#f9b400]"
+              ].join(" ")}
+            >
+              {/* optional left indicator for active */}
+              <span
+                className={[
+                  "w-1.5 h-6 rounded-r-md mr-2",
+                  isActive ? "bg-[#f9b400] block" : "bg-transparent"
+                ].join(" ")}
+              />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Footer */}
-      <button className="mt-auto text-left text-red-300 hover:text-red-400">
-        Sign Out
-      </button>
+
     </div>
   );
 }

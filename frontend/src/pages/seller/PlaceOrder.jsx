@@ -1,174 +1,214 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import SellerSidebar from "./SellerSidebar";
 
-function PlaceOrder() {
-    const [formData, setFormData] = useState({
-        senderName: '',
-        senderPhone: '',
-        senderEmail: '',
-        pickupAddress: '',
-        pickupPincode: '',
-        receiverName: '',
-        receiverPhone: '',
-        receiverEmail: '',
-        receiverAddress: '',
-        receiverPincode: '',
-        deliveryPincode: '',
-        deliveryType: 'Normal',
-        parcelSize: 'Small',
-        weight: '',
-        deliveryNotes: '',
-        scheduledDate: "",
-        scheduledTimeSlot: '',
-        price: 0
+export default function PlaceOrder() {
+  const [formData, setFormData] = useState({
+    senderName: "",
+    senderPhone: "",
+    senderEmail: "",
+    pickupAddress: "",
+    pickupPincode: "",
+    receiverName: "",
+    receiverPhone: "",
+    receiverEmail: "",
+    receiverAddress: "",
+    receiverPincode: "",
+    deliveryPincode: "",
+    deliveryType: "Normal",
+    parcelSize: "Small",
+    weight: "",
+    deliveryNotes: "",
+    scheduledDate: "",
+    scheduledTimeSlot: "",
+    price: 0,
+  });
+
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const calculatePrice = () => {
+    let weightPrice = parseFloat(formData.weight || 0) * 10;
+    let sizePrice =
+      formData.parcelSize === "Large"
+        ? 50
+        : formData.parcelSize === "Medium"
+        ? 30
+        : 10;
+    let typePrice = formData.deliveryType === "ASR" ? 100 : 0;
+
+    setFormData({
+      ...formData,
+      price: weightPrice + sizePrice + typePrice,
     });
-    const navigate = useNavigate();
+  };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post("/orders", formData);
+      alert("Order placed successfully!");
+      navigate("/seller/dashboard");
+    } catch (error) {
+      console.error("Error placing order:", error);
+      alert("Failed to place order.");
+    }
+  };
 
-    const calculatePrice = () => {
-        let weightPrice = parseFloat(formData.weight || 0) * 10;
-        let sizePrice = formData.parcelSize === 'Large' ? 50 : formData.parcelSize === 'Medium' ? 30 : 10;
-        let typePrice = formData.deliveryType === 'ASR' ? 100 : 0;
-        setFormData({ ...formData, price: weightPrice + sizePrice + typePrice });
-    };
+  return (
+    <div className="min-h-screen flex bg-[#f8f4ef]">
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await api.post('/orders', formData);
-            alert('Order placed successfully!');
-            navigate('/sender/dashboard');
-        } catch (error) {
-            console.error('Error placing order:', error);
-            const errorMessage = error.response?.data?.message || error.response?.data?.innerException || error.message || 'Failed to place order.';
-            alert(`Error: ${errorMessage}`);
-        }
-    };
+      {/* SIDEBAR */}
+      <SellerSidebar active="placeorder" />
 
-    return (
-        <div className="p-6 max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800">Place New Order</h2>
-            <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-xl shadow-md">
+      {/* MAIN CONTENT */}
+      <div className="flex-1 px-10 py-8">
 
-                {/* Sender Details */}
-                <div className="border-b pb-4">
-                    <h3 className="text-xl font-semibold mb-4 text-blue-600">Sender Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block mb-1 font-medium">Sender Name</label>
-                            <input type="text" name="senderName" value={formData.senderName} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Sender Phone</label>
-                            <input type="text" name="senderPhone" value={formData.senderPhone} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Sender Email</label>
-                            <input type="email" name="senderEmail" value={formData.senderEmail} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block mb-1 font-medium">Pickup Address</label>
-                            <input type="text" name="pickupAddress" value={formData.pickupAddress} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Pickup Pincode</label>
-                            <input type="text" name="pickupPincode" value={formData.pickupPincode} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" maxLength="6" placeholder="e.g., 600001" required />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Receiver Details */}
-                <div className="border-b pb-4">
-                    <h3 className="text-xl font-semibold mb-4 text-blue-600">Receiver Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block mb-1 font-medium">Receiver Name</label>
-                            <input type="text" name="receiverName" value={formData.receiverName} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Receiver Phone</label>
-                            <input type="text" name="receiverPhone" value={formData.receiverPhone} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Receiver Email (Optional)</label>
-                            <input type="email" name="receiverEmail" value={formData.receiverEmail} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" placeholder="For account linking" />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block mb-1 font-medium">Receiver Address</label>
-                            <input type="text" name="receiverAddress" value={formData.receiverAddress} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Receiver Pincode</label>
-                            <input type="text" name="receiverPincode" value={formData.receiverPincode} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" maxLength="6" required />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Delivery Pincode</label>
-                            <input type="text" name="deliveryPincode" value={formData.deliveryPincode} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" maxLength="6" placeholder="e.g., 629001" required />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Package Details */}
-                <div>
-                    <h3 className="text-xl font-semibold mb-4 text-blue-600">Package & Delivery</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block mb-1 font-medium">Delivery Type</label>
-                            <select name="deliveryType" value={formData.deliveryType} onChange={handleChange} onBlur={calculatePrice} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                                <option value="Normal">Normal Delivery</option>
-                                <option value="ASR">ASR (Adult Signature Required)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Parcel Size</label>
-                            <select name="parcelSize" value={formData.parcelSize} onChange={handleChange} onBlur={calculatePrice} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                                <option value="Small">Small</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Large">Large</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Weight (kg)</label>
-                            <input type="number" name="weight" value={formData.weight} onChange={handleChange} onBlur={calculatePrice} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" required />
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <label className="block mb-1 font-medium">Delivery Notes</label>
-                        <textarea name="deliveryNotes" value={formData.deliveryNotes} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" rows="2"></textarea>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div>
-                            <label className="block mb-1 font-medium">Preferred Date (Optional)</label>
-                            <input type="date" name="scheduledDate" value={formData.scheduledDate} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div>
-                            <label className="block mb-1 font-medium">Preferred Time Slot (Optional)</label>
-                            <select name="scheduledTimeSlot" value={formData.scheduledTimeSlot} onChange={handleChange} className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none">
-                                <option value="">Any Time</option>
-                                <option value="Morning">Morning (9am - 12pm)</option>
-                                <option value="Afternoon">Afternoon (12pm - 4pm)</option>
-                                <option value="Evening">Evening (4pm - 8pm)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-gray-100 p-4 rounded-lg flex justify-between items-center">
-                    <span className="text-lg font-semibold">Estimated Price:</span>
-                    <span className="text-2xl font-bold text-green-600">${formData.price}</span>
-                </div>
-
-                <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-200 shadow-lg">
-                    Confirm & Place Order
-                </button>
-            </form>
+        {/* HEADER */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold text-[#351c15]">Place New Order</h1>
+          <p className="text-[#6b4f3a]">
+            Fill out the details to create a new shipment
+          </p>
         </div>
-    );
+
+        {/* FORM CARD */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-8 rounded-2xl shadow border border-[#e6d8c9] space-y-10 max-w-4xl"
+        >
+
+          {/* ------------ SENDER SECTION ------------ */}
+          <div>
+            <h2 className="text-xl font-bold text-[#351c15] mb-4">
+              Sender Details
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <InputField label="Sender Name" name="senderName" value={formData.senderName} onChange={handleChange} />
+              <InputField label="Sender Phone" name="senderPhone" value={formData.senderPhone} onChange={handleChange} />
+              <InputField label="Sender Email" name="senderEmail" type="email" value={formData.senderEmail} onChange={handleChange} />
+              <InputField label="Pickup Pincode" name="pickupPincode" value={formData.pickupPincode} maxLength="6" onChange={handleChange} />
+            </div>
+
+            <InputField label="Pickup Address" name="pickupAddress" value={formData.pickupAddress} onChange={handleChange} className="mt-4" />
+          </div>
+
+          {/* ------------ RECEIVER SECTION ------------ */}
+          <div>
+            <h2 className="text-xl font-bold text-[#351c15] mb-4">
+              Receiver Details
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <InputField label="Receiver Name" name="receiverName" value={formData.receiverName} onChange={handleChange} />
+              <InputField label="Receiver Phone" name="receiverPhone" value={formData.receiverPhone} onChange={handleChange} />
+              <InputField label="Receiver Email" name="receiverEmail" type="email" value={formData.receiverEmail} onChange={handleChange} />
+              <InputField label="Receiver Pincode" name="receiverPincode" value={formData.receiverPincode} maxLength="6" onChange={handleChange} />
+              <InputField label="Delivery Pincode" name="deliveryPincode" value={formData.deliveryPincode} maxLength="6" onChange={handleChange} />
+            </div>
+
+            <InputField label="Receiver Address" name="receiverAddress" value={formData.receiverAddress} onChange={handleChange} className="mt-4" />
+          </div>
+
+          {/* ------------ PACKAGE SECTION ------------ */}
+          <div>
+            <h2 className="text-xl font-bold text-[#351c15] mb-4">
+              Package & Delivery Info
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Delivery Type */}
+              <SelectField label="Delivery Type" name="deliveryType" value={formData.deliveryType} onChange={handleChange} onBlur={calculatePrice} options={["Normal", "ASR"]} />
+
+              {/* Size */}
+              <SelectField label="Parcel Size" name="parcelSize" value={formData.parcelSize} onChange={handleChange} onBlur={calculatePrice} options={["Small", "Medium", "Large"]} />
+
+              {/* Weight */}
+              <InputField label="Weight (kg)" name="weight" type="number" value={formData.weight} onChange={handleChange} onBlur={calculatePrice} />
+            </div>
+
+            <textarea
+              name="deliveryNotes"
+              rows="2"
+              placeholder="Delivery notes (optional)"
+              value={formData.deliveryNotes}
+              onChange={handleChange}
+              className="w-full mt-4 p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500] outline-none"
+            ></textarea>
+          </div>
+
+          {/* ------------ SCHEDULING ------------ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputField label="Preferred Date (Optional)" type="date" name="scheduledDate" value={formData.scheduledDate} onChange={handleChange} />
+            <SelectField
+              label="Preferred Time Slot"
+              name="scheduledTimeSlot"
+              value={formData.scheduledTimeSlot}
+              onChange={handleChange}
+              options={["Morning (9-12)", "Afternoon (12-4)", "Evening (4-8)"]}
+            />
+          </div>
+
+          {/* PRICE DISPLAY */}
+          <div className="bg-[#fff4d0] p-4 border rounded-xl flex justify-between items-center">
+            <span className="text-lg font-semibold text-[#351c15]">
+              Estimated Price:
+            </span>
+            <span className="text-2xl font-bold text-green-700">
+              ₹{formData.price}
+            </span>
+          </div>
+
+          {/* SUBMIT */}
+          <button className="w-full bg-[#ffb500] text-[#351c15] py-3 rounded-xl font-semibold hover:bg-[#e6a300] transition shadow">
+            Confirm & Place Order
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-export default PlaceOrder;
+function InputField({ label, name, value, onChange, type = "text", className = "", ...rest }) {
+  return (
+    <div className={className}>
+      <label className="block mb-1 font-medium text-[#351c15]">{label}</label>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        {...rest}
+        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500] outline-none"
+      />
+    </div>
+  );
+}
+
+function SelectField({ label, name, value, onChange, options = [], className = "", ...rest }) {
+  return (
+    <div className={className}>
+      <label className="block mb-1 font-medium text-[#351c15]">{label}</label>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        {...rest}
+        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500] outline-none"
+      >
+        <option value="">Select</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
