@@ -55,16 +55,14 @@ function LiveMap() {
         }
     };
 
-    useEffect(() => {
-        fetchDashboardData();
-        setupSignalR();
+  useEffect(() => {
+    fetchDashboardData();
+    setupSignalR();
 
-        return () => {
-            if (connection) {
-                connection.stop();
-            }
-        };
-    }, []);
+    return () => {
+      if (connection) connection.stop();
+    };
+  }, []);
 
     // Marker format for MapComponent
     const markers = drivers

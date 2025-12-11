@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import DriverSidebar from "./DriverSidebar"; 
+import DriverSidebar from "./DriverSidebar";
 
 export default function AgentProfile() {
   const [formData, setFormData] = useState({
@@ -23,94 +23,109 @@ export default function AgentProfile() {
 
   const handleSave = () => {
     console.log("Updated Agent Profile:", formData);
-    // TODO: Send this data to backend
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="min-h-screen flex bg-[#f8f4ef]">
 
       {/* SIDEBAR */}
       <DriverSidebar active="profile" />
 
-      {/* CONTENT */}
-      <div className="flex-1 p-10">
-        <h1 className="text-3xl font-bold mb-2">Profile Settings</h1>
-        <p className="text-gray-500 mb-6">
-          Manage your delivery information and preferences
+      {/* MAIN CONTENT */}
+      <div className="flex-1 px-10 py-8">
+        {/* HEADER */}
+        <h1 className="text-3xl font-bold text-[#351c15] mb-1">
+          Agent Profile
+        </h1>
+        <p className="text-[#6b4f3a] mb-8">
+          Manage your personal and delivery-related information
         </p>
 
-        <div className="bg-white p-8 rounded-2xl shadow-lg max-w-3xl">
+        {/* PROFILE CARD */}
+        <div className="bg-white rounded-xl shadow-lg border border-[#e6d8c9] p-8 max-w-4xl">
 
           {/* PROFILE HEADER */}
-          <div className="flex items-center space-x-6 mb-8">
-            <div className="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center text-3xl text-gray-600 shadow">
+          <div className="flex items-center gap-6 mb-8">
+            <div className="h-20 w-20 rounded-full bg-[#fff4d0] flex items-center justify-center text-4xl shadow text-[#351c15]">
               🚚
             </div>
             <div>
-              <h2 className="text-xl font-semibold">{formData.fullName}</h2>
-              <p className="text-gray-500">Delivery Agent</p>
+              <h2 className="text-2xl font-semibold text-[#351c15]">
+                {formData.fullName}
+              </h2>
+              <p className="text-[#6b4f3a]">Delivery Agent</p>
             </div>
           </div>
 
+          {/* FORM GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
             {/* FULL NAME */}
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Full Name</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Full Name
+              </label>
               <input
                 type="text"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500]"
               />
             </div>
 
             {/* EMAIL */}
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Email</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Email
+              </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500]"
               />
             </div>
 
             {/* PHONE */}
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Phone Number</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Phone Number
+              </label>
               <input
                 type="text"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500]"
               />
             </div>
 
-            {/* EMPLOYEE ID */}
+            {/* EMPLOYEE ID (LOCKED) */}
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Employee ID</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Employee ID
+              </label>
               <input
                 type="text"
                 name="employeeId"
                 value={formData.employeeId}
-                onChange={handleChange}
-                className="w-full p-3 border rounded-xl bg-gray-100 cursor-not-allowed"
                 disabled
+                className="w-full p-3 border rounded-xl bg-[#f0e6d8] text-gray-600 cursor-not-allowed"
               />
             </div>
 
             {/* VEHICLE TYPE */}
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Vehicle Type</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Vehicle Type
+              </label>
               <select
                 name="vehicleType"
                 value={formData.vehicleType}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500]"
               >
                 <option>Bike</option>
                 <option>Scooter</option>
@@ -122,40 +137,43 @@ export default function AgentProfile() {
 
             {/* VEHICLE NUMBER */}
             <div>
-              <label className="block text-gray-700 font-medium mb-1">Vehicle Number</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Vehicle Number
+              </label>
               <input
                 type="text"
                 name="vehicleNumber"
                 value={formData.vehicleNumber}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500]"
               />
             </div>
 
             {/* HUB */}
             <div className="md:col-span-2">
-              <label className="block text-gray-700 font-medium mb-1">Home Branch / Hub</label>
+              <label className="block text-[#6b4f3a] font-medium mb-1">
+                Home Branch / Hub
+              </label>
               <input
                 type="text"
                 name="hub"
                 value={formData.hub}
                 onChange={handleChange}
-                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-[#ffb500]"
               />
             </div>
-
           </div>
 
-          {/* AVAILABILITY TOGGLE */}
-          <div className="mt-8 flex items-center space-x-3">
+          {/* AVAILABILITY */}
+          <div className="mt-8 flex items-center gap-3">
             <input
               type="checkbox"
               name="availability"
               checked={formData.availability}
               onChange={handleChange}
-              className="h-5 w-5"
+              className="h-5 w-5 rounded border-[#351c15]"
             />
-            <label className="text-gray-700 font-medium">
+            <label className="text-[#351c15] font-medium">
               Available for Deliveries
             </label>
           </div>
@@ -164,11 +182,12 @@ export default function AgentProfile() {
           <div className="mt-8">
             <button
               onClick={handleSave}
-              className="bg-teal-500 hover:bg-teal-600 text-white py-3 px-6 rounded-xl text-lg shadow-md"
+              className="bg-[#ffb500] hover:bg-[#e6a300] text-[#351c15] py-3 px-6 rounded-xl text-lg shadow"
             >
               Save Changes
             </button>
           </div>
+
         </div>
       </div>
     </div>

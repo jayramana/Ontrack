@@ -105,8 +105,8 @@ export default function DriverDashboard() {
       if (response.data?.length > 0 && response.data[0].currentWarehouse) {
         setWarehouse(response.data[0].currentWarehouse);
       }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -161,7 +161,7 @@ export default function DriverDashboard() {
     );
   };
 
-  const markDelivered = async (orderId) => {
+  const markDelivered = async (id) => {
     try {
       await api.post(`/driver/mark-delivered/${orderId}`);
       await fetchTodaysOrders();
@@ -217,13 +217,14 @@ export default function DriverDashboard() {
     }
   };
 
-  const renderOrder = (order, index) => (
+  const renderOrder = (o, idx) => (
     <div
       key={order.id}
       className="bg-white rounded-lg shadow p-4 hover:shadow-md transition"
       onClick={() => openOrderDetails(order.id)}
     >
-      <div className="flex justify-between items-start mb-3">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-lg font-semibold text-gray-900">#{index + 1}</span>
@@ -231,32 +232,34 @@ export default function DriverDashboard() {
           </div>
           <p className="text-sm text-gray-600">Order ID: {order.id}</p>
         </div>
-        <div className="text-right">
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              order.status === "Delivered"
-                ? "bg-green-100 text-green-800"
-                : order.status === "InTransit"
-                ? "bg-blue-100 text-blue-800"
-                : "bg-yellow-100 text-yellow-800"
-            }`}
-          >
-            {order.status}
-          </span>
-        </div>
+
+        <span
+          className={`px-3 py-1 rounded-full text-sm font-medium ${
+            o.status === "Delivered"
+              ? "bg-green-100 text-green-700"
+              : o.status === "InTransit"
+              ? "bg-blue-100 text-blue-700"
+              : "bg-yellow-100 text-yellow-700"
+          }`}
+        >
+          {o.status}
+        </span>
       </div>
 
-      <div className="space-y-2 mb-4">
+      {/* Content */}
+      <div className="space-y-3 mb-4">
         <div>
           <p className="text-xs text-gray-500">Receiver</p>
-          <p className="font-medium">{order.receiverName}</p>
-          <p className="text-sm text-gray-600">{order.receiverPhone}</p>
+          <p className="font-medium text-[#351c15]">{o.receiverName}</p>
+          <p className="text-sm text-gray-600">{o.receiverPhone}</p>
         </div>
+
         <div>
           <p className="text-xs text-gray-500">Delivery Address</p>
-          <p className="text-sm">{order.receiverAddress}</p>
+          <p className="text-sm">{o.receiverAddress}</p>
         </div>
-        {order.destinationWarehouse && (
+
+        {o.destinationWarehouse && (
           <div>
             <p className="text-xs text-gray-500">Warehouse</p>
             <p className="text-sm font-medium text-blue-600">
@@ -273,7 +276,8 @@ export default function DriverDashboard() {
         )}
       </div>
 
-      <div className="flex gap-2">
+      {/* Buttons */}
+      <div className="flex gap-3">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -281,8 +285,9 @@ export default function DriverDashboard() {
           }}
           className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
         >
-          Mark Delivered
+          Delivered
         </button>
+
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -290,7 +295,7 @@ export default function DriverDashboard() {
           }}
           className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
         >
-          Mark Attempted
+          Attempted
         </button>
       </div>
     </div>
@@ -301,7 +306,7 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-[#f8f4ef]">
       <DriverSidebar active="dashboard" />
       <div className="w-[100%] flex flex-col">
         <header className="bg-white shadow">

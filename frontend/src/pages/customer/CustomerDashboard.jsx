@@ -16,18 +16,22 @@ const CustomerDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  // SignalR connection ref
   const [connection, setConnection] = useState(null);
 
   useEffect(() => {
     fetchOrders();
     setupSignalR();
+    // cleanup on unmount
     return () => {
       if (connection) connection.stop().catch(() => {});
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // run once
 
   const fetchOrders = async () => {
     try {
+      // switched to block 1 API per request
       const response = await api.get("/orders/my-orders");
       console.log(response)
       setOrders(response.data);
@@ -46,9 +50,11 @@ const CustomerDashboard = () => {
         .withAutomaticReconnect()
         .build();
 
+      // When driver route updates arrive
       conn.on("ReceiveRouteUpdate", (routeData) => {
         console.log("Received route update:", routeData);
 
+        // If user is viewing a tracked order and route update contains that order, update trackingData
         if (selectedOrder && routeData?.stops) {
           const matched = routeData.stops.find((s) => s.orderId === selectedOrder);
           if (matched) {
@@ -60,8 +66,11 @@ const CustomerDashboard = () => {
         }
       });
 
+      // When driver location updates arrive
+      // Expecting payload { driverId, latitude, longitude, speed, updatedAt }
       conn.on("ReceiveDriverLocation", (payload) => {
         try {
+          // Normalize payload shape
           const driverId = payload?.driverId ?? payload?.id ?? payload?.driver;
           const lat = payload?.latitude ?? payload?.lat;
           const lng = payload?.longitude ?? payload?.lng;
@@ -79,6 +88,7 @@ const CustomerDashboard = () => {
             }));
           }
 
+          // Optionally update orders list to reflect live driver positions if the order contains driverId
           setOrders((prev) =>
             prev.map((o) =>
               o.driver && (o.driver.id === driverId || o.driver.userId === driverId)
@@ -129,6 +139,7 @@ const CustomerDashboard = () => {
     }
 
     try {
+      // switch to block1 API path: /orders/{id}/reschedule
       await api.post(`/orders/${selectedOrder}/reschedule`, {
         newDate: rescheduleForm.newDate,
         reason: rescheduleForm.reason,

@@ -21,16 +21,16 @@ import DeliveryConfirm from "./pages/customer/DeliveryConfirm";
 import IDVerification from "./pages/customer/IDVerification";
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
+import Profile from "./pages/customer/Profile";
 import Availability from "./pages/customer/Availability";
 
 // --- DRIVER PAGES ---
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import ConfirmDelivery from "./pages/driver/ConfirmDelivery";
-import RouteOptimization from "./pages/driver/RouteOptimization"; // Added from block 1
-import ReportRoadIssue from "./pages/driver/ReportRoadIssue"; // Exists only in block 1
-import ReportIssues from "./pages/driver/ReportIssues";
+import RouteOptimization from "./pages/driver/RouteOptimization";
+import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
-
+import DriverRoutePage from "./pages/driver/DriverRoutePage";
 
 // --- ADMIN PAGES ---
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -43,11 +43,13 @@ import CapacityDashboard from "./pages/admin/CapacityDashboard";
 
 // --- SELLER/SENDER PAGES ---
 import SellerDashboard from "./pages/seller/SellerDashboard";
+import CreateShipment from "./pages/seller/CreateShipment";
+import SellerProfile from "./pages/seller/SellerProfile";
+import ShipmentList from "./pages/seller/ShipmentList";
 import PlaceOrder from "./pages/seller/PlaceOrder";
 import SenderOrders from "./pages/seller/SenderOrders";
 
 import "./index.css";
-import DriverRoutePage from "./pages/driver/DriverRoutePage";
 
 function App() {
   return (
@@ -62,10 +64,41 @@ function App() {
             <Route path="/signup" element={<Signup />} />
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
+            <Route
+              path="/customer/deliveryconfirm"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <DeliveryConfirm />
+                </ProtectedRoute>
+              }
+            />
 
-            <Route path="/customer/deliveryconfirm" element={<DeliveryConfirm />} />
-            <Route path="/customer/idverification" element={<IDVerification />} />
-            <Route path="/customer/tracking" element={<Tracking />} />
+            <Route
+              path="/customer/idverification"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <IDVerification />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/customer/tracking"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <Tracking />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/customer/profile"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/customer/availability"
@@ -95,16 +128,13 @@ function App() {
             />
 
             {/* ---------------- DRIVER ROUTES ---------------- */}
-
             <Route path="/driver/confirm" element={<ConfirmDelivery />} />
 
-            {/* This was missing in block 2 → Add from block 1 */}
             <Route path="/driver/report-issue" element={<ReportRoadIssue />} />
-
-            <Route path="/driver/route" element={<DriverRoutePage />} />
             <Route path="/driver/issues" element={<ReportRoadIssue />} />
 
-            {/* From block 1 → Route Optimization page */}
+            <Route path="/driver/route" element={<DriverRoutePage />} />
+
             <Route
               path="/driver/route-optimized"
               element={<RouteOptimization />}
@@ -125,7 +155,6 @@ function App() {
             />
 
             {/* ---------------- ADMIN ROUTES ---------------- */}
-
             <Route path="/admin/queries" element={<CustomerQueries />} />
             <Route path="/admin/insights" element={<DeliveryInsights />} />
 
@@ -172,12 +201,35 @@ function App() {
             />
 
             {/* ---------------- SELLER ROUTES ---------------- */}
-
             <Route
               path="/seller/dashboard"
               element={
                 <ProtectedRoute requiredRole="seller">
                   <SellerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/seller/create-shipment"
+              element={
+                <ProtectedRoute requiredRole="seller">
+                  <CreateShipment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/seller/seller-profile"
+              element={
+                <ProtectedRoute requiredRole="seller">
+                  <SellerProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/seller/shipments"
+              element={
+                <ProtectedRoute requiredRole="seller">
+                  <ShipmentList />
                 </ProtectedRoute>
               }
             />

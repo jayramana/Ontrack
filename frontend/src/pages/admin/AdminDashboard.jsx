@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [drivers, setDrivers] = useState([]);
   const [warehouse, setWarehouse] = useState([]);
 
+
   const [selectedDrivers, setSelectedDrivers] = useState({});
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -94,7 +95,6 @@ export default function AdminDashboard() {
   // ========= FETCH FULL DASHBOARD ===========
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
       try {
         const [
           dashboardRes,
@@ -121,11 +121,9 @@ export default function AdminDashboard() {
         setDrivers(fetchedDrivers);
 
         setStats({
-          totalUsers:
-            dashboardRes.data?.usersCount ??
-            (dashboardRes.data?.drivers?.length ?? 0) + 5,
-          activeOrders: dashboardRes.data?.orders?.length ?? 0,
-          drivers: fetchedDrivers.length,
+          totalUsers: dashboardRes.data.drivers.length + 5,
+          activeOrders: dashboardRes.data.orders.length,
+          drivers: dashboardRes.data.drivers.length,
           warehouses: warehouse.length,
           unresolvedRoadIssues: dashboardRes.data?.unresolvedRoadIssues ?? 0,
         });
@@ -181,6 +179,7 @@ export default function AdminDashboard() {
     setSelectedDrivers((prev) => ({ ...prev, [orderId]: numeric }));
   };
 
+  // Assign order
   const handleAssign = async (orderId) => {
     const driverId = selectedDrivers[orderId];
     if (!driverId) return alert("Select driver first.");
@@ -236,7 +235,9 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="min-h-screen flex bg-[#f8f4ef]">
+
+      {/* Sidebar */}
       <AdminSidebar active="dashboard" />
 
       <div className="min-h-screen w-full bg-gray-50">

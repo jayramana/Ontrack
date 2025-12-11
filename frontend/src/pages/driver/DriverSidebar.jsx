@@ -1,39 +1,45 @@
+// UPS Themed Customer Sidebar (Matched to Driver Sidebar)
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
 
-export default function DriverSidebar({ active }) {
+export default function CustomerSidebar({ active }) {
   const navigate = useNavigate();
-  const { logout } = useAuth();
 
-  const menu = [
-    { label: "Dashboard", key: "dashboard", path: "/driver/dashboard" },
-    { label: "Route Optimization", key: "route", path: "/driver/route" },
-    { label: "Geofence Alerts", key: "geofence", path: "/driver/geofencealerts" },
-    { label: "Report Issues", key: "issues", path: "/driver/issues" },
-    { label: "Confirm Delivery", key: "confirm", path: "/driver/confirm" },
-    {label: "Profile", key: "profile", path: "/driver/profile" }
+  const menuItems = [
+    { label: "Dashboard", path: "/customer/dashboard", key: "dashboard" },
+    { label: "Live Tracking", path: "/customer/tracking", key: "tracking" },
+    { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
+    { label: "ID Verification", path: "/customer/idverification", key: "id" },
+    { label: "Delivery Confirm", path: "/customer/deliveryconfirm", key: "confirm" },
+    { label: "Set Availability", path: "/customer/availability", key: "availability" },
+    { label: "Profile", path: "/customer/profile", key: "profile" },
   ];
 
   return (
-    <div className="w-64 bg-[#0d1b2a] text-white p-6 flex flex-col min-h-screen">
-      
+    <div className="w-64 bg-[#351c15] text-white flex flex-col p-6 min-h-screen shadow-xl">
+
       {/* Logo */}
-      <div className="flex items-center gap-3 mb-10">
-        <div className="bg-teal-400 p-2 rounded-lg"></div>
-        <h1 className="text-xl font-bold">DeliverAI</h1>
+      <div className="flex items-center space-x-3 mb-10">
+        <h1 className="text-xl font-extrabold tracking-wide text-[#f9b400]">
+          OnTrack
+        </h1>
       </div>
 
-      <p className="text-gray-400 text-sm mb-4">DRIVER PORTAL</p>
+      <p className="text-gray-300 text-sm mb-4 tracking-wider">CUSTOMER PORTAL</p>
 
       {/* Menu */}
       <nav className="space-y-2">
-        {menu.map((item) => (
+        {menuItems.map((item) => (
           <button
             key={item.key}
             onClick={() => navigate(item.path)}
-            className={`w-full text-left p-3 rounded-lg transition 
-              ${active === item.key ? "bg-white/10" : "hover:bg-white/10"}
+            className={`
+              w-full text-left p-3 rounded-lg font-medium transition
+              ${
+                active === item.key
+                  ? "bg-[#6f4e37] text-[#f9b400]"
+                  : "hover:bg-[#6f4e37]/60 text-white"
+              }
             `}
           >
             {item.label}
@@ -41,10 +47,7 @@ export default function DriverSidebar({ active }) {
         ))}
       </nav>
 
-      {/* Footer */}
-      <button onClick={logout} className="mt-auto pt-10 text-red-300 hover:text-red-400 text-left">
-        Sign Out
-      </button>
+
     </div>
   );
 }
