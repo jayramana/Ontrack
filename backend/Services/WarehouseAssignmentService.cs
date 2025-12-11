@@ -1,3 +1,109 @@
+// // using Backend.Data;
+// // using Backend.Domain.Entity;
+// // using Microsoft.EntityFrameworkCore;
+
+// // namespace Backend.Services
+// // {
+// //     public class WarehouseAssignmentService
+// //     {
+// //         private readonly AppDbContext _context;
+// //         private readonly GeocodingService _geocodingService;
+
+// //         public WarehouseAssignmentService(AppDbContext context, GeocodingService geocodingService)
+// //         {
+// //             _context = context;
+// //             _geocodingService = geocodingService;
+// //         }
+
+// //         /// <summary>
+// //         /// Find nearest warehouse based on pincode
+// //         /// </summary>
+// //         public async Task<Warehouse?> FindNearestWarehouseByPincodeAsync(string pincode)
+// //         {
+// //             // Geocode the pincode
+// //             var coords = await _geocodingService.GetCoordinatesFromPincodeAsync(pincode);
+// //             if (coords == null)
+// //             {
+// //                 // Fallback: try to find by pincode prefix (first 3 digits indicate region)
+// //                 var pincodePrefix = pincode.Length >= 3 ? pincode.Substring(0, 3) : pincode;
+// //                 return await _context.Warehouses
+// //                     .Where(w => w.Pincode.StartsWith(pincodePrefix))
+// //                     .FirstOrDefaultAsync();
+// //             }
+
+// //             var (lat, lng) = coords.Value;
+
+// //             // Find all warehouses
+// //             var warehouses = await _context.Warehouses
+// //                 .Where(w => w.Latitude != null && w.Longitude != null)
+// //                 .ToListAsync();
+
+// //             if (!warehouses.Any())
+// //                 return null;
+
+// //             // Find nearest using Haversine formula
+// //             var nearest = warehouses
+// //                 .Select(w => new
+// //                 {
+// //                     Warehouse = w,
+// //                     Distance = CalculateDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
+// //                 })
+// //                 .OrderBy(x => x.Distance)
+// //                 .FirstOrDefault();
+
+// //             return nearest?.Warehouse;
+// //         }
+
+// //         /// <summary>
+// //         /// Geocode all warehouses that don't have coordinates
+// //         /// </summary>
+// //         public async Task GeocodeWarehousesAsync()
+// //         {
+// //             var warehouses = await _context.Warehouses
+// //                 .Where(w => w.Latitude == null || w.Longitude == null)
+// //                 .ToListAsync();
+
+// //             foreach (var warehouse in warehouses)
+// //             {
+// //                 var coords = await _geocodingService.GetCoordinatesFromPincodeAsync(warehouse.Pincode);
+// //                 if (coords != null)
+// //                 {
+// //                     warehouse.Latitude = coords.Value.Latitude;
+// //                     warehouse.Longitude = coords.Value.Longitude;
+// //                 }
+
+// //                 // Add delay to respect API rate limits
+// //                 await Task.Delay(1000);
+// //             }
+
+// //             await _context.SaveChangesAsync();
+// //         }
+
+// //         /// <summary>
+// //         /// Haversine formula to calculate distance between two points
+// //         /// </summary>
+// //         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+// //         {
+// //             const double R = 6371; // Earth radius in km
+
+// //             var dLat = DegreesToRadians(lat2 - lat1);
+// //             var dLon = DegreesToRadians(lon2 - lon1);
+
+// //             var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+// //                     Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
+// //                     Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+// //             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+// //             return R * c;
+// //         }
+
+// //         private double DegreesToRadians(double degrees)
+// //         {
+// //             return degrees * Math.PI / 180.0;
+// //         }
+// //     }
+// // }
+
 // using Backend.Data;
 // using Backend.Domain.Entity;
 // using Microsoft.EntityFrameworkCore;
@@ -16,42 +122,132 @@
 //         }
 
 //         /// <summary>
-//         /// Find nearest warehouse based on pincode
+//         /// 🆕 FEATURE 3: Find warehouse by district name
+//         /// </summary>
+//         public async Task<Warehouse?> FindWarehouseByDistrictAsync(string district)
+//         {
+//             if (string.IsNullOrWhiteSpace(district))
+//                 return null;
+
+//             // Search by city name (which represents district in our warehouse data)
+//             return await _context.Warehouses
+//                 .Where(w => EF.Functions.Like(w.City, $"%{district}%"))
+//                 .FirstOrDefaultAsync();
+//         }
+
+//         /// <summary>
+//         /// 🆕 FEATURE 3: Enhanced - Find nearest warehouse with district fallback
 //         /// </summary>
 //         public async Task<Warehouse?> FindNearestWarehouseByPincodeAsync(string pincode)
 //         {
-//             // Geocode the pincode
+//             // Step 1: Try geocoding the pincode
 //             var coords = await _geocodingService.GetCoordinatesFromPincodeAsync(pincode);
-//             if (coords == null)
+            
+//             if (coords != null)
 //             {
-//                 // Fallback: try to find by pincode prefix (first 3 digits indicate region)
-//                 var pincodePrefix = pincode.Length >= 3 ? pincode.Substring(0, 3) : pincode;
-//                 return await _context.Warehouses
-//                     .Where(w => w.Pincode.StartsWith(pincodePrefix))
-//                     .FirstOrDefaultAsync();
+//                 var (lat, lng) = coords.Value;
+
+//                 // Find all warehouses with coordinates
+//                 var warehouses = await _context.Warehouses
+//                     .Where(w => w.Latitude != null && w.Longitude != null)
+//                     .ToListAsync();
+
+//                 if (warehouses.Any())
+//                 {
+//                     // Find nearest using Haversine formula
+//                     var nearest = warehouses
+//                         .Select(w => new
+//                         {
+//                             Warehouse = w,
+//                             Distance = CalculateDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
+//                         })
+//                         .OrderBy(x => x.Distance)
+//                         .FirstOrDefault();
+
+//                     if (nearest != null)
+//                         return nearest.Warehouse;
+//                 }
 //             }
 
-//             var (lat, lng) = coords.Value;
+//             // Step 2: Fallback - Try pincode prefix match (first 3 digits)
+//             if (pincode.Length >= 3)
+//             {
+//                 var pincodePrefix = pincode.Substring(0, 3);
+//                 var prefixMatch = await _context.Warehouses
+//                     .Where(w => w.Pincode.StartsWith(pincodePrefix))
+//                     .FirstOrDefaultAsync();
 
-//             // Find all warehouses
-//             var warehouses = await _context.Warehouses
+//                 if (prefixMatch != null)
+//                     return prefixMatch;
+//             }
+
+//             // Step 3: 🆕 Final Fallback - Try to extract district from pincode
+//             // For Tamil Nadu, certain pincode ranges map to districts
+//             var district = GetDistrictFromPincode(pincode);
+//             if (!string.IsNullOrEmpty(district))
+//             {
+//                 var districtWarehouse = await FindWarehouseByDistrictAsync(district);
+//                 if (districtWarehouse != null)
+//                     return districtWarehouse;
+//             }
+
+//             // Step 4: Last resort - return any warehouse with valid coordinates
+//             return await _context.Warehouses
 //                 .Where(w => w.Latitude != null && w.Longitude != null)
-//                 .ToListAsync();
+//                 .FirstOrDefaultAsync();
+//         }
 
-//             if (!warehouses.Any())
+//         /// <summary>
+//         /// 🆕 Helper: Map Tamil Nadu pincodes to districts
+//         /// </summary>
+//         private string? GetDistrictFromPincode(string pincode)
+//         {
+//             if (string.IsNullOrWhiteSpace(pincode) || pincode.Length < 3)
 //                 return null;
 
-//             // Find nearest using Haversine formula
-//             var nearest = warehouses
-//                 .Select(w => new
-//                 {
-//                     Warehouse = w,
-//                     Distance = CalculateDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
-//                 })
-//                 .OrderBy(x => x.Distance)
-//                 .FirstOrDefault();
+//             var prefix = pincode.Substring(0, 3);
 
-//             return nearest?.Warehouse;
+//             // Tamil Nadu pincode to district mapping
+//             return prefix switch
+//             {
+//                 "600" => "Chennai",
+//                 "601" => "Chennai",
+//                 "602" => "Tiruvallur",
+//                 "603" => "Kanchipuram",
+//                 "604" => "Kanchipuram",
+//                 "605" => "Villupuram",
+//                 "606" => "Tiruvannamalai",
+//                 "607" => "Cuddalore",
+//                 "608" => "Thanjavur",
+//                 "609" => "Nagapattinam",
+//                 "610" => "Tiruvarur",
+//                 "611" => "Nagapattinam",
+//                 "612" => "Thanjavur",
+//                 "613" => "Thanjavur",
+//                 "614" => "Tiruvarur",
+//                 "620" => "Trichy",
+//                 "621" => "Perambalur",
+//                 "622" => "Pudukkottai",
+//                 "623" => "Ramanathapuram",
+//                 "624" => "Dindigul",
+//                 "625" => "Madurai",
+//                 "626" => "Virudhunagar",
+//                 "627" => "Tirunelveli",
+//                 "628" => "Tuticorin",
+//                 "629" => "Kanyakumari",
+//                 "630" => "Sivaganga",
+//                 "631" => "Kanchipuram",
+//                 "632" => "Vellore",
+//                 "635" => "Krishnagiri",
+//                 "636" => "Salem",
+//                 "637" => "Namakkal",
+//                 "638" => "Erode",
+//                 "639" => "Karur",
+//                 "641" => "Coimbatore",
+//                 "642" => "Coimbatore",
+//                 "643" => "Nilgiris",
+//                 _ => null
+//             };
 //         }
 
 //         /// <summary>
@@ -122,83 +318,123 @@ namespace Backend.Services
         }
 
         /// <summary>
-        /// 🆕 FEATURE 3: Find warehouse by district name
+        /// Try geocode pincode -> nearest warehouse. Falls back to prefix match and district mapping.
         /// </summary>
-        public async Task<Warehouse?> FindWarehouseByDistrictAsync(string district)
+        public async Task<Warehouse?> FindNearestWarehouseByPincodeAsync(string? pincode)
         {
-            if (string.IsNullOrWhiteSpace(district))
+            if (string.IsNullOrWhiteSpace(pincode))
                 return null;
 
-            // Search by city name (which represents district in our warehouse data)
-            return await _context.Warehouses
-                .Where(w => EF.Functions.Like(w.City, $"%{district}%"))
-                .FirstOrDefaultAsync();
-        }
+            pincode = pincode.Trim();
 
-        /// <summary>
-        /// 🆕 FEATURE 3: Enhanced - Find nearest warehouse with district fallback
-        /// </summary>
-        public async Task<Warehouse?> FindNearestWarehouseByPincodeAsync(string pincode)
-        {
             // Step 1: Try geocoding the pincode
-            var coords = await _geocodingService.GetCoordinatesFromPincodeAsync(pincode);
-            
-            if (coords != null)
+            try
             {
-                var (lat, lng) = coords.Value;
-
-                // Find all warehouses with coordinates
-                var warehouses = await _context.Warehouses
-                    .Where(w => w.Latitude != null && w.Longitude != null)
-                    .ToListAsync();
-
-                if (warehouses.Any())
+                var coords = await _geocoding_service_safe(pincode);
+                if (coords != null)
                 {
-                    // Find nearest using Haversine formula
-                    var nearest = warehouses
-                        .Select(w => new
-                        {
-                            Warehouse = w,
-                            Distance = CalculateDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
-                        })
-                        .OrderBy(x => x.Distance)
-                        .FirstOrDefault();
+                    var (lat, lng) = coords.Value;
 
-                    if (nearest != null)
-                        return nearest.Warehouse;
+                    var warehouses = await _context.Warehouses
+                        .Where(w => w.Latitude != null && w.Longitude != null)
+                        .ToListAsync();
+
+                    if (warehouses.Any())
+                    {
+                        var nearest = warehouses
+                            .Select(w => new
+                            {
+                                Warehouse = w,
+                                Distance = CalculateDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
+                            })
+                            .OrderBy(x => x.Distance)
+                            .FirstOrDefault();
+
+                        if (nearest != null)
+                            return nearest.Warehouse;
+                    }
                 }
             }
+            catch
+            {
+                // swallow and fallback to prefix
+            }
 
-            // Step 2: Fallback - Try pincode prefix match (first 3 digits)
+            // Step 2: prefix match (first 3 digits)
             if (pincode.Length >= 3)
             {
-                var pincodePrefix = pincode.Substring(0, 3);
+                var prefix = pincode.Substring(0, 3);
                 var prefixMatch = await _context.Warehouses
-                    .Where(w => w.Pincode.StartsWith(pincodePrefix))
+                    .Where(w => w.Pincode.StartsWith(prefix))
                     .FirstOrDefaultAsync();
 
                 if (prefixMatch != null)
                     return prefixMatch;
             }
 
-            // Step 3: 🆕 Final Fallback - Try to extract district from pincode
-            // For Tamil Nadu, certain pincode ranges map to districts
+            // Step 3: district fallback
             var district = GetDistrictFromPincode(pincode);
             if (!string.IsNullOrEmpty(district))
             {
-                var districtWarehouse = await FindWarehouseByDistrictAsync(district);
+                var districtWarehouse = await _context.Warehouses
+                    .Where(w => EF.Functions.Like(w.City, $"%{district}%"))
+                    .FirstOrDefaultAsync();
+
                 if (districtWarehouse != null)
                     return districtWarehouse;
             }
 
-            // Step 4: Last resort - return any warehouse with valid coordinates
+            // Step 4: final fallback -> any warehouse with coordinates
             return await _context.Warehouses
                 .Where(w => w.Latitude != null && w.Longitude != null)
                 .FirstOrDefaultAsync();
         }
 
+        // Helper wrapper around geocoding service to avoid exceptions bubbling to callers
+        private async Task<(double Latitude, double Longitude)?> _geocoding_service_safe(string pincode)
+        {
+            try
+            {
+                return await _geocodingService.GetCoordinatesFromPincodeAsync(pincode);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>
-        /// 🆕 Helper: Map Tamil Nadu pincodes to districts
+        /// Centralized method: when an order is created, update origin/destination/current warehouse counters.
+        /// Call this after the order entity is created and persisted (transactionally).
+        /// </summary>
+        public async Task AssignOrderToWarehousesAsync(Order order)
+        {
+            // origin
+            if (order.OriginWarehouseId.HasValue)
+            {
+                var origin = await _context.Warehouses.FindAsync(order.OriginWarehouseId.Value);
+                if (origin != null)
+                {
+                    origin.OutgoingParcels += 1;    // parcel awaiting pickup
+                    origin.CurrentParcels += 1;     // physical parcel present
+                }
+            }
+
+            // destination
+            if (order.DestinationWarehouseId.HasValue)
+            {
+                var dest = await _context.Warehouses.FindAsync(order.DestinationWarehouseId.Value);
+                if (dest != null)
+                {
+                    dest.ReceivedParcels += 1;      // will be received at destination
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Map Tamil Nadu pincodes (prefix) to districts — extend as required.
         /// </summary>
         private string? GetDistrictFromPincode(string pincode)
         {
@@ -207,7 +443,6 @@ namespace Backend.Services
 
             var prefix = pincode.Substring(0, 3);
 
-            // Tamil Nadu pincode to district mapping
             return prefix switch
             {
                 "600" => "Chennai",
@@ -250,52 +485,43 @@ namespace Backend.Services
             };
         }
 
-        /// <summary>
-        /// Geocode all warehouses that don't have coordinates
-        /// </summary>
-        public async Task GeocodeWarehousesAsync()
+        // ADD THIS BACK – REQUIRED BY WarehouseController
+public async Task GeocodeWarehousesAsync()
+{
+    var warehouses = await _context.Warehouses
+        .Where(w => w.Latitude == null || w.Longitude == null)
+        .ToListAsync();
+
+    foreach (var warehouse in warehouses)
+    {
+        var coords = await _geocodingService.GetCoordinatesFromPincodeAsync(warehouse.Pincode);
+
+        if (coords != null)
         {
-            var warehouses = await _context.Warehouses
-                .Where(w => w.Latitude == null || w.Longitude == null)
-                .ToListAsync();
-
-            foreach (var warehouse in warehouses)
-            {
-                var coords = await _geocodingService.GetCoordinatesFromPincodeAsync(warehouse.Pincode);
-                if (coords != null)
-                {
-                    warehouse.Latitude = coords.Value.Latitude;
-                    warehouse.Longitude = coords.Value.Longitude;
-                }
-
-                // Add delay to respect API rate limits
-                await Task.Delay(1000);
-            }
-
-            await _context.SaveChangesAsync();
+            warehouse.Latitude = coords.Value.Latitude;
+            warehouse.Longitude = coords.Value.Longitude;
         }
 
-        /// <summary>
-        /// Haversine formula to calculate distance between two points
-        /// </summary>
+        await Task.Delay(1000); // avoid rate limit
+    }
+
+    await _context.SaveChangesAsync();
+}
+
+
+        // Haversine formula
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371; // Earth radius in km
-
+            const double R = 6371; // km
             var dLat = DegreesToRadians(lat2 - lat1);
             var dLon = DegreesToRadians(lon2 - lon1);
-
             var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
                     Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
                     Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return R * c;
         }
 
-        private double DegreesToRadians(double degrees)
-        {
-            return degrees * Math.PI / 180.0;
-        }
+        private double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
     }
 }

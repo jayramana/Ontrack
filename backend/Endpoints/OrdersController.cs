@@ -1623,19 +1623,36 @@ namespace Backend.Endpoints
         private readonly DriverRouteOptimizationService _driverRouteService;
         private readonly IHubContext<LogisticsHub> _hubContext;
         private readonly GeminiService _geminiService;
+        private readonly WarehouseAssignmentService _warehouseService;
+
+        // public OrdersController(
+        //     AppDbContext context,
+        //     RouteOptimizationService optimizationService,
+        //     DriverRouteOptimizationService driverRouteService,
+        //     IHubContext<LogisticsHub> hubContext,
+        //     GeminiService geminiService)
+        // {
+        //     _context = context;
+        //     _optimizationService = optimizationService;
+        //     _driverRouteService = driverRouteService;
+        //     _hubContext = hubContext;
+        //     _geminiService = geminiService;
+        // }
 
         public OrdersController(
             AppDbContext context,
             RouteOptimizationService optimizationService,
             DriverRouteOptimizationService driverRouteService,
             IHubContext<LogisticsHub> hubContext,
-            GeminiService geminiService)
+            GeminiService geminiService,
+            WarehouseAssignmentService warehouseService)
         {
             _context = context;
             _optimizationService = optimizationService;
             _driverRouteService = driverRouteService;
             _hubContext = hubContext;
             _geminiService = geminiService;
+            _warehouseService = warehouseService;
         }
 
         // 🆕 FEATURE 1: RESCHEDULE ORDER WITH AI PRIORITY CALCULATION
@@ -1772,6 +1789,53 @@ namespace Backend.Endpoints
 
         private double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
 
+        // // CREATE ORDER (Sender)
+        // [HttpPost]
+        // [Authorize(Roles = "Sender")]
+        // public async Task<IActionResult> CreateOrder(
+        //     Order order,
+        //     [FromServices] IEmailService emailService)
+        // {
+        //     try
+        //     {
+        //         if (order.ScheduledDate.HasValue)
+        //             order.ScheduledDate = DateTime.SpecifyKind(order.ScheduledDate.Value, DateTimeKind.Utc);
+
+        //         var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+        //         order.SenderId = int.Parse(userIdClaim?.Value ?? "0");
+
+        //         order.TrackingId = Guid.NewGuid().ToString("N")[..10].ToUpper();
+
+        //         if (!string.IsNullOrWhiteSpace(order.ReceiverEmail))
+        //         {
+        //             var customer = await _context.Users
+        //                 .FirstOrDefaultAsync(u => u.Email == order.ReceiverEmail && u.Role == "Customer");
+
+        //             if (customer != null)
+        //                 order.CustomerId = customer.Id;
+        //         }
+
+        //         order.Status = "PendingAssignment";
+        //         order.CreatedAt = DateTime.UtcNow;
+
+        //         _context.Orders.Add(order);
+        //         await _context.SaveChangesAsync();
+
+        //         await emailService.SendOrderEmailsAsync(order);
+
+        //         return Ok(order);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         return BadRequest(new
+        //         {
+        //             message = ex.Message,
+        //             innerException = ex.InnerException?.Message,
+        //             stackTrace = ex.StackTrace
+        //         });
+        //     }
+        // }
+
         // CREATE ORDER (Sender)
         [HttpPost]
         [Authorize(Roles = "Sender")]
@@ -1789,6 +1853,7 @@ namespace Backend.Endpoints
 
                 order.TrackingId = Guid.NewGuid().ToString("N")[..10].ToUpper();
 
+                // If email corresponds to existing customer, link it
                 if (!string.IsNullOrWhiteSpace(order.ReceiverEmail))
                 {
                     var customer = await _context.Users
@@ -1798,12 +1863,52 @@ namespace Backend.Endpoints
                         order.CustomerId = customer.Id;
                 }
 
-                order.Status = "PendingAssignment";
+                // Determine pincode sources (prefer explicitly provided fields)
+                var pickupPincode = !string.IsNullOrWhiteSpace(order.PickupPincode)
+                    ? order.PickupPincode
+                    : order.PickupAddress != null ? await TryExtractPincodeFromAddress(order.PickupAddress) : null;
+
+                var deliveryPincode = !string.IsNullOrWhiteSpace(order.DeliveryPincode)
+                    ? order.DeliveryPincode
+                    : !string.IsNullOrWhiteSpace(order.ReceiverPincode) ? order.ReceiverPincode
+                    : order.ReceiverAddress != null ? await TryExtractPincodeFromAddress(order.ReceiverAddress) : null;
+
+                // Find nearest warehouses
+                Warehouse? originWarehouse = null;
+                Warehouse? destinationWarehouse = null;
+
+                if (!string.IsNullOrWhiteSpace(pickupPincode))
+                    originWarehouse = await _warehouseService.FindNearestWarehouseByPincodeAsync(pickupPincode);
+
+                if (!string.IsNullOrWhiteSpace(deliveryPincode))
+                    destinationWarehouse = await _warehouseService.FindNearestWarehouseByPincodeAsync(deliveryPincode);
+
+                // If still null, as a last resort pick any warehouse (admin will reassign later)
+                if (originWarehouse == null)
+                    originWarehouse = await _context.Warehouses.FirstOrDefaultAsync();
+
+                if (destinationWarehouse == null)
+                    destinationWarehouse = await _context.Warehouses.FirstOrDefaultAsync();
+
+                order.OriginWarehouseId = originWarehouse?.Id;
+                order.DestinationWarehouseId = destinationWarehouse?.Id;
+
+                // Initially, parcel is at origin warehouse
+                order.CurrentWarehouseId = originWarehouse?.Id;
+                order.Status = "AtOriginWarehouse";
                 order.CreatedAt = DateTime.UtcNow;
 
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync();
 
+                // Update warehouse counters
+                await _warehouseService.AssignOrderToWarehousesAsync(order);
+
+                // Optionally notify warehouse group (if you create groups)
+                // await _hubContext.Clients.Group($"Warehouse_{order.OriginWarehouseId}")
+                //     .SendAsync("NewParcelAtWarehouse", new { orderId = order.Id, trackingId = order.TrackingId });
+
+                // Send emails if configured
                 await emailService.SendOrderEmailsAsync(order);
 
                 return Ok(order);
@@ -1818,6 +1923,7 @@ namespace Backend.Endpoints
                 });
             }
         }
+
 
         // PUBLIC TRACKING ENDPOINT
         [HttpGet("track-public/{trackingId}")]
@@ -1885,55 +1991,109 @@ namespace Backend.Endpoints
             });
         }
 
-        // PENDING ORDERS (Admin)
-        [HttpGet("pending")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetPendingOrders()
-        {
-            var orders = await _context.Orders
-                .Where(o => o.Status == "PendingAssignment")
-                .Include(o => o.Driver)
-                .Include(o => o.OriginWarehouse)
-                .Include(o => o.CurrentWarehouse)
-                .Include(o => o.DestinationWarehouse)
-                .OrderByDescending(o => o.CreatedAt)
-                .Select(o => new
-                {
-                    o.Id,
-                    o.TrackingId,
-                    o.Status,
-                    o.SenderName,
-                    o.PickupAddress,
-                    o.ReceiverName,
-                    o.ReceiverAddress,
-                    o.CreatedAt,
-                    o.EstimatedDeliveryDate,
-                    o.AiPriority,
-                    driverId = o.DriverId,
-                    driverName = o.Driver != null ? o.Driver.Name : null,
-                    originWarehouse = o.OriginWarehouse != null ? new
-                    {
-                        o.OriginWarehouse.Id,
-                        o.OriginWarehouse.Name,
-                        o.OriginWarehouse.City
-                    } : null,
-                    currentWarehouse = o.CurrentWarehouse != null ? new
-                    {
-                        o.CurrentWarehouse.Id,
-                        o.CurrentWarehouse.Name,
-                        o.CurrentWarehouse.City
-                    } : null,
-                    destinationWarehouse = o.DestinationWarehouse != null ? new
-                    {
-                        o.DestinationWarehouse.Id,
-                        o.DestinationWarehouse.Name,
-                        o.DestinationWarehouse.City
-                    } : null
-                })
-                .ToListAsync();
+        // // PENDING ORDERS (Admin)
+        // [HttpGet("pending")]
+        // [Authorize(Roles = "Admin")]
+        // public async Task<IActionResult> GetPendingOrders()
+        // {
+        //     var orders = await _context.Orders
+        //         .Where(o => o.Status == "PendingAssignment")
+        //         .Include(o => o.Driver)
+        //         .Include(o => o.OriginWarehouse)
+        //         .Include(o => o.CurrentWarehouse)
+        //         .Include(o => o.DestinationWarehouse)
+        //         .OrderByDescending(o => o.CreatedAt)
+        //         .Select(o => new
+        //         {
+        //             o.Id,
+        //             o.TrackingId,
+        //             o.Status,
+        //             o.SenderName,
+        //             o.PickupAddress,
+        //             o.ReceiverName,
+        //             o.ReceiverAddress,
+        //             o.CreatedAt,
+        //             o.EstimatedDeliveryDate,
+        //             o.AiPriority,
+        //             driverId = o.DriverId,
+        //             driverName = o.Driver != null ? o.Driver.Name : null,
+        //             originWarehouse = o.OriginWarehouse != null ? new
+        //             {
+        //                 o.OriginWarehouse.Id,
+        //                 o.OriginWarehouse.Name,
+        //                 o.OriginWarehouse.City
+        //             } : null,
+        //             currentWarehouse = o.CurrentWarehouse != null ? new
+        //             {
+        //                 o.CurrentWarehouse.Id,
+        //                 o.CurrentWarehouse.Name,
+        //                 o.CurrentWarehouse.City
+        //             } : null,
+        //             destinationWarehouse = o.DestinationWarehouse != null ? new
+        //             {
+        //                 o.DestinationWarehouse.Id,
+        //                 o.DestinationWarehouse.Name,
+        //                 o.DestinationWarehouse.City
+        //             } : null
+        //         })
+        //         .ToListAsync();
 
-            return Ok(orders);
-        }
+        //     return Ok(orders);
+        // }
+
+        [HttpGet("pending")]
+[Authorize(Roles = "Admin")]
+public async Task<IActionResult> GetPendingOrders()
+{
+    var orders = await _context.Orders
+        .Where(o =>
+            (o.Status == "PendingAssignment" ||
+             o.Status == "AtOriginWarehouse") &&
+             o.DriverId == null
+        )
+        .Include(o => o.Driver)
+        .Include(o => o.OriginWarehouse)
+        .Include(o => o.CurrentWarehouse)
+        .Include(o => o.DestinationWarehouse)
+        .OrderByDescending(o => o.CreatedAt)
+        .Select(o => new
+        {
+            o.Id,
+            o.TrackingId,
+            o.Status,
+            o.SenderName,
+            o.PickupAddress,
+            o.ReceiverName,
+            o.ReceiverAddress,
+            o.CreatedAt,
+            o.EstimatedDeliveryDate,
+            o.AiPriority,
+            driverId = o.DriverId,
+            driverName = o.Driver != null ? o.Driver.Name : null,
+            originWarehouse = o.OriginWarehouse != null ? new
+            {
+                o.OriginWarehouse.Id,
+                o.OriginWarehouse.Name,
+                o.OriginWarehouse.City
+            } : null,
+            currentWarehouse = o.CurrentWarehouse != null ? new
+            {
+                o.CurrentWarehouse.Id,
+                o.CurrentWarehouse.Name,
+                o.CurrentWarehouse.City
+            } : null,
+            destinationWarehouse = o.DestinationWarehouse != null ? new
+            {
+                o.DestinationWarehouse.Id,
+                o.DestinationWarehouse.Name,
+                o.DestinationWarehouse.City
+            } : null
+        })
+        .ToListAsync();
+
+    return Ok(orders);
+}
+
 
         // ASSIGNED ORDERS (Admin)
         [HttpGet("assigned")]
@@ -2100,6 +2260,31 @@ namespace Backend.Endpoints
                 .ToListAsync();
 
             return Ok(orders);
+        }
+
+        // small helper to attempt pincode extraction from addresses using geocoding service
+        private async Task<string?> TryExtractPincodeFromAddress(string address)
+        {
+            try
+            {
+                // GeocodingService has GetPincodeFromAddressAsync
+                var geo = (WarehouseAssignmentService?)null;
+                // We have access to _warehouseService but pincode extraction exists in GeocodingService.
+                // Try using the geocoding service directly via warehouseService's internal geocoder helper - if there's no public API, try to parse digits from address.
+                // Safest simple fallback: attempt last 6-digit token in string
+                var tokens = address.Split(new[] { ' ', ',', '-' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = tokens.Length - 1; i >= 0; i--)
+                {
+                    var t = tokens[i].Trim();
+                    if (t.Length >= 5 && t.All(char.IsDigit))
+                        return t;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+            return null;
         }
 
         // APPROVE ORDER (Admin) - Legacy

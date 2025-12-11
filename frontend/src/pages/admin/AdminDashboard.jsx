@@ -941,21 +941,19 @@ const AdminDashboard = () => {
                 <div className="flex gap-4 mb-6">
                     <button
                         onClick={() => setActiveTab('orders')}
-                        className={`px-6 py-2 rounded-lg ${
-                            activeTab === 'orders'
+                        className={`px-6 py-2 rounded-lg ${activeTab === 'orders'
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-white shadow'
-                        }`}
+                            }`}
                     >
                         Orders Management
                     </button>
                     <button
                         onClick={() => setActiveTab('roadIssues')}
-                        className={`px-6 py-2 rounded-lg ${
-                            activeTab === 'roadIssues'
+                        className={`px-6 py-2 rounded-lg ${activeTab === 'roadIssues'
                                 ? 'bg-red-600 text-white'
                                 : 'bg-white shadow'
-                        }`}
+                            }`}
                     >
                         Road Issues ({stats.unresolvedRoadIssues})
                     </button>
