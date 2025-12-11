@@ -8,12 +8,10 @@ export default function SellerSidebar({ active }) {
   const { logout } = useAuth();
 
   const menu = [
-    { label: "Dashboard", key: "dashboard", path: "/seller/dashboard", icon: <FiHome /> },
-    { label: "Shipments", key: "shipments", path: "/seller/shipments", icon: <FiPackage /> },
-    { label: "Create Shipment", key: "create", path: "/seller/create-shipment", icon: <FiPlusCircle /> },
-    { label: "Orders", key: "orders", path: "/seller/senderorders", icon: <FiList /> },
-    { label: "Place Order", key: "placeorder", path: "/seller/placeorder", icon: <FiPlusCircle /> },
-    { label: "Profile", key: "profile", path: "/seller/sellerprofile", icon: <FiUser /> },
+    { label: "Dashboard", key: "dashboard", path: "/seller/dashboard",  },
+    { label: "Shipments", key: "shipments", path: "/seller/shipments", },
+    { label: "Create Shipment", key: "create", path: "/seller/create-shipment",},
+    { label: "Profile", key: "profile", path: "/seller/sellerprofile", },
   ];
 
   return (

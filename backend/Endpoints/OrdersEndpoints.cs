@@ -432,6 +432,13 @@ public static class OrdersEndpoints
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_ADMIN });
 
+        group.MapGet("/my-orders/{id}", async (int id, AppDbContext db) =>
+        {
+            var order = await db.Orders.FirstAsync((ord) => ord.Id == id);
+            if (order == null) return Results.NotFound("Id not found");
+            return Results.Ok(order);
+        });
+
         static double Haversine(double lat1, double lon1, double lat2, double lon2)
         {
             const double R = 6371;
