@@ -1,10 +1,16 @@
 import { useState } from 'react';
+import api from '../../services/api';
 
 function Availability() {
     const [availabilityText, setAvailabilityText] = useState('');
     const [parsedAvailability, setParsedAvailability] = useState(null);
 
     const handleAnalyze = async () => {
+        // In a real app, we would call the backend to analyze this text with Gemini
+        // For now, we'll simulate a response or use a simple regex/logic if backend isn't ready
+        // But since we have GeminiService, let's assume we can send it there.
+        // However, for this prototype, I'll just mock the parsing to show UI flow.
+
         // Mock parsing
         setParsedAvailability({
             date: "2025-12-06",
@@ -13,6 +19,7 @@ function Availability() {
             priority: "high"
         });
 
+        // TODO: Connect to backend Gemini endpoint
     };
 
     const handleSave = async () => {

@@ -84,8 +84,7 @@ const WarehouseDashboard = () => {
                         <option value="">-- Select a Warehouse --</option>
                         {warehouses.map(warehouse => (
                             <option key={warehouse.id} value={warehouse.id}>
-                                {warehouse.warehouseName} - {warehouse.city} ({warehouse.pincode})
-
+                                {warehouse.name} - {warehouse.city} ({warehouse.pincode})
                             </option>
                         ))}
                     </select>

@@ -84,8 +84,9 @@ public static class AuthEndpoints
 
     var claims = new[]
     {
+        new Claim("id", user.UserId.ToString()),                     // primary claim
+        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()), // backup claim (sub)
         new Claim(ClaimTypes.Email, user.UserEmail),
-        new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
         new Claim(ClaimTypes.Role, user.UserRole)
     };
 

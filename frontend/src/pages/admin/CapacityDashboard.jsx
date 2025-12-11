@@ -7,12 +7,6 @@ const CapacityDashboard = () => {
     const [capacities, setCapacities] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchCapacities();
-        const interval = setInterval(fetchCapacities, 30000); // Refresh every 30s
-        return () => clearInterval(interval);
-    }, []);
-
     const fetchCapacities = async () => {
         try {
             const res = await api.get('/warehouse/capacity/all');
@@ -22,6 +16,14 @@ const CapacityDashboard = () => {
             console.error('Error fetching capacities:', error);
         }
     };
+    useEffect(() => {
+        (async () => {
+            await fetchCapacities();
+        })();
+        const interval = setInterval(fetchCapacities, 30000); // Refresh every 30s
+        return () => clearInterval(interval);
+    }, []);
+
 
     const getStatusColor = (status) => {
         const colors = {

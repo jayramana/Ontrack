@@ -25,9 +25,6 @@ public class User
     [ForeignKey("AssignedWarehouseId")]
     public Warehouse? AssignedWarehouse { get; set; }
 
-    public ICollection<Address> Addresses { get; set; } = null!;
-    public Seller? Seller { get; set; }
-    public Driver? Driver { get; set; }
 
 }
 

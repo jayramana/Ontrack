@@ -60,9 +60,14 @@ builder.Services.AddScoped<DriverRouteOptimizationService>();
 
 builder.Services.AddHttpClient<GeminiService>();
 builder.Services.AddHttpClient<GeocodingService>();
+builder.Services.AddHttpClient<OpenRouteServiceClient>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
+
 builder.Services.AddScoped<GeofenceService>();
 var app = builder.Build();
 
@@ -92,10 +97,12 @@ app.MapDriverEndpoints();
 app.MapOrdersEndpoints();
 app.MapWarehouseEndpoints();
 app.MapGeofenceEndpoints();
+app.MapRoadIssueEndpoints();
 
 
 app.MapHub<GeofenceHub>("/geofencehub");
 app.MapHub<EtaHub>("/etahub");
+app.MapHub<Backend.Hubs.LogisticsHub>("/hubs/logistics");
 
 
 app.Run();

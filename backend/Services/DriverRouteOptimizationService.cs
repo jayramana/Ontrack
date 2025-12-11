@@ -13,18 +13,65 @@ namespace Backend.Services
             _context = context;
         }
 
-        /// <summary>
-        /// Get optimized route for driver based on priority and distance
-        /// Priority 1 (High) comes first, then Priority 2 (Normal), then Priority 3 (Rescheduled)
-        /// Within same priority, sort by nearest location
-        /// </summary>
+        public async Task<object> GenerateRouteForDriver(int driverId)
+        {
+            var orders = await _context.Orders
+                .Where(o => o.DriverId == driverId &&
+                    o.Status != "Delivered" &&
+                    o.Status != "Cancelled")
+                .ToListAsync();
+
+            // Filter valid coordinates
+            orders = orders.Where(HasValidCoordinates).ToList();
+
+            // 🔥 SORT BY AI PRIORITY FIRST, THEN FALLBACK TO STANDARD PRIORITY
+            orders = orders
+                .OrderByDescending(o => o.AiPriority ?? o.Priority)
+                .ThenBy(o => o.EstimatedDeliveryDate)
+                .ToList();
+
+            var routeStops = orders.Select((order, index) => new
+            {
+                sequence = index + 1,
+                orderId = order.Id,
+                trackingId = order.TrackingId,
+                receiverName = order.ReceiverName,
+                receiverAddress = order.ReceiverAddress,
+                pickupLat = order.PickupLatitude,
+                pickupLng = order.PickupLongitude,
+                deliveryLat = order.DeliveryLatitude,
+                deliveryLng = order.DeliveryLongitude,
+                priority = order.Priority,
+                aiPriority = order.AiPriority,
+                aiJustification = order.AiPriorityJustification,
+                estimatedDelivery = order.EstimatedDeliveryDate,
+                etaMinutes = (index + 1) * 20, // Dummy ETA
+                rescheduledAt = order.RescheduledAt,
+                rescheduleReason = order.RescheduleReason
+            });
+
+            return new
+            {
+                driverId = driverId,
+                updatedAt = DateTime.UtcNow,
+                totalStops = routeStops.Count(),
+                stops = routeStops
+            };
+        }
+
+        // OPTIMIZE ROUTE AFTER RESCHEDULE OR ROAD ISSUE
+        public async Task OptimizeRouteAfterReschedule(int driverId)
+        {
+            await RecalculateDriverRouteAsync(driverId);
+        }
+
+        // 🆕 FEATURE 2: RECALCULATE ROUTE AVOIDING ROAD ISSUES
         public async Task<List<Order>> GetOptimizedRouteForDriver(int driverId)
         {
             var driver = await _context.Users.FindAsync(driverId);
             if (driver == null)
                 return new List<Order>();
 
-            // Get all assigned orders for today that are not delivered
             var orders = await _context.Orders
                 .Where(o => o.DriverId == driverId)
                 .Where(o => o.Status != "Delivered" && o.Status != "Cancelled")
@@ -36,33 +83,57 @@ namespace Backend.Services
             if (!orders.Any())
                 return orders;
 
-            // Get driver's current location (or use first order's location as start)
+            // Get active road issues
+            var activeIssues = await _context.RoadIssues
+                .Where(r => r.Status == "Active")
+                .ToListAsync();
+
             double currentLat = driver.CurrentLatitude ?? orders.First().DeliveryLatitude;
             double currentLng = driver.CurrentLongitude ?? orders.First().DeliveryLongitude;
 
-            // Sort by Priority first (1, 2, 3), then by distance
-            var optimizedOrders = orders
-                .OrderBy(o => o.Priority)  // 1=High, 2=Normal, 3=Low/Rescheduled
+            // Filter out orders near road issues (within danger radius)
+            var safeOrders = orders.Where(order =>
+            {
+                foreach (var issue in activeIssues)
+                {
+                    double distance = CalculateDistance(
+                        issue.Latitude, issue.Longitude,
+                        order.DeliveryLatitude, order.DeliveryLongitude
+                    );
+
+                    // Danger radius based on severity
+                    double dangerRadius = issue.Severity switch
+                    {
+                        "Critical" => 5.0, // 5km
+                        "High" => 3.0,     // 3km
+                        "Medium" => 2.0,   // 2km
+                        _ => 1.0           // 1km
+                    };
+
+                    if (distance <= dangerRadius)
+                        return false; // Skip this order
+                }
+                return true;
+            }).ToList();
+
+            // Sort by AI Priority, then by delivery date, then by distance
+            var optimizedOrders = safeOrders
+                .OrderByDescending(o => o.AiPriority ?? o.Priority)
+                .ThenBy(o => o.EstimatedDeliveryDate)
                 .ThenBy(o => CalculateDistance(currentLat, currentLng, o.DeliveryLatitude, o.DeliveryLongitude))
                 .ToList();
 
             return optimizedOrders;
         }
 
-        /// <summary>
-        /// Recalculate route when order is rescheduled or priority changes
-        /// </summary>
         public async Task RecalculateDriverRouteAsync(int driverId)
         {
-            // This could trigger a SignalR notification to driver
-            var optimizedRoute = await GetOptimizedRouteForDriver(driverId);
-            // Future: Send notification to driver about route update
-            return;
+            await GetOptimizedRouteForDriver(driverId);
         }
 
         private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
         {
-            const double R = 6371; // Earth radius in km
+            const double R = 6371;
 
             var dLat = DegreesToRadians(lat2 - lat1);
             var dLon = DegreesToRadians(lon2 - lon1);
@@ -72,7 +143,17 @@ namespace Backend.Services
                     Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
 
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
             return R * c;
+        }
+
+        public bool HasValidCoordinates(Order o)
+        {
+            return 
+                o.DeliveryLatitude != 0 &&
+                o.DeliveryLongitude != 0 &&
+                !double.IsNaN(o.DeliveryLatitude) &&
+                !double.IsNaN(o.DeliveryLongitude);
         }
 
         private double DegreesToRadians(double degrees)

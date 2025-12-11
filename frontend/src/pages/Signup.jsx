@@ -68,19 +68,10 @@ const [formData, setFormData] = useState({
 
             if (response?.message === 'Registration successful') {
 
-                login(response);
-
-                if (response.role.toLowerCase() === 'customer') {
-                    navigate('/customer/dashboard');
-                } else if (response.role.toLowerCase() === 'driver') {
-                    navigate('/driver/dashboard');
-                } else if (response.role.toLowerCase() === 'seller') {
-                    navigate('/seller/dashboard');
-                }else if (response.role.toLowerCase() === 'admin') {
-                    navigate('/admin/dashboard');
-                }
-                 else {
-                    navigate('/login');
+                const loginResult = await login(formData.email, formData.password, formData.role);
+                
+                if (!loginResult.success) {
+                     setError('Registration successful, but auto-login failed: ' + loginResult.message);
                 }
 
             } else {

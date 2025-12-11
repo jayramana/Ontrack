@@ -6,6 +6,7 @@ using Backend.Domain.Entity;
 using Backend.Services;
 using System.Security.Claims;
 using Backend.DTO;
+using Backend.DTOs;
 
 public static class CustomerEndpoints
 {
@@ -72,7 +73,7 @@ public static class CustomerEndpoints
         // POST: api/customer/reschedule/{orderId}
         group.MapPost("/reschedule/{orderId}", async (
             int orderId,
-            RescheduleRequestDto request,
+            RescheduleDto request,
             AppDbContext context,
             DriverRouteOptimizationService routeService) =>
         {
@@ -97,38 +98,38 @@ public static class CustomerEndpoints
             });
         });
 
-        
-        group.MapGet("/orders/by-email", async (string email, AppDbContext context) =>
-        {
-            var customer = await context.Users
-                .Where(u => u.UserEmail == email && u.UserRole == "customer")
-                .FirstOrDefaultAsync();
+        group.MapGet("/orders/by-email/{email}", async (string email, AppDbContext context) =>
+{
+    var customer = await context.Users
+        .Where(u => u.UserEmail == email && u.UserRole == "customer")
+        .FirstOrDefaultAsync();
 
-            if (customer == null)
-            {
-                var ordersByReceiverEmail = await context.Orders
-                    .Where(o => o.ReceiverEmail == email)
-                    .Include(o => o.Driver)
-                    .Include(o => o.OriginWarehouse)
-                    .Include(o => o.DestinationWarehouse)
-                    .Include(o => o.CurrentWarehouse)
-                    .OrderByDescending(o => o.CreatedAt)
-                    .ToListAsync();
+    if (customer == null)
+    {
+        var ordersByReceiverEmail = await context.Orders
+            .Where(o => o.ReceiverEmail == email)
+            .Include(o => o.Driver)
+            .Include(o => o.OriginWarehouse)
+            .Include(o => o.DestinationWarehouse)
+            .Include(o => o.CurrentWarehouse)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
 
-                return Results.Ok(ordersByReceiverEmail);
-            }
+        return Results.Ok(ordersByReceiverEmail);
+    }
 
-            var orders = await context.Orders
-                .Where(o => o.CustomerId == customer.UserId)
-                .Include(o => o.Driver)
-                .Include(o => o.OriginWarehouse)
-                .Include(o => o.DestinationWarehouse)
-                .Include(o => o.CurrentWarehouse)
-                .OrderByDescending(o => o.CreatedAt)
-                .ToListAsync();
+    var orders = await context.Orders
+        .Where(o => o.CustomerId == customer.UserId)
+        .Include(o => o.Driver)
+        .Include(o => o.OriginWarehouse)
+        .Include(o => o.DestinationWarehouse)
+        .Include(o => o.CurrentWarehouse)
+        .OrderByDescending(o => o.CreatedAt)
+        .ToListAsync();
 
-            return Results.Ok(orders);
-        });
+    return Results.Ok(orders);
+});
+
 
         return group;
     }

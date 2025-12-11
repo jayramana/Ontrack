@@ -27,7 +27,6 @@ const TransportScheduler = () => {
             ]);
             setTransports(transportsRes.data);
             setWarehouses(warehousesRes.data);
-            console.log(warehousesRes);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -125,7 +124,7 @@ const TransportScheduler = () => {
                                 >
                                     <option value="">Select Origin</option>
                                     {warehouses.map(w => (
-                                        <option key={w.id} value={w.id}>{w.warehouseName}</option>
+                                        <option key={w.id} value={w.id}>{w.name}</option>
                                     ))}
                                 </select>
                             </div>

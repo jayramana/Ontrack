@@ -12,9 +12,6 @@ namespace Backend.Data
         }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<Address> Addresses { get; set; }
-        public DbSet<Seller> Sellers { get; set; }
-        public DbSet<Driver> Drivers { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<RouteStop> RouteStops { get; set; }
         public DbSet<RoadIssue> RoadIssues { get; set; }
@@ -88,96 +85,6 @@ namespace Backend.Data
                 entity.HasIndex(u => u.UserEmail).IsUnique();
             });
 
-            builder.Entity<Address>(entity =>
-            {
-                entity.ToTable("address_details");
-
-                entity.HasKey(a => a.AddrId);
-
-                entity.Property(a => a.AddressLine)
-                    .HasColumnName("address_line")
-                    .HasColumnType("varchar(300)")
-                    .IsRequired();
-
-                entity.Property(a => a.AddrCity)
-                    .HasColumnName("addr_city")
-                    .HasColumnType("varchar(100)")
-                    .IsRequired();
-
-                entity.Property(a => a.AddrState)
-                    .HasColumnName("addr_state")
-                    .HasColumnType("varchar(100)")
-                    .IsRequired();
-
-                entity.Property(a => a.AddrPostalCode)
-                    .HasColumnName("addr_postal_code")
-                    .HasColumnType("varchar(20)")
-                    .IsRequired();
-
-                entity.Property(a => a.AddrCountry)
-                    .HasColumnName("addr_country")
-                    .HasColumnType("varchar(100)")
-                    .IsRequired();
-
-                entity.HasOne(a => a.User)
-                    .WithMany(u => u.Addresses)
-                    .HasForeignKey(a => a.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            builder.Entity<Seller>(entity =>
-            {
-                entity.ToTable("seller_details");
-
-                entity.HasKey(s => s.SellerId);
-
-                entity.Property(s => s.CompanyName)
-                    .HasColumnName("company_name")
-                    .HasColumnType("varchar(150)")
-                    .IsRequired();
-
-                entity.Property(s => s.CompanyEmail)
-                    .HasColumnName("company_email")
-                    .HasColumnType("varchar(150)")
-                    .IsRequired();
-
-                entity.Property(s => s.CompanyPhone1)
-                    .HasColumnName("company_phone_1")
-                    .HasColumnType("varchar(20)")
-                    .IsRequired();
-
-                entity.Property(s => s.CompanyPhone2)
-                    .HasColumnName("company_phone_2")
-                    .HasColumnType("varchar(20)");
-
-                entity.HasOne(s => s.User)
-                    .WithOne(u => u.Seller)
-                    .HasForeignKey<Seller>(s => s.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            builder.Entity<Driver>(entity =>
-            {
-                entity.ToTable("driver_details");
-
-                entity.HasKey(d => d.DriverId);
-
-                entity.Property(d => d.DriverLicenseNumber)
-                    .HasColumnName("driver_license_number")
-                    .HasColumnType("varchar(50)")
-                    .IsRequired();
-
-                entity.Property(d => d.DriverLicenseExpiry)
-                    .HasColumnName("driver_license_expiry")
-                    .HasColumnType("date")
-                    .IsRequired();
-
-                entity.HasOne(d => d.User)
-                    .WithOne(u => u.Driver)
-                    .HasForeignKey<Driver>(d => d.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
-            });
-
             builder.Entity<Order>(entity =>
             {
                 entity.HasOne(o => o.OriginWarehouse)
@@ -202,6 +109,19 @@ namespace Backend.Data
                     .WithMany(w => w.AssignedUsers)
                     .HasForeignKey(u => u.AssignedWarehouseId)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            builder.Entity<RoadIssue>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.HasOne(r => r.Driver)
+                    .WithMany()
+                    .HasForeignKey(r => r.DriverId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => e.ReportedAt);
+                entity.HasIndex(e => e.IsResolved);   // Now VALID
             });
 
             builder.Entity<DriverLocation>(entity =>

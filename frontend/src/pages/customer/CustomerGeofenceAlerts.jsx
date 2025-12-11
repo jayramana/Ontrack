@@ -54,7 +54,7 @@ export default function CustomerGeofenceAlerts() {
                     };
                 }
              } catch (err) {
-                 statuses[gf.geofenceId] = { error: "Failed to check status" };
+                 statuses[gf.geofenceId] = { error: "Failed to check status" + err};
              }
           } else if (!order) {
               statuses[gf.geofenceId] = { error: "No active order found" };

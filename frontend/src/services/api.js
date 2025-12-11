@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5066/api';
+export const API_BASE_URL = 'http://localhost:5066/api';
 
 
 // Create axios instance
@@ -41,10 +41,10 @@ export const authAPI = {
 register: async (payload) => {
     try {
         const response = await api.post('/auth/register', {
-            UserFName: payload.firstName,
-            UserLName: payload.lastName,
-            PhonePrimary: payload.phone_primary,
-            PhoneSecondary: payload.phone_secondary,
+            UserFName: payload.userFName,
+            UserLName: payload.userLName,
+            PhonePrimary: payload.phonePrimary,
+            PhoneSecondary: payload.phoneSecondary,
             Email: payload.email,
             Password: payload.password,
             Role: payload.role
@@ -55,9 +55,6 @@ register: async (payload) => {
         throw error.response?.data?.message || 'Registration failed';
     }
 }
-
-
-,
 };
 
 export default api;
