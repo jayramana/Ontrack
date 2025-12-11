@@ -37,8 +37,8 @@ import CustomerQueries from "./pages/admin/CustomerQueries";
 import DeliveryInsights from "./pages/admin/DeliveryInsights";
 import LiveMap from "./pages/admin/LiveMap";
 import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
-import TransportScheduler from "./pages/admin/TransportScheduler";
-import CapacityDashboard from "./pages/admin/CapacityDashboard";
+//import TransportScheduler from "./pages/admin/TransportScheduler";
+//import CapacityDashboard from "./pages/admin/CapacityDashboard";
 
 // --- SELLER/SENDER PAGES ---
 import SellerDashboard from "./pages/seller/SellerDashboard";
@@ -178,7 +178,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
+            {/*<Route
               path="/admin/transports"
               element={
                 <ProtectedRoute requiredRole="admin">
@@ -193,7 +193,7 @@ function App() {
                   <CapacityDashboard />
                 </ProtectedRoute>
               }
-            />
+            />/*}
 
             {/* ---------------- SELLER ROUTES ---------------- */}
             <Route

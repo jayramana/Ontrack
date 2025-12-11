@@ -71,7 +71,7 @@ export default function ReportIssues() {
             </button>
           </div>
 
-          {/* RIGHT — ACTIVE ALERTS + ROUTES */}
+          {/* RIGHT — ALERTS + ROUTES */}
           <div className="space-y-6">
 
             {/* ACTIVE ALERTS */}
