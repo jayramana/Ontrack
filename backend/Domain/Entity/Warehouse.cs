@@ -31,6 +31,12 @@ namespace Backend.Domain.Entity
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        // Parcel counters (keeps basic stats)
+        public int ReceivedParcels { get; set; } = 0;      // Parcels received into this warehouse (incoming)
+        public int OutgoingParcels { get; set; } = 0;      // Parcels assigned to be sent out (collected)
+        public int CurrentParcels { get; set; } = 0;       // Parcels physically present
+
+        // Prevent JSON infinite loops
         [JsonIgnore]
         public ICollection<Order>? OriginOrders { get; set; }
 
@@ -44,4 +50,3 @@ namespace Backend.Domain.Entity
         public ICollection<User>? AssignedUsers { get; set; }
     }
 }
-

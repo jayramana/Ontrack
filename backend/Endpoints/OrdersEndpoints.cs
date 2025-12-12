@@ -19,29 +19,57 @@ public static class OrdersEndpoints
         const string ROLE_SENDER = "seller";
         const string ROLE_ADMIN = "admin";
 
-        const string STATUS_PENDING_ASSIGNMENT = "Pending";
+        const string STATUS_PENDING_ASSIGNMENT = "Pending" ;
+        const string STATUS_ORIGIN_ASSIGNMENT = "AtOriginWarehouse";
         const string STATUS_ASSIGNED = "Assigned";
         const string STATUS_APPROVED = "Approved";
 
         group.MapPost("/", async (
             HttpContext http,
-            Order order,
+            CreateOrderDto dto,
             AppDbContext context,
-            IEmailService emailService
+            IEmailService emailService,
+            WarehouseAssignmentService warehouseService
         ) =>
         {
             try
             {
-                if (order.ScheduledDate.HasValue)
-                    order.ScheduledDate = DateTime.SpecifyKind(order.ScheduledDate.Value, DateTimeKind.Utc);
+                var order = new Order
+                {
+                    ReceiverName = dto.ReceiverName,
+                    ReceiverAddress = dto.ReceiverAddress,
+                    ReceiverPhone = dto.ReceiverPhone,
+                    ReceiverEmail = dto.ReceiverEmail,
+                    ReceiverPincode = dto.ReceiverPincode,
+                    PickupAddress = dto.PickupAddress,
+                    PickupPincode = dto.PickupPincode,
+                    DeliveryPincode = dto.DeliveryPincode,
+                    ParcelSize = dto.ParcelSize,
+                    Weight = dto.Weight,
+                    Price = dto.Price,
+                    DeliveryType = dto.DeliveryType,
+                    DeliveryNotes = dto.DeliveryNotes,
+                    SenderName = dto.SenderName,
+                    SenderPhone = dto.SenderPhone,
+                    SenderEmail = dto.SenderEmail,
+                    PickupLatitude = dto.PickupLatitude,
+                    PickupLongitude = dto.PickupLongitude,
+                    DeliveryLatitude = dto.DeliveryLatitude,
+                    DeliveryLongitude = dto.DeliveryLongitude,
+                    ScheduledDate = dto.ScheduledDate.HasValue 
+                        ? DateTime.SpecifyKind(dto.ScheduledDate.Value, DateTimeKind.Utc) 
+                        : null,
+                    ScheduledTimeSlot = dto.ScheduledTimeSlot,
+                    
+                    // Metadata
+                    TrackingId = Guid.NewGuid().ToString("N")[..10].ToUpper(),
+                    Status = "AtOriginWarehouse", // Changed from Pending
+                    CreatedAt = DateTime.UtcNow
+                };
 
                 var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
                 var userId = int.Parse(userIdClaim?.Value ?? "0");
                 order.SenderId = userId;
-
-                order.TrackingId = Guid.NewGuid().ToString("N")[..10].ToUpper();
-                order.Status = STATUS_PENDING_ASSIGNMENT;
-                order.CreatedAt = DateTime.UtcNow;
 
                 if (!string.IsNullOrWhiteSpace(order.ReceiverEmail))
                 {
@@ -52,8 +80,53 @@ public static class OrdersEndpoints
                         order.CustomerId = customer.UserId;
                 }
 
+                // --- WAREHOUSE LOGIC ---
+                // Helper to extract pincode from address string
+                string? TryExtractPincode(string addr)
+                {
+                    if (string.IsNullOrWhiteSpace(addr)) return null;
+                    var tokens = addr.Split(new[] { ' ', ',', '-' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach(var t in tokens.Reverse())
+                    {
+                        if (t.Length >= 5 && t.All(char.IsDigit)) return t;
+                    }
+                    return null;
+                }
+
+                var pickupPincode = !string.IsNullOrWhiteSpace(order.PickupPincode)
+                    ? order.PickupPincode
+                    : TryExtractPincode(order.PickupAddress);
+
+                var deliveryPincode = !string.IsNullOrWhiteSpace(order.DeliveryPincode)
+                    ? order.DeliveryPincode
+                    : !string.IsNullOrWhiteSpace(order.ReceiverPincode) ? order.ReceiverPincode
+                    : TryExtractPincode(order.ReceiverAddress);
+
+                Warehouse? originWarehouse = null;
+                Warehouse? destinationWarehouse = null;
+
+                if (!string.IsNullOrWhiteSpace(pickupPincode))
+                    originWarehouse = await warehouseService.FindNearestWarehouseByPincodeAsync(pickupPincode);
+
+                if (!string.IsNullOrWhiteSpace(deliveryPincode))
+                    destinationWarehouse = await warehouseService.FindNearestWarehouseByPincodeAsync(deliveryPincode);
+
+                // Fallback: Pick first available warehouse
+                if (originWarehouse == null)
+                    originWarehouse = await context.Warehouses.FirstOrDefaultAsync();
+
+                if (destinationWarehouse == null)
+                    destinationWarehouse = await context.Warehouses.FirstOrDefaultAsync();
+
+                order.OriginWarehouseId = originWarehouse?.Id;
+                order.DestinationWarehouseId = destinationWarehouse?.Id;
+                order.CurrentWarehouseId = originWarehouse?.Id;
+
                 context.Orders.Add(order);
                 await context.SaveChangesAsync();
+
+                // Update counters
+                await warehouseService.AssignOrderToWarehousesAsync(order);
 
                 await emailService.SendOrderEmailsAsync(order);
 
@@ -70,6 +143,8 @@ public static class OrdersEndpoints
             }
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_SENDER });
+
+
 
         group.MapPost("/{id}/reschedule", async (
             int id,
@@ -240,7 +315,7 @@ public static class OrdersEndpoints
         group.MapGet("/pending", async (AppDbContext context) =>
         {
             var orders = await context.Orders
-                .Where(o => o.Status == STATUS_PENDING_ASSIGNMENT)
+                .Where(o => o.Status == STATUS_PENDING_ASSIGNMENT || o.Status == STATUS_ORIGIN_ASSIGNMENT)
                 .Include(o => o.Driver)
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.CurrentWarehouse)
