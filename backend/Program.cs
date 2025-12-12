@@ -66,6 +66,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddHttpClient();
 
 
 
@@ -87,6 +88,7 @@ app.MapGet("/debug/hub-methods", () =>
 });
 
 
+app.MapControllers(); // ✅ This is what you need
 
 
 // Use CORS
