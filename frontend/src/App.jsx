@@ -17,8 +17,6 @@ import Signup from "./pages/Signup";
 
 // --- CUSTOMER PAGES ---
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
-import DeliveryConfirm from "./pages/customer/DeliveryConfirm";
-import IDVerification from "./pages/customer/IDVerification";
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
 import Profile from "./pages/customer/Profile";
@@ -26,7 +24,6 @@ import Availability from "./pages/customer/Availability";
 
 // --- DRIVER PAGES ---
 import DriverDashboard from "./pages/driver/DriverDashboard";
-import ConfirmDelivery from "./pages/driver/ConfirmDelivery";
 import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
 import DriverRoutePage from "./pages/driver/DriverRoutePage";
@@ -42,7 +39,6 @@ import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
 
 // --- SELLER/SENDER PAGES ---
 import SellerDashboard from "./pages/seller/SellerDashboard";
-import CreateShipment from "./pages/seller/CreateShipment";
 import SellerProfile from "./pages/seller/SellerProfile";
 import ShipmentList from "./pages/seller/ShipmentList";
 import PlaceOrder from "./pages/seller/PlaceOrder";
@@ -63,23 +59,8 @@ function App() {
             <Route path="/signup" element={<Signup />} />
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
-            <Route
-              path="/customer/deliveryconfirm"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <DeliveryConfirm />
-                </ProtectedRoute>
-              }
-            />
 
-            <Route
-              path="/customer/idverification"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <IDVerification />
-                </ProtectedRoute>
-              }
-            />
+
 
             <Route
               path="/customer/tracking"
@@ -127,7 +108,6 @@ function App() {
             />
 
             {/* ---------------- DRIVER ROUTES ---------------- */}
-            <Route path="/driver/confirm" element={<ConfirmDelivery />} />
 
             <Route path="/driver/report-issue" element={<ReportRoadIssue />} />
             <Route path="/driver/issues" element={<ReportRoadIssue />} />

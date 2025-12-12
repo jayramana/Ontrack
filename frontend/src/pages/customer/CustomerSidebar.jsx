@@ -9,7 +9,6 @@ export default function CustomerSidebar({ active }) {
     { label: "Dashboard", path: "/customer/dashboard", key: "dashboard" },
     { label: "Live Tracking", path: "/customer/tracking", key: "tracking" },
     { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
-    { label: "ID Verification", path: "/customer/idverification", key: "id" },
     { label: "Delivery Confirm", path: "/customer/deliveryconfirm", key: "confirm" },
     { label: "Set Availability", path: "/customer/availability", key: "availability" },
     { label: "Profile", path: "/customer/profile", key: "profile" },

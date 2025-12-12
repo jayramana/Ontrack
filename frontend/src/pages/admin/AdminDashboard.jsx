@@ -161,6 +161,53 @@ export default function AdminDashboard() {
     return "bg-blue-600 text-white";
   };
 
+  const handleAssign = async (orderId) => {
+    const driverId = selectedDrivers[orderId];
+    if (!driverId) {
+      alert("Please select a driver first.");
+      return;
+    }
+
+    try {
+      await api.post(`/admin/assign-driver/${orderId}/${driverId}`);
+      alert("Driver assigned successfully!");
+
+      setPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+      
+      const assignedRes = await api.get("/orders/assigned");
+      setAssignedOrders(assignedRes.data);
+      
+      fetchDashboardData();
+
+    } catch (e) {
+      console.error("Assign error", e);
+      alert("Failed to assign driver. " + (e.response?.data?.message || ""));
+    }
+  };
+
+  const broadcastRoadIssue = async (issueId) => {
+    try {
+      await api.post(`/admin/broadcast-road-issue/${issueId}`);
+      alert("Road issue broadcasted to all active drivers.");
+    } catch (e) {
+      console.error("Broadcast error", e);
+      alert("Failed to broadcast issue.");
+    }
+  };
+
+  const resolveRoadIssue = async (issueId) => {
+    try {
+      await api.post(`/roadissue/${issueId}/resolve`);
+      alert("Road issue marked as resolved.");
+      
+      fetchRoadIssues();
+      fetchDashboardData();
+    } catch (e) {
+      console.error("Resolve error", e);
+      alert("Failed to resolve issue.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-[#f8f4ef]">
       <AdminSidebar active="dashboard" />
