@@ -9,9 +9,9 @@ export default function SellerSidebar({ active }) {
 
   const menu = [
     { label: "Dashboard", key: "dashboard", path: "/seller/dashboard",  },
-    { label: "Shipments", key: "shipments", path: "/seller/shipments", },
+    { label: "My Orders", key: "orders", path: "/sender/orders", },
     { label: "Create Shipment", key: "create", path: "/seller/create-shipment",},
-    { label: "Profile", key: "profile", path: "/seller/sellerprofile", },
+    { label: "Profile", key: "profile", path: "/seller/seller-profile", },
   ];
 
   return (

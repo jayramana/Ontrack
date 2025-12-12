@@ -110,7 +110,7 @@ function PlaceOrder() {
       // Send to server
       await api.post("/orders", payload);
       alert("Order placed successfully!");
-      navigate("/sender/dashboard");
+      navigate("/seller/dashboard");
     } catch (error) {
       console.error("Error placing order:", error);
       const errorMessage =

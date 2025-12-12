@@ -76,7 +76,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const hasRole = (role) => {
-        return user?.role === role;
+        console.log(`AuthContext check: UserRole=${user?.role}, Required=${role}`);
+        if (!user || !user.role) return false;
+        return user.role.toLowerCase() === role.toLowerCase();
     };
 
     const value = {

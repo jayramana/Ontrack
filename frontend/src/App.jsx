@@ -208,7 +208,7 @@ function App() {
               path="/seller/create-shipment"
               element={
                 <ProtectedRoute requiredRole="seller">
-                  <CreateShipment />
+                  <PlaceOrder />
                 </ProtectedRoute>
               }
             />
@@ -246,12 +246,17 @@ function App() {
             />
 
             {/* ---------------- FALLBACK ROUTE ---------------- */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<FallbackRedirect />} />
           </Routes>
         </GeofenceProvider>
       </AuthProvider>
     </Router>
   );
+}
+
+function FallbackRedirect() {
+    console.log("Fallback route hit. No matching route found. Redirecting to login...");
+    return <Navigate to="/login" replace />;
 }
 
 export default App;

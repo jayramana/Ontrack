@@ -45,7 +45,7 @@ function SenderDashboard() {
                             <h2 className="text-xl font-semibold text-[#351c15] mb-4">Quick Actions</h2>
 
                             <Link
-                                to="/seller/placeorder"
+                                to="/seller/create-shipment"
                                 className="block w-full bg-[#ffb500] text-[#351c15] font-semibold text-center p-3 rounded-lg 
                                 hover:bg-[#e6a300] transition mb-4"
                             >
@@ -53,7 +53,7 @@ function SenderDashboard() {
                             </Link>
 
                             <Link
-                                to="/seller/senderorders"
+                                to="/sender/orders"
                                 className="block w-full bg-[#351c15] text-white font-semibold text-center p-3 rounded-lg 
                                 hover:bg-[#2b160f] transition"
                             >
