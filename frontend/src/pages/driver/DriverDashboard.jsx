@@ -1,3 +1,4 @@
+// UPS THEMED DRIVER DASHBOARD
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import React from "react";
@@ -12,13 +13,13 @@ export default function DriverDashboard() {
   const { user, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [optimizedRoute, setOptimizedRoute] = useState([]);
-  const [route, setRoute] = useState(null); // updated route from server
+  const [route, setRoute] = useState(null);
   const [warehouse, setWarehouse] = useState(null);
   const [locationSharing, setLocationSharing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("today");
 
-  // Alerts / UI from first block
+  // Alerts
   const [showRescheduleAlert, setShowRescheduleAlert] = useState(false);
   const [rescheduleInfo, setRescheduleInfo] = useState(null);
   const [showRoadIssueAlert, setShowRoadIssueAlert] = useState(false);
@@ -27,18 +28,16 @@ export default function DriverDashboard() {
   // Modal
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
-
   const openOrderDetails = (id) => {
     setSelectedOrderId(id);
     setShowOrderModal(true);
   };
 
-  // SignalR connection ref (kept in state so cleanup can use it)
   const [connection, setConnection] = useState(null);
 
-  // ---------------------------
-  // SignalR setup (from first block)
-  // ---------------------------
+  // ---------------------------------------------
+  // SIGNALR SETUP
+  // ---------------------------------------------
   const setupSignalR = async () => {
     if (!user?.userId) return;
 
@@ -51,34 +50,24 @@ export default function DriverDashboard() {
         .build();
 
       conn.on("ReceiveRouteUpdate", (routeData) => {
-        console.log("📡 New Route Update:", routeData);
         setRoute(routeData);
         setOptimizedRoute(routeData.stops || []);
       });
 
       conn.on("OrderRescheduled", (data) => {
-        console.log("🔔 Order Rescheduled:", data);
         setRescheduleInfo(data);
         setShowRescheduleAlert(true);
         fetchTodaysOrders();
       });
 
       conn.on("RoadIssueAlert", (data) => {
-        console.log("⚠️ Road Issue Alert:", data);
         setRoadIssueInfo(data);
         setShowRoadIssueAlert(true);
-        // route updates expected via ReceiveRouteUpdate
       });
 
       await conn.start();
-      console.log("🟢 Driver connected to SignalR");
-
-      // Join groups (use numeric id)
-      if (user?.userId) {
-        await conn.invoke("JoinDriverRouteGroup", Number(user.userId));
-        await conn.invoke("JoinDriverGroup", Number(user.userId));
-      }
-
+      await conn.invoke("JoinDriverRouteGroup", Number(user.userId));
+      await conn.invoke("JoinDriverGroup", Number(user.userId));
       setConnection(conn);
     } catch (error) {
       console.error("SignalR Error:", error);
@@ -87,26 +76,19 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     setupSignalR();
-    return () => {
-      if (connection) {
-        connection.stop().catch(() => {});
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => connection && connection.stop();
   }, [user?.userId]);
 
-  // ---------------------------
-  // REST API calls
-  // ---------------------------
+  // ---------------------------------------------
+  // DATA FETCHING
+  // ---------------------------------------------
   const fetchTodaysOrders = async () => {
     try {
       const response = await api.get("/driver/orders/today/full");
       setOrders(response.data || []);
-      if (response.data?.length > 0 && response.data[0].currentWarehouse) {
+      if (response.data?.length > 0) {
         setWarehouse(response.data[0].currentWarehouse);
       }
-    } catch (err) {
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -116,174 +98,116 @@ export default function DriverDashboard() {
     try {
       const response = await api.get("/driver/route/optimized");
       setOptimizedRoute(response.data || []);
-    } catch (error) {
-      console.error("Error fetching optimized route:", error);
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
     fetchTodaysOrders();
     fetchOptimizedRoute();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Live location sharing
+  // ---------------------------------------------
+  // LOCATION SHARING
+  // ---------------------------------------------
   useEffect(() => {
-    let locationInterval;
+    let interval;
     if (locationSharing) {
-      locationInterval = setInterval(shareLocation, 10000);
+      interval = setInterval(shareLocation, 10000);
     }
-    return () => {
-      if (locationInterval) clearInterval(locationInterval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => clearInterval(interval);
   }, [locationSharing]);
 
   const shareLocation = async () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          await api.post("/driver/location", {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            speed: position.coords.speed || 0,
-            heading: position.coords.heading || 0,
-          });
-        } catch (error) {
-          console.error("Error sharing location:", error);
-        }
+      async (pos) => {
+        await api.post("/driver/location", {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
       },
-      (err) => {
-        console.warn("Geolocation error:", err);
-      },
-      { enableHighAccuracy: true }
+      () => {}
     );
   };
 
+  // ---------------------------------------------
+  // ORDER ACTIONS
+  // ---------------------------------------------
   const markDelivered = async (id) => {
     try {
       await api.post(`/driver/mark-delivered/${id}`);
-      await fetchTodaysOrders();
-      await fetchOptimizedRoute();
-      alert("✅ Order Delivered!");
-    } catch (error) {
-      console.error("Error marking delivered:", error);
-      alert("Failed to mark delivered");
-    }
+      fetchTodaysOrders();
+      fetchOptimizedRoute();
+    } catch {}
   };
 
-  const markAttempted = async (orderId) => {
-    const reason = prompt("Reason for failed delivery:");
+  const markAttempted = async (id) => {
+    const reason = prompt("Reason for failed attempt:");
     if (!reason) return;
     try {
-      await api.post(`/driver/mark-attempted/${orderId}`, { reason });
-      await fetchTodaysOrders();
-      await fetchOptimizedRoute();
-      alert("⚠️ Attempt recorded");
-    } catch (error) {
-      console.error("Error marking attempted:", error);
-      alert("Failed to record attempt");
-    }
+      await api.post(`/driver/mark-attempted/${id}`, { reason });
+      fetchTodaysOrders();
+      fetchOptimizedRoute();
+    } catch {}
   };
 
-  // Report issue (navigates to page or prompts, included from first block)
-  const reportIssue = () => {
-    navigate("/driver/report-issue");
+  // ---------------------------------------------
+  // UPS BADGES
+  // ---------------------------------------------
+  const getPriorityBadge = (p) => {
+    const styles = {
+      1: "bg-red-100 text-red-800",
+      2: "bg-[#f9b400]/30 text-[#351c15]",
+      3: "bg-gray-200 text-gray-700",
+    };
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-bold ${styles[p]}`}>
+        {p === 1 ? "High Priority" : p === 2 ? "Normal" : "Rescheduled"}
+      </span>
+    );
   };
 
-  const getPriorityBadge = (priority) => {
-    switch (priority) {
-      case 1:
-        return (
-          <span className="px-2 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-full">
-            High Priority
-          </span>
-        );
-      case 2:
-        return (
-          <span className="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
-            Normal
-          </span>
-        );
-      case 3:
-        return (
-          <span className="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800 rounded-full">
-            Low/Rescheduled
-          </span>
-        );
-      default:
-        return null;
-    }
-  };
-
+  // ---------------------------------------------
+  // ORDER CARD (UPS THEME)
+  // ---------------------------------------------
   const renderOrder = (order, idx) => (
     <div
       key={order.id}
-      className="bg-white rounded-lg shadow p-4 hover:shadow-md transition"
+      className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6 shadow hover:shadow-md transition cursor-pointer"
       onClick={() => openOrderDetails(order.id)}
     >
       {/* Header */}
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between mb-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg font-semibold text-gray-900">#{idx + 1}</span>
-            {getPriorityBadge(order.priority)}
-          </div>
-          <p className="text-sm text-gray-600">Order ID: {order.id}</p>
+          <h3 className="font-bold text-[#351c15] text-lg">Stop #{idx + 1}</h3>
+          {getPriorityBadge(order.priority)}
         </div>
 
         <span
-          className={`px-3 py-1 rounded-full text-sm font-medium ${
+          className={`px-3 py-1 rounded-full text-xs font-semibold ${
             order.status === "Delivered"
               ? "bg-green-100 text-green-700"
-              : order.status === "InTransit"
-              ? "bg-blue-100 text-blue-700"
-              : "bg-yellow-100 text-yellow-700"
+              : "bg-[#f9b400]/20 text-[#351c15]"
           }`}
         >
           {order.status}
         </span>
       </div>
 
-      {/* Content */}
-      <div className="space-y-3 mb-4">
-        <div>
-          <p className="text-xs text-gray-500">Receiver</p>
-          <p className="font-medium text-[#351c15]">{order.receiverName}</p>
-          <p className="text-sm text-gray-600">{order.receiverPhone}</p>
-        </div>
+      <p className="text-sm text-[#6f4e37] mb-1">Receiver</p>
+      <p className="font-semibold text-[#351c15]">{order.receiverName}</p>
 
-        <div>
-          <p className="text-xs text-gray-500">Delivery Address</p>
-          <p className="text-sm">{order.receiverAddress}</p>
-        </div>
-
-        {order.destinationWarehouse && (
-          <div>
-            <p className="text-xs text-gray-500">Warehouse</p>
-            <p className="text-sm font-medium text-blue-600">
-              {order.destinationWarehouse.name}
-            </p>
-            <p className="text-xs text-gray-500">{order.destinationWarehouse.city}</p>
-          </div>
-        )}
-        {order.deliveryNotes && (
-          <div>
-            <p className="text-xs text-gray-500">Notes</p>
-            <p className="text-sm">{order.deliveryNotes}</p>
-          </div>
-        )}
-      </div>
+      <p className="text-sm text-[#6f4e37] mt-3">Address</p>
+      <p className="text-sm">{order.receiverAddress}</p>
 
       {/* Buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 mt-5">
         <button
           onClick={(e) => {
             e.stopPropagation();
             markDelivered(order.id);
           }}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          className="flex-1 bg-green-700 hover:bg-green-800 text-white py-2 rounded-lg"
         >
           Delivered
         </button>
@@ -293,7 +217,7 @@ export default function DriverDashboard() {
             e.stopPropagation();
             markAttempted(order.id);
           }}
-          className="flex-1 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+          className="flex-1 bg-[#f9b400] hover:bg-[#e0a200] text-[#351c15] py-2 rounded-lg"
         >
           Attempted
         </button>
@@ -301,168 +225,158 @@ export default function DriverDashboard() {
     </div>
   );
 
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-  }
+  if (loading)
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
 
   return (
-    <div className="min-h-screen flex bg-[#f8f4ef]">
+    <div className="min-h-screen flex bg-[#f7f3ef]">
       <DriverSidebar active="dashboard" />
-      <div className="w-[100%] flex flex-col">
-        <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Welcome back, {user?.first_name} {user?.last_name}!
+
+      <div className="flex-1">
+        {/* HEADER */}
+        <header className="bg-[#fff8e7] border-b border-[#e6ddc5] shadow">
+          <div className="max-w-7xl mx-auto px-6 py-5 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-[#351c15]">
+                Driver Dashboard
+              </h1>
+              <p className="text-[#6f4e37]">
+                Welcome, {user?.first_name} {user?.last_name}
+              </p>
+
+              {warehouse && (
+                <p className="text-[#f9b400] font-semibold">
+                  📍 Assigned Warehouse: {warehouse.name}, {warehouse.city}
                 </p>
-                {warehouse && (
-                  <p className="text-sm text-blue-600 font-medium mt-1">
-                    📍 Assigned to: {warehouse.warehouseName || warehouse.name}, {warehouse.city}
-                  </p>
-                )}
-              </div>
-              <button onClick={logout} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200">
-                Logout
-              </button>
+              )}
             </div>
+
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-[#351c15] hover:bg-[#2b160f] text-white rounded-lg shadow"
+            >
+              Logout
+            </button>
           </div>
         </header>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Reschedule alert */}
-          {showRescheduleAlert && rescheduleInfo && (
-            <div className="bg-orange-100 border-l-4 border-orange-500 p-4 mb-6 rounded shadow">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-orange-800 mb-2">🔔 Order Rescheduled</h3>
-                  <p className="text-sm text-orange-700">Order #{rescheduleInfo.orderId} ({rescheduleInfo.trackingId})</p>
-                  <p className="text-sm text-orange-700">Customer: {rescheduleInfo.customerName}</p>
-                  <p className="text-sm text-orange-700">New Date: {new Date(rescheduleInfo.newDate).toLocaleString()}</p>
-                  {rescheduleInfo.aiPriority && <p className="text-sm text-orange-700 font-bold">AI Priority: {rescheduleInfo.aiPriority}/5</p>}
-                  {rescheduleInfo.reason && <p className="text-sm text-orange-700 mt-1">Reason: {rescheduleInfo.reason}</p>}
-                </div>
-                <button onClick={() => setShowRescheduleAlert(false)} className="text-orange-800 hover:text-orange-900 font-bold">✕</button>
+        <div className="max-w-7xl mx-auto p-6">
+          {/* Alerts */}
+          {showRescheduleAlert && (
+            <div className="bg-[#f9b400]/20 border-l-4 border-[#f9b400] p-4 rounded mb-6">
+              <h3 className="font-bold text-[#351c15]">Order Rescheduled</h3>
+              <button
+                className="float-right font-bold text-[#351c15]"
+                onClick={() => setShowRescheduleAlert(false)}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {showRoadIssueAlert && (
+            <div className="bg-red-100 border-l-4 border-red-500 p-4 rounded mb-6">
+              <h3 className="font-bold text-red-800">Road Issue Alert</h3>
+              <button
+                className="float-right font-bold text-red-800"
+                onClick={() => setShowRoadIssueAlert(false)}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            {[
+              ["Today's Deliveries", orders.length],
+              ["High Priority", orders.filter((o) => o.priority === 1).length],
+              ["Normal", orders.filter((o) => o.priority === 2).length],
+              ["Rescheduled", orders.filter((o) => o.priority === 3).length],
+            ].map(([label, count], i) => (
+              <div
+                key={i}
+                className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6 shadow"
+              >
+                <p className="text-[#6f4e37]">{label}</p>
+                <p className="text-3xl font-bold text-[#351c15]">{count}</p>
               </div>
-            </div>
-          )}
-
-          {/* Road issue alert */}
-          {showRoadIssueAlert && roadIssueInfo && (
-            <div className="bg-red-100 border-l-4 border-red-500 p-4 mb-6 rounded shadow">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-red-800 mb-2">⚠️ Road Issue Alert</h3>
-                  <p className="text-sm text-red-700"><strong>Type:</strong> {roadIssueInfo.issueType}</p>
-                  <p className="text-sm text-red-700"><strong>Severity:</strong> {roadIssueInfo.severity}</p>
-                  <p className="text-sm text-red-700">{roadIssueInfo.description}</p>
-                  <p className="text-sm text-red-700 mt-1">Reported by: {roadIssueInfo.reportedBy || roadIssueInfo.driverName}</p>
-                  <p className="text-sm text-red-600 font-semibold mt-2">🔄 Your route has been automatically re-optimized</p>
-                </div>
-                <button onClick={() => setShowRoadIssueAlert(false)} className="text-red-800 hover:text-red-900 font-bold">✕</button>
-              </div>
-            </div>
-          )}
-
-          {route && (
-            <div className="bg-blue-50 border p-4 rounded-lg shadow mb-6">
-              <h2 className="text-xl font-bold mb-3">🚚 Updated Route</h2>
-              {(route.stops || []).map((stop, i) => (
-                <div key={i} className="py-2 border-b">
-                  <p className="font-semibold">Stop {stop.sequence}</p>
-                  <p>Order #{stop.orderId}</p>
-                  {stop.aiPriority && <p className="text-sm text-blue-700 font-bold">AI Priority: {stop.aiPriority}/5</p>}
-                  <p>ETA: {stop.etaMinutes} mins</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">Today's Deliveries</p>
-              <p className="text-3xl font-bold text-blue-600">{orders.length}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">High Priority</p>
-              <p className="text-3xl font-bold text-red-600">{orders.filter((o) => o.priority === 1).length}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">Normal</p>
-              <p className="text-3xl font-bold text-blue-600">{orders.filter((o) => o.priority === 2).length}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-500 text-sm">Rescheduled</p>
-              <p className="text-3xl font-bold text-gray-600">{orders.filter((o) => o.priority === 3).length}</p>
-            </div>
+            ))}
           </div>
 
-          {/* Location Sharing Toggle */}
-          <div className="bg-white rounded-lg shadow p-4 mb-6">
-            <div className="flex items-center justify-between">
+          {/* Location switch */}
+          <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-4 shadow mb-6">
+            <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-semibold text-gray-900">Live Location Sharing</h3>
-                <p className="text-sm text-gray-600">Share your location with customers every 10 seconds</p>
+                <p className="font-bold text-[#351c15]">Live Location Sharing</p>
+                <p className="text-[#6f4e37] text-sm">
+                  Your location updates every 10 seconds.
+                </p>
               </div>
 
               <button
                 onClick={() => setLocationSharing(!locationSharing)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${locationSharing ? "bg-green-600" : "bg-gray-200"}`}
+                className={`h-6 w-12 rounded-full flex items-center transition ${
+                  locationSharing ? "bg-green-600" : "bg-gray-300"
+                }`}
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${locationSharing ? "translate-x-6" : "translate-x-1"}`} />
+                <span
+                  className={`h-5 w-5 bg-white rounded-full transition transform ${
+                    locationSharing ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
               </button>
             </div>
 
-            {locationSharing && <p className="text-xs text-green-600 mt-2">🟢 Location sharing active</p>}
+            {locationSharing && (
+              <p className="text-xs text-green-700 mt-2">🟢 Live location active</p>
+            )}
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-4 mb-6">
-            <button onClick={() => setActiveTab("today")} className={`px-6 py-2 rounded-lg font-medium transition ${activeTab === "today" ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}>
-              Today's Orders ({orders.length})
-            </button>
-            <button onClick={() => setActiveTab("optimized")} className={`px-6 py-2 rounded-lg font-medium transition ${activeTab === "optimized" ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}>
-              Optimized Route ({optimizedRoute.length})
-            </button>
+          <div className="flex gap-4 mb-8">
+            {[
+              ["today", `Today's Orders (${orders.length})`],
+              ["optimized", `Optimized Route (${optimizedRoute.length})`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`px-6 py-2 rounded-lg font-medium shadow ${
+                  activeTab === key
+                    ? "bg-[#f9b400] text-[#351c15]"
+                    : "bg-[#fff8e7] text-[#6f4e37] hover:bg-[#f9b400]/20"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Orders List */}
+          {/* Orders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activeTab === "today" && orders.length === 0 && <div className="col-span-2 bg-white rounded-lg shadow p-8 text-center"><p className="text-gray-500">No orders assigned for today</p></div>}
-            {activeTab === "today" && orders.map((order, index) => renderOrder(order, index))}
+            {activeTab === "today" &&
+              orders.map((o, i) => renderOrder(o, i))}
 
-            {activeTab === "optimized" && optimizedRoute.length === 0 && <div className="col-span-2 bg-white rounded-lg shadow p-8 text-center"><p className="text-gray-500">No orders in optimized route</p></div>}
-            {activeTab === "optimized" && optimizedRoute.map((order, index) => renderOrder(order, index))}
+            {activeTab === "optimized" &&
+              optimizedRoute.map((o, i) => renderOrder(o, i))}
           </div>
 
           {/* Quick Actions */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button onClick={() => navigate("/driver/route")} className="bg-blue-600 text-white rounded-lg p-4 hover:bg-blue-700 transition">📍 View Route on Map</button>
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button
+              onClick={() => navigate("/driver/route")}
+              className="bg-[#351c15] hover:bg-[#2b160f] text-white rounded-xl p-5 shadow"
+            >
+              📍 View Route on Map
+            </button>
 
-            <button onClick={() => {
-              const issueType = prompt("Enter issue type (e.g., Traffic, Accident, Road Block):");
-              if (issueType) {
-                const description = prompt("Enter description:");
-                if (description && navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(async (position) => {
-                    try {
-                      await api.post("/driver/report-issue", {
-                        issueType,
-                        description,
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                      });
-                      alert("Issue reported successfully!");
-                    } catch (error) {
-                      console.error("Error reporting issue:", error);
-                      alert("Failed to report issue");
-                    }
-                  });
-                }
-              }
-            }} className="bg-orange-600 hover:bg-orange-700 text-white rounded-lg p-4 font-medium transition">⚠️ Report Road Issue</button>
+            <button
+              onClick={() => navigate("/driver/issues")}
+              className="bg-[#f9b400] hover:bg-[#e0a200] text-[#351c15] rounded-xl p-5 shadow font-semibold"
+            >
+              ⚠️ Report Road Issue
+            </button>
           </div>
         </div>
       </div>

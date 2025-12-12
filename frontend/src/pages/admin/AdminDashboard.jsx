@@ -12,7 +12,6 @@ export default function AdminDashboard() {
   const [drivers, setDrivers] = useState([]);
   const [warehouse, setWarehouse] = useState([]);
 
-
   const [selectedDrivers, setSelectedDrivers] = useState({});
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -28,18 +27,17 @@ export default function AdminDashboard() {
 
   const [roadIssues, setRoadIssues] = useState([]);
 
-  // ===== MODALS =====
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedDriverId, setSelectedDriverId] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showDriverModal, setShowDriverModal] = useState(false);
 
-  // ===== ROAD ISSUE UI =====
   const [showRoadIssueAlert, setShowRoadIssueAlert] = useState(false);
   const [newRoadIssue, setNewRoadIssue] = useState(null);
-  const [activeTab, setActiveTab] = useState("orders"); // orders | roadIssues
 
-  // ========= SIGNALR ==========
+  const [activeTab, setActiveTab] = useState("orders");
+
+  // ---------- SIGNALR ----------
   const setupSignalR = async () => {
     try {
       const connection = new signalR.HubConnectionBuilder()
@@ -56,8 +54,8 @@ export default function AdminDashboard() {
 
       await connection.start();
       await connection.invoke("JoinAdminGroup");
-    } catch (error) {
-      console.error("SignalR Error:", error);
+    } catch (err) {
+      console.error("SignalR Error:", err);
     }
   };
 
@@ -65,9 +63,9 @@ export default function AdminDashboard() {
     setupSignalR();
   }, []);
 
-  // ========= FETCH WAREHOUSE + DRIVERS ===========
+  // ---------- INITIAL LOAD ----------
   useEffect(() => {
-    const loadInitial = async () => {
+    const loadData = async () => {
       try {
         const [driversRes, warehouseRes] = await Promise.all([
           api.get("/admin/drivers"),
@@ -84,17 +82,17 @@ export default function AdminDashboard() {
 
         setDrivers(normalizedDrivers);
         setWarehouse(warehouseRes.data || []);
-      } catch (err) {
-        console.error("Error fetching initial data:", err);
+      } catch (e) {
+        console.log("Dashboard init error", e);
       }
     };
 
-    loadInitial();
+    loadData();
   }, []);
 
-  // ========= FETCH FULL DASHBOARD ===========
+  // ---------- FULL DASHBOARD FETCH ----------
   useEffect(() => {
-    const fetchData = async () => {
+    const fetch = async () => {
       try {
         const [
           dashboardRes,
@@ -110,176 +108,105 @@ export default function AdminDashboard() {
           api.get("/roadissue/unresolved"),
         ]);
 
-        const fetchedDrivers = (driversRes?.data || []).map((d) => ({
+        const formattedDrivers = (driversRes.data || []).map((d) => ({
           userId: Number(d.userId ?? d.id),
           userFName: d.userFName ?? "",
           userLName: d.userLName ?? "",
           isAvailable: Boolean(d.isAvailable),
-          ...d,
         }));
 
-        setDrivers(fetchedDrivers);
-
+        setDrivers(formattedDrivers);
         setStats({
           totalUsers: dashboardRes.data.drivers.length + 5,
           activeOrders: dashboardRes.data.orders.length,
           drivers: dashboardRes.data.drivers.length,
           warehouses: warehouse.length,
-          unresolvedRoadIssues: dashboardRes.data?.unresolvedRoadIssues ?? 0,
+          unresolvedRoadIssues: dashboardRes.data.unresolvedRoadIssues ?? 0,
         });
 
-        setPendingOrders(pendingRes.data || []);
-        setAssignedOrders(assignedRes.data || []);
-        setRoadIssues(roadIssuesRes.data || []);
-      } catch (error) {
-        console.error("Error loading dashboard:", error);
+        setPendingOrders(pendingRes.data);
+        setAssignedOrders(assignedRes.data);
+        setRoadIssues(roadIssuesRes.data);
+      } catch (e) {
+        console.log("Fetch error:", e);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetch();
   }, [warehouse]);
 
-  // ========= ROAD ISSUES FETCH ===========
   const fetchRoadIssues = async () => {
     try {
-      const res = await api.get("/roadissue/unresolved");
-      setRoadIssues(res.data);
-    } catch (err) {
-      console.error("Error loading road issues:", err);
-    }
+      const r = await api.get("/roadissue/unresolved");
+      setRoadIssues(r.data);
+    } catch {}
   };
 
   const fetchDashboardData = async () => {
     try {
-      const res = await api.get("/admin/dashboard");
-      setStats((prev) => ({
-        ...prev,
-        unresolvedRoadIssues: res.data.unresolvedRoadIssues ?? 0,
+      const r = await api.get("/admin/dashboard");
+      setStats((p) => ({
+        ...p,
+        unresolvedRoadIssues: r.data.unresolvedRoadIssues ?? 0,
       }));
-    } catch (err) {
-      console.log(err);
-    }
+    } catch {}
   };
 
-  // ========= ACTIONS ===========
-  const handleOrderClick = (id) => {
-    setSelectedOrderId(id);
-    setShowOrderModal(true);
-  };
-
-  const handleDriverClick = (id) => {
-    setSelectedDriverId(id);
-    setShowDriverModal(true);
-  };
-
-  const handleDriverSelect = (orderId, value) => {
-    const numeric = value === "" ? undefined : Number(value);
-    setSelectedDrivers((prev) => ({ ...prev, [orderId]: numeric }));
-  };
-
-  // Assign order
-  const handleAssign = async (orderId) => {
-    const driverId = selectedDrivers[orderId];
-    if (!driverId) return alert("Select driver first.");
-
-    try {
-      await api.post(`/admin/assign-driver/${orderId}/${driverId}`);
-
-      const [pendingRes, assignedRes] = await Promise.all([
-        api.get("/orders/pending"),
-        api.get("/orders/assigned"),
-      ]);
-
-      setPendingOrders(pendingRes.data);
-      setAssignedOrders(assignedRes.data);
-
-      alert("Order assigned successfully!");
-    } catch (err) {
-      alert(
-        "Failed to assign order: " +
-          (err.response?.data?.message || err.message)
-      );
-    }
-  };
-
-  const broadcastRoadIssue = async (id) => {
-    try {
-      const res = await api.post(`/admin/broadcast-road-issue/${id}`);
-      alert(
-        `Road issue broadcasted to ${res.data.affectedDrivers} drivers. Routes re-optimized.`
-      );
-      fetchRoadIssues();
-    } catch {
-      alert("Failed to broadcast road issue");
-    }
-  };
-
-  const resolveRoadIssue = async (id) => {
-    try {
-      await api.post(`/roadissue/${id}/resolve`);
-      alert("Road issue resolved.");
-      fetchRoadIssues();
-      fetchDashboardData();
-    } catch {
-      alert("Failed to resolve road issue");
-    }
-  };
-
-  const getSeverityColor = (severity) => {
-    if (severity === "Critical") return "bg-red-600 text-white";
-    if (severity === "High") return "bg-orange-600 text-white";
-    if (severity === "Medium") return "bg-yellow-600 text-white";
+  const getSeverityColor = (s) => {
+    if (s === "Critical") return "bg-red-600 text-white";
+    if (s === "High") return "bg-orange-600 text-white";
+    if (s === "Medium") return "bg-yellow-600 text-white";
     return "bg-blue-600 text-white";
   };
 
   return (
     <div className="min-h-screen flex bg-[#f8f4ef]">
-
-      {/* Sidebar */}
       <AdminSidebar active="dashboard" />
 
-      <div className="min-h-screen w-full bg-gray-50">
-        {/* ========== HEADER ========== */}
-        <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="flex-1">
+        {/* HEADER */}
+        <div className="bg-white border-b border-[#e6d8c9] shadow-sm p-6">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm text-gray-600">
-                Welcome back, {user?.first_name} {user?.last_name}!
+              <h1 className="text-3xl font-bold text-[#351c15]">Admin Dashboard</h1>
+              <p className="text-[#6b4f3a]">
+                Welcome back, {user?.first_name} {user?.last_name}
               </p>
             </div>
 
             <button
               onClick={logout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-6 py-2 bg-[#351c15] text-white rounded-lg shadow hover:bg-[#2b1711]"
             >
               Logout
             </button>
           </div>
-        </header>
+        </div>
 
-        {/* ========== SIGNALR BANNER ========== */}
+        {/* SIGNALR ALERT */}
         {showRoadIssueAlert && newRoadIssue && (
-          <div className="bg-red-100 border-l-4 border-red-500 p-4 mx-4 mt-4 rounded shadow">
-            <div className="flex justify-between">
+          <div className="mx-6 mt-4 bg-[#fff4f4] border-l-4 border-red-500 p-4 rounded-lg shadow-md">
+            <div className="flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-red-800">New Road Issue!</h3>
-                <p className="text-sm">{newRoadIssue.description}</p>
+                <h3 className="font-bold text-red-700">New Road Issue Reported</h3>
+                <p className="text-[#351c15] mt-1">{newRoadIssue.description}</p>
+
                 <button
                   onClick={() => {
                     broadcastRoadIssue(newRoadIssue.issueId);
                     setShowRoadIssueAlert(false);
                   }}
-                  className="mt-3 px-4 py-2 bg-red-600 text-white rounded"
+                  className="mt-3 px-4 py-2 bg-red-600 text-white rounded shadow hover:bg-red-700"
                 >
-                  Broadcast to Drivers
+                  Broadcast Now
                 </button>
               </div>
+
               <button
                 onClick={() => setShowRoadIssueAlert(false)}
-                className="text-red-900 font-bold"
+                className="text-red-700 font-bold text-xl"
               >
                 ✕
               </button>
@@ -287,101 +214,71 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ========== MAIN CONTENT ========== */}
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* MAIN CONTENT */}
+        <div className="p-6">
+          {/* STAT CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Users</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.totalUsers}
-                  </p>
-                </div>
-                <div className="bg-blue-100 rounded-full p-3">
-                  <span className="text-2xl">👥</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Active Orders</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.activeOrders}
-                  </p>
-                </div>
-                <div className="bg-green-100 rounded-full p-3">
-                  <span className="text-2xl">📦</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Drivers</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.drivers}
-                  </p>
-                </div>
-                <div className="bg-yellow-100 rounded-full p-3">
-                  <span className="text-2xl">🚚</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Warehouses</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {stats.warehouses}
-                  </p>
-                  <a
-                    href="/admin/warehouses"
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    Manage
-                  </a>
-                </div>
-                <div className="bg-purple-100 rounded-full p-3">
-                  <span className="text-2xl">🏭</span>
+            {[
+              {
+                title: "Total Users",
+                value: stats.totalUsers,
+                icon: "👥",
+              },
+              {
+                title: "Active Orders",
+                value: stats.activeOrders,
+                icon: "📦",
+              },
+              {
+                title: "Drivers",
+                value: stats.drivers,
+                icon: "🚚",
+              },
+              {
+                title: "Warehouses",
+                value: stats.warehouses,
+                icon: "🏭",
+              },
+              {
+                title: "Road Issues",
+                value: stats.unresolvedRoadIssues,
+                icon: "⚠️",
+                highlight: true,
+              },
+            ].map((c, i) => (
+              <div
+                key={i}
+                className={`p-6 bg-white rounded-xl shadow border ${
+                  c.highlight ? "border-red-300" : "border-[#e6d8c9]"
+                }`}
+              >
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-[#6b4f3a] text-sm">{c.title}</p>
+                    <p
+                      className={`text-3xl font-bold ${
+                        c.highlight ? "text-red-600" : "text-[#351c15]"
+                      }`}
+                    >
+                      {c.value}
+                    </p>
+                  </div>
+                  <div className="bg-[#fdf7ed] border border-[#e6d8c9] rounded-full p-3">
+                    <span className="text-2xl">{c.icon}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* 🆕 ROAD ISSUES CARD */}
-            <div className="bg-white rounded-xl shadow-md p-6 border-2 border-red-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Road Issues</p>
-                  <p className="text-3xl font-bold text-red-600 mt-2">
-                    {stats.unresolvedRoadIssues}
-                  </p>
-                  <button
-                    onClick={() => setActiveTab("roadIssues")}
-                    className="text-sm text-red-600 hover:underline mt-1"
-                  >
-                    View All
-                  </button>
-                </div>
-                <div className="bg-red-100 rounded-full p-3">
-                  <span className="text-2xl">⚠️</span>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* ===== TABS: ORDERS / ROAD ISSUES ===== */}
+          {/* TABS */}
           <div className="flex gap-4 mb-6">
             <button
               onClick={() => setActiveTab("orders")}
-              className={`px-6 py-2 rounded-lg ${
+              className={`px-6 py-2 rounded-lg font-medium shadow ${
                 activeTab === "orders"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white shadow"
+                  ? "bg-[#ffb500] text-[#351c15]"
+                  : "bg-white text-[#351c15] border border-[#e6d8c9]"
               }`}
             >
               Orders Management
@@ -389,33 +286,37 @@ export default function AdminDashboard() {
 
             <button
               onClick={() => setActiveTab("roadIssues")}
-              className={`px-6 py-2 rounded-lg ${
+              className={`px-6 py-2 rounded-lg font-medium shadow ${
                 activeTab === "roadIssues"
                   ? "bg-red-600 text-white"
-                  : "bg-white shadow"
+                  : "bg-white text-[#351c15] border border-[#e6d8c9]"
               }`}
             >
               Road Issues ({stats.unresolvedRoadIssues})
             </button>
           </div>
 
-          {/* ================= ROAD ISSUES TAB ================= */}
+          {/* ROAD ISSUES TAB */}
           {activeTab === "roadIssues" && (
-            <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-              <h2 className="text-xl font-bold mb-4">Active Road Issues</h2>
+            <div className="bg-white rounded-xl p-6 shadow border border-[#e6d8c9] mb-8">
+              <h2 className="text-xl font-bold text-[#351c15] mb-4">
+                Active Road Issues
+              </h2>
 
               {roadIssues.length === 0 ? (
-                <p className="text-gray-500">No active road issues.</p>
+                <p className="text-[#6b4f3a]">No active issues.</p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {roadIssues.map((issue) => (
                     <div
                       key={issue.id}
-                      className="border-2 border-red-200 rounded-lg p-4"
+                      className="p-4 bg-[#fdf7ed] border border-[#e6d8c9] rounded-lg shadow hover:bg-[#fff9ef]"
                     >
                       <div className="flex justify-between mb-2">
                         <div>
-                          <h3 className="font-bold">{issue.issueType}</h3>
+                          <h3 className="font-bold text-[#351c15]">
+                            {issue.issueType}
+                          </h3>
                           <span
                             className={`px-2 py-1 rounded text-xs ${getSeverityColor(
                               issue.severity
@@ -424,32 +325,34 @@ export default function AdminDashboard() {
                             {issue.severity}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500">
+
+                        <p className="text-xs text-[#6b4f3a]">
                           {new Date(issue.reportedAt).toLocaleString()}
                         </p>
                       </div>
 
-                      <p className="mb-2">{issue.description}</p>
-                      <p className="text-sm">
-                        <strong>Reported by:</strong> {issue.driver?.name}
+                      <p className="text-[#351c15] mb-2">{issue.description}</p>
+
+                      <p className="text-sm text-[#6b4f3a]">
+                        <strong>Driver:</strong> {issue.driver?.name}
                       </p>
 
-                      <p className="text-sm mb-3">
-                        <strong>Location:</strong> {issue.latitude.toFixed(4)},{" "}
-                        {issue.longitude.toFixed(4)}
+                      <p className="text-sm mb-3 text-[#6b4f3a]">
+                        <strong>Location:</strong>{" "}
+                        {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
                       </p>
 
                       <div className="flex gap-2">
                         <button
                           onClick={() => broadcastRoadIssue(issue.id)}
-                          className="flex-1 bg-orange-600 text-white px-3 py-2 rounded"
+                          className="flex-1 py-2 bg-[#ffb500] text-[#351c15] rounded shadow hover:bg-[#e5a400]"
                         >
                           Broadcast
                         </button>
 
                         <button
                           onClick={() => resolveRoadIssue(issue.id)}
-                          className="flex-1 bg-green-600 text-white px-3 py-2 rounded"
+                          className="flex-1 py-2 bg-green-600 text-white rounded shadow hover:bg-green-700"
                         >
                           Resolve
                         </button>
@@ -461,52 +364,63 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ================= ORDERS TAB ================= */}
+          {/* ORDERS TAB */}
           {activeTab === "orders" && (
             <>
-              {/* ===== PENDING ORDERS ===== */}
-              <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-                <h2 className="text-xl font-bold mb-4">Unassigned Orders</h2>
+              {/* Pending Orders */}
+              <div className="bg-white rounded-xl p-6 shadow border border-[#e6d8c9] mb-8">
+                <h2 className="text-xl font-bold text-[#351c15] mb-4">
+                  Unassigned Orders
+                </h2>
 
                 {loading ? (
                   <p>Loading...</p>
                 ) : pendingOrders.length === 0 ? (
-                  <p>No pending orders.</p>
+                  <p className="text-[#6b4f3a]">No pending orders.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead>
+                    <table className="min-w-full bg-white border border-[#e6d8c9] rounded-lg">
+                      <thead className="bg-[#fdf7ed] border-b border-[#e6d8c9]">
                         <tr>
-                          <th className="px-6 py-3">Order ID</th>
-                          <th className="px-6 py-3">Details</th>
-                          <th className="px-6 py-3">Assign</th>
-                          <th className="px-6 py-3">Action</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Order ID</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Details</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Assign</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Action</th>
                         </tr>
                       </thead>
 
-                      <tbody className="divide-y divide-gray-200">
-                        {pendingOrders.map((order) => (
-                          <tr key={order.id}>
-                            <td className="px-6 py-4">
-                              <button
-                                className="text-blue-600 underline"
-                                onClick={() => handleOrderClick(order.id)}
-                              >
-                                #{order.id}
-                              </button>
+                      <tbody>
+                        {pendingOrders.map((o) => (
+                          <tr
+                            key={o.id}
+                            className="border-b border-[#f0e6db] hover:bg-[#fff9ef]"
+                          >
+                            <td className="px-4 py-3 text-blue-600 underline cursor-pointer"
+                              onClick={() => {
+                                setSelectedOrderId(o.id);
+                                setShowOrderModal(true);
+                              }}>
+                              #{o.id}
                             </td>
 
-                            <td className="px-6 py-4">
-                              <div>Pickup: {order.pickupAddress}</div>
-                              <div>Drop: {order.receiverAddress}</div>
+                            <td className="px-4 py-3">
+                              <div className="text-[#351c15] font-medium">
+                                Pickup: {o.pickupAddress}
+                              </div>
+                              <div className="text-[#6b4f3a]">
+                                Drop: {o.receiverAddress}
+                              </div>
                             </td>
 
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-3">
                               <select
-                                className="border rounded p-2"
-                                value={selectedDrivers[order.id] ?? ""}
+                                className="border border-[#d4c7b9] rounded-lg p-2 text-[#351c15]"
+                                value={selectedDrivers[o.id] ?? ""}
                                 onChange={(e) =>
-                                  handleDriverSelect(order.id, e.target.value)
+                                  setSelectedDrivers({
+                                    ...selectedDrivers,
+                                    [o.id]: Number(e.target.value),
+                                  })
                                 }
                               >
                                 <option value="">Select Driver</option>
@@ -519,11 +433,11 @@ export default function AdminDashboard() {
                               </select>
                             </td>
 
-                            <td className="px-6 py-4">
+                            <td className="px-4 py-3">
                               <button
-                                disabled={!selectedDrivers[order.id]}
-                                onClick={() => handleAssign(order.id)}
-                                className="text-blue-600 font-bold disabled:opacity-50"
+                                disabled={!selectedDrivers[o.id]}
+                                onClick={() => handleAssign(o.id)}
+                                className="px-4 py-2 bg-[#ffb500] rounded text-[#351c15] font-semibold shadow hover:bg-[#e5a400] disabled:opacity-40"
                               >
                                 Assign
                               </button>
@@ -536,68 +450,60 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* ===== ASSIGNED ORDERS ===== */}
-              <div className="bg-white rounded-xl shadow-md p-6 mb-8">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">
+              {/* Assigned Orders */}
+              <div className="bg-white rounded-xl p-6 shadow border border-[#e6d8c9] mb-8">
+                <h2 className="text-xl font-bold text-[#351c15] mb-4">
                   Assigned Orders
                 </h2>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : assignedOrders.length === 0 ? (
-                  <p className="text-gray-500">No assigned orders.</p>
+
+                {assignedOrders.length === 0 ? (
+                  <p className="text-[#6b4f3a]">No assigned orders.</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full bg-white border border-[#e6d8c9] rounded-lg">
+                      <thead className="bg-[#fdf7ed] border-b border-[#e6d8c9]">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Order ID
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Details
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Driver
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Order ID</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Details</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Driver</th>
+                          <th className="px-4 py-3 text-left text-[#351c15]">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {assignedOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <button
-                                onClick={() => handleOrderClick(order.id)}
-                                className="text-sm font-medium text-blue-600 hover:text-blue-900 hover:underline"
-                              >
-                                #{order.id}
-                              </button>
+
+                      <tbody>
+                        {assignedOrders.map((o) => (
+                          <tr
+                            key={o.id}
+                            className="border-b border-[#f0e6db] hover:bg-[#fff9ef]"
+                          >
+                            <td
+                              className="px-4 py-3 text-blue-600 underline cursor-pointer"
+                              onClick={() => {
+                                setSelectedOrderId(o.id);
+                                setShowOrderModal(true);
+                              }}
+                            >
+                              #{o.id}
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-500">
-                              <div className="font-medium">
-                                Pickup: {order.pickupAddress}
+
+                            <td className="px-4 py-3 text-[#6b4f3a]">
+                              <div className="text-[#351c15] font-medium">
+                                Pickup: {o.pickupAddress}
                               </div>
-                              <div>Drop: {order.receiverAddress}</div>
+                              <div>Drop: {o.receiverAddress}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {order.driverName ? (
-                                <button
-                                  onClick={() =>
-                                    handleDriverClick(order.driverId)
-                                  }
-                                  className="text-blue-600 hover:text-blue-900 hover:underline"
-                                >
-                                  {order.driverName}
-                                </button>
-                              ) : (
-                                "Unknown"
-                              )}
+
+                            <td className="px-4 py-3 text-blue-700 underline cursor-pointer"
+                              onClick={() => {
+                                setSelectedDriverId(o.driverId);
+                                setShowDriverModal(true);
+                              }}>
+                              {o.driverName}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                {order.status}
+
+                            <td className="px-4 py-3">
+                              <span className="px-3 py-1 bg-[#e8edf5] text-[#351c15] rounded-full text-sm shadow-sm">
+                                {o.status}
                               </span>
                             </td>
                           </tr>
@@ -609,10 +515,10 @@ export default function AdminDashboard() {
               </div>
             </>
           )}
-        </main>
+        </div>
       </div>
 
-      {/* ========== MODALS ========== */}
+      {/* MODALS */}
       {showOrderModal && (
         <OrderDetailsModal
           orderId={selectedOrderId}
