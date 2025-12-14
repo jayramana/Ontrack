@@ -12,6 +12,7 @@ namespace Backend.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Address> Addresses { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<RouteStop> RouteStops { get; set; }
         public DbSet<RoadIssue> RoadIssues { get; set; }
@@ -215,6 +216,24 @@ namespace Backend.Data
                     .HasForeignKey(o => o.CurrentWarehouseId)
                     .OnDelete(DeleteBehavior.SetNull)
                     .HasConstraintName("FK_Orders_CurrentWarehouse");
+            });
+
+            builder.Entity<Address>()
+            .ToTable("Address", t =>
+            {
+                t.HasCheckConstraint(
+                    "chk_seller_type",
+                    "(is_seller = FALSE AND seller_type IS NULL) OR " +
+                    "(is_seller = TRUE AND seller_type IN ('individual','company'))"
+                );
+            });
+
+            builder.Entity<Address>(entity =>
+            {
+            entity.HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<User>(entity =>

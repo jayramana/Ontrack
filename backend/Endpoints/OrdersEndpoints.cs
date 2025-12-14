@@ -389,6 +389,7 @@ public static class OrdersEndpoints
                     o.Id,
                     o.TrackingId,
                     o.Status,
+                    o.Price,
                     o.SenderName,
                     o.PickupAddress,
                     o.ReceiverName,
@@ -400,7 +401,10 @@ public static class OrdersEndpoints
                     o.AiPriority,
                     o.AiPriorityJustification,
                     o.DriverId,
-                    driver = o.Driver != null ? new { o.Driver.UserId, DriverName = o.Driver.UserFName + " " + o.Driver.UserLName } : null
+                    driver = o.Driver != null ? new { o.Driver.UserId, DriverName = o.Driver.UserFName + " " + o.Driver.UserLName } : null,
+                    originWarehouse = o.OriginWarehouse != null ? new { o.OriginWarehouse.Id, o.OriginWarehouse.Name, o.OriginWarehouse.City } : null,
+                    currentWarehouse = o.CurrentWarehouse != null ? new { o.CurrentWarehouse.Id, o.CurrentWarehouse.Name, o.CurrentWarehouse.City } : null,
+                    destinationWarehouse = o.DestinationWarehouse != null ? new { o.DestinationWarehouse.Id, o.DestinationWarehouse.Name, o.DestinationWarehouse.City } : null
                 })
                 .ToListAsync();
 
@@ -509,9 +513,19 @@ public static class OrdersEndpoints
 
         group.MapGet("/my-orders/{id}", async (int id, AppDbContext db) =>
         {
-            var order = await db.Orders.FirstAsync((ord) => ord.Id == id);
+            var order = await db.Orders.Include(ord => ord.Driver).FirstOrDefaultAsync((ord) => ord.Id == id);
             if (order == null) return Results.NotFound("Id not found");
-            return Results.Ok(order);
+
+            Backend.Domain.Entity.DriverLocation? latestLoc = null;
+            if (order.DriverId.HasValue)
+            {
+                latestLoc = await db.DriverLocations
+                    .Where(d => d.DriverId == order.DriverId.Value)
+                    .OrderByDescending(d => d.UpdatedAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            return Results.Ok(new { order, latestDriverLocation = latestLoc });
         });
 
         static double Haversine(double lat1, double lon1, double lat2, double lon2)

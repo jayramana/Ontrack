@@ -46,6 +46,7 @@ public static class DriverEndpoints
                     o.AiPriority,
                     o.AiPriorityJustification,
                     o.ScheduledDate,
+                    o.DeliveryNotes,
                     RescheduledAt = o.RescheduledAt,
                     RescheduleReason = o.RescheduleReason,
                     CurrentWarehouse = o.CurrentWarehouse != null
@@ -62,6 +63,62 @@ public static class DriverEndpoints
                             o.DestinationWarehouse.Id,
                             o.DestinationWarehouse.Name,
                             o.DestinationWarehouse.City
+                        }
+                        : null
+                })
+                .ToListAsync();
+
+            return Results.Ok(orders);
+        });
+
+        group.MapGet("/orders/today/analytics", async (HttpContext http, AppDbContext context) =>
+        {
+            var claim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+            int driverId = int.Parse(claim?.Value ?? "0");
+
+            var orders = await context.Orders
+                .Where(o => o.DriverId == driverId)
+                 // No status filter: Returns Delivered, Cancelled, Pending for analytics
+                .Include(o => o.Sender)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .OrderByDescending(o => o.AiPriority ?? o.Priority)
+                .Select(o => new
+                {
+                    o.Id,
+                    o.TrackingId,
+                    o.Status,
+                    ReceiverName = o.ReceiverName,
+                    ReceiverAddress = o.ReceiverAddress,
+                    ReceiverEmail = o.ReceiverEmail,
+                    ReceiverPhone = o.ReceiverPhone,
+                    PickupAddress = o.PickupAddress,
+                    o.PickupLatitude,
+                    o.PickupLongitude,
+                    o.DeliveryLatitude,
+                    o.DeliveryLongitude,
+                    o.Priority,
+                    o.AiPriority,
+                    o.AiPriorityJustification,
+                    o.ScheduledDate,
+                    o.DeliveryNotes,
+                    RescheduledAt = o.RescheduledAt,
+                    RescheduleReason = o.RescheduleReason,
+                    CurrentWarehouse = o.CurrentWarehouse != null
+                        ? new
+                        {
+                            o.CurrentWarehouse.Id,
+                            o.CurrentWarehouse.Name,
+                            o.CurrentWarehouse.City
+                        }
+                        : null,
+                    DestinationWarehouse = o.DestinationWarehouse != null
+                        ? new
+                        {
+                            o.DestinationWarehouse.Id,
+                            o.DestinationWarehouse.Name,
+                            o.CurrentWarehouse.City
                         }
                         : null
                 })
@@ -94,12 +151,13 @@ public static class DriverEndpoints
 
             try
             {
-                var orders = await context.Orders
-                    .Where(o => o.DriverId == driverId && o.Status != "Delivered" && o.Status != "Cancelled")
-                    .ToListAsync();
-
-                var validOrders = orders
-                    .Where(o => o.DeliveryLatitude != 0 && o.DeliveryLongitude != 0)
+                // OPTIMIZATION: Project directly in SQL query to avoid fetching full entities
+                var validOrders = await context.Orders
+                    .Where(o => o.DriverId == driverId 
+                                && o.Status != "Delivered" 
+                                && o.Status != "Cancelled"
+                                && o.DeliveryLatitude != 0 
+                                && o.DeliveryLongitude != 0) // Filter invalid coords in DB
                     .OrderByDescending(o => o.AiPriority ?? o.Priority)
                     .ThenBy(o => o.ScheduledDate)
                     .Select(o => new
@@ -115,10 +173,11 @@ public static class DriverEndpoints
                         priority = o.Priority,
                         aiPriority = o.AiPriority,
                         scheduledDate = o.ScheduledDate,
-                        rescheduledAt = o.RescheduledAt,
+                        rescheduledAt = o.RescheduledAt,            
                         rescheduleReason = o.RescheduleReason
                     })
-                    .ToList();
+                    .AsNoTracking() // Performance boost for read-only query
+                    .ToListAsync();
 
                 return Results.Ok(validOrders);
             }
@@ -141,20 +200,34 @@ public static class DriverEndpoints
             if (driver == null)
                 return Results.NotFound();
 
+            // 1. Always update Current Location (for live view/ETA fallback)
             driver.CurrentLatitude = update.Latitude;
             driver.CurrentLongitude = update.Longitude;
+            driver.UpdatedAt = DateTime.UtcNow; // Explicit update for freshness check
 
-            var location = new DriverLocation
+            // 2. Smart History Logging: Only save to history if > 5 minutes have passed
+            var lastHistory = await context.DriverLocations
+                .Where(d => d.DriverId == driverId)
+                .OrderByDescending(d => d.UpdatedAt)
+                .FirstOrDefaultAsync();
+
+            DriverLocation? newLocationEntry = null;
+
+            if (lastHistory == null || (DateTime.UtcNow - lastHistory.UpdatedAt).TotalMinutes >= 5)
             {
-                DriverId = driverId,
-                Latitude = update.Latitude,
-                Longitude = update.Longitude,
-                Speed = update.Speed,
-                Heading = update.Heading,
-                UpdatedAt = DateTime.UtcNow
-            };
+                newLocationEntry = new DriverLocation
+                {
+                    DriverId = driverId,
+                    Latitude = update.Latitude,
+                    Longitude = update.Longitude,
+                    Speed = update.Speed,
+                    Heading = update.Heading,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await context.DriverLocations.AddAsync(newLocationEntry);
+            }
 
-            await context.DriverLocations.AddAsync(location);
+            // Save both User update and potential new History entry
             await context.SaveChangesAsync();
 
             await hubContext.Clients.All.SendAsync("ReceiveDriverLocation", new
@@ -163,7 +236,7 @@ public static class DriverEndpoints
                 update.Latitude,
                 update.Longitude,
                 update.Speed,
-                updatedAt = location.UpdatedAt
+                updatedAt = newLocationEntry?.UpdatedAt ?? DateTime.UtcNow
             });
 
             return Results.Ok(new { message = "Location updated successfully" });
@@ -176,6 +249,7 @@ public static class DriverEndpoints
                 return Results.NotFound();
 
             order.Status = "Delivered";
+            order.DeliveredAt = DateTime.UtcNow;
             await context.SaveChangesAsync();
 
             return Results.Ok(new { message = "Order marked as delivered" });

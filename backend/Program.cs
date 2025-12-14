@@ -98,6 +98,7 @@ app.MapOrdersEndpoints();
 app.MapWarehouseEndpoints();
 app.MapGeofenceEndpoints();
 app.MapRoadIssueEndpoints();
+app.MapSellerAnalyticsEndpoints();
 
 
 app.MapHub<GeofenceHub>("/geofencehub");

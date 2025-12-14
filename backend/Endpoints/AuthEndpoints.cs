@@ -28,7 +28,22 @@ public static class AuthEndpoints
                 string.IsNullOrWhiteSpace(request.Password) ||
                 string.IsNullOrWhiteSpace(request.Role))
                 {
-                    return Results.BadRequest(new { message = "All fields are required" });
+                    return Results.BadRequest(new { message = "All basic user fields are required" });
+                }
+
+                var role = request.Role.ToLower();
+                var isAddressRequired = role == "customer" || role == "seller";
+
+                if (isAddressRequired)
+                {
+                    if (string.IsNullOrWhiteSpace(request.AddressLine1) ||
+                        string.IsNullOrWhiteSpace(request.City) ||
+                        string.IsNullOrWhiteSpace(request.State) ||
+                        string.IsNullOrWhiteSpace(request.PostalCode) ||
+                        string.IsNullOrWhiteSpace(request.Country))
+                    {
+                        return Results.BadRequest(new { message = "Address fields are required for this role" });
+                    }
                 }
 
                 var existingUser = await db.Users
@@ -42,16 +57,50 @@ public static class AuthEndpoints
                 var user = request.ToEntity(request.Password);
                 user.UserPass = hasher.HashPassword(user, request.Password);
 
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
-
-                return Results.Ok(new
+                using var transaction = await db.Database.BeginTransactionAsync();
+                try
                 {
-                    message = "Registration successful",
-                    user_id = user.UserId,
-                    email = user.UserEmail,
-                    role = user.UserRole
-                });
+                    db.Users.Add(user);
+                    // Save user first to generate UserId
+                    await db.SaveChangesAsync();
+
+                    // Create Address only if required
+                    if (isAddressRequired)
+                    {
+                        var address = new Address
+                        {
+                            UserId = user.UserId,
+                            AddressLine1 = request.AddressLine1,
+                            AddressLine2 = request.AddressLine2,
+                            City = request.City,
+                            State = request.State,
+                            PostalCode = request.PostalCode,
+                            Country = request.Country,
+                            IsSeller = role == "seller",
+                            SellerType = role == "seller" ? request.SellerType : null,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+
+                        db.Addresses.Add(address);
+                        await db.SaveChangesAsync();
+                    }
+
+                    await transaction.CommitAsync();
+
+                    return Results.Ok(new
+                    {
+                        message = "Registration successful",
+                        user_id = user.UserId,
+                        email = user.UserEmail,
+                        role = user.UserRole
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    return Results.BadRequest(new { message = "Registration failed: " + ex.Message });
+                }
             });
 
 
@@ -122,5 +171,44 @@ public static class AuthEndpoints
             var users = await db.Users.FirstOrDefaultAsync(u => u.UserId == id);
             return Results.Ok(users);
         });
+
+        group.MapGet("/profile", async (
+            ClaimsPrincipal claims,
+            AppDbContext db) =>
+        {
+            var userIdClaim = claims.FindFirst("id")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var user = await db.Users.FindAsync(userId);
+            if (user == null) return Results.NotFound("User not found via token claims");
+
+            var address = await db.Addresses
+                .FirstOrDefaultAsync(a => a.UserId == userId);
+
+            var response = new UserProfileDto
+            {
+                UserId = user.UserId,
+                FirstName = user.UserFName,
+                LastName = user.UserLName,
+                Email = user.UserEmail,
+                Phone = user.UserPhonePrimary,
+                Role = user.UserRole,
+                
+                AddressLine1 = address?.AddressLine1,
+                AddressLine2 = address?.AddressLine2,
+                City = address?.City,
+                State = address?.State,
+                PostalCode = address?.PostalCode,
+                Country = address?.Country,
+                
+                IsSeller = address?.IsSeller ?? false,
+                SellerType = address?.SellerType
+            };
+
+            return Results.Ok(response);
+        }).RequireAuthorization(); // Ensure only logged-in users can call this
     }
 }

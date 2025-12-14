@@ -60,19 +60,16 @@ namespace Backend.Domain.Entity
         public int? OriginWarehouseId { get; set; }
 
         [ForeignKey("OriginWarehouseId")]
-        [JsonIgnore]
         public Warehouse? OriginWarehouse { get; set; }
 
         public int? DestinationWarehouseId { get; set; }
 
         [ForeignKey("DestinationWarehouseId")]
-        [JsonIgnore]
         public Warehouse? DestinationWarehouse { get; set; }
 
         public int? CurrentWarehouseId { get; set; }
 
         [ForeignKey("CurrentWarehouseId")]
-        [JsonIgnore]
         public Warehouse? CurrentWarehouse { get; set; }
 
         // ------ Priority & Scheduling ------
