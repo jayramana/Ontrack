@@ -46,7 +46,6 @@ public static class SellerAnalyticsEndpoints
                 .OrderBy(x => x.Date)
                 .ToList();
 
-            // Fill in missing days with 0
             var fullRevenueChart = new List<object>();
             for (int i = 0; i < 7; i++)
             {

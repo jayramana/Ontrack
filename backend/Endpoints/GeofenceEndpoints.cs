@@ -148,5 +148,3 @@ public class GeofenceCheckDto
     public double Lat { get; set; }
     public double Lon { get; set; }
 }
-
-
