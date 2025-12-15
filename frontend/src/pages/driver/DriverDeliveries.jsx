@@ -75,9 +75,27 @@ export default function DriverDeliveries() {
   };
 
 
-  // ---------------------------------------------
-  // ORDER LIST ITEM (TRACKING CARD STYLE)
-  // ---------------------------------------------
+
+  const acceptOrder = async (id) => {
+    try {
+        await api.post(`/driver/accept/${id}`);
+        fetchTodaysOrders(); // Refresh list to move it to Active
+    } catch (err) {
+        alert("Failed to accept order");
+    }
+  };
+
+  const rejectOrder = async (id) => {
+    if(!window.confirm("Are you sure you want to reject this assignment? It will be removed from your list.")) return;
+    try {
+        await api.post(`/driver/reject/${id}`);
+        fetchTodaysOrders(); // Refresh list to remove it
+    } catch (err) {
+        alert("Failed to reject order");
+    }
+  };
+
+
   const renderOrder = (order, idx) => (
     <div
       key={order.id}
@@ -97,6 +115,8 @@ export default function DriverDeliveries() {
                 ? "bg-green-100 text-green-700"
                 : order.status === "Cancelled"
                 ? "bg-red-100 text-red-700"
+                : order.status === "Assigned"
+                ? "bg-blue-100 text-blue-700"
                 : "bg-orange-100 text-orange-700"
             }`}
           >
@@ -122,9 +142,35 @@ export default function DriverDeliveries() {
         )}
       </div>
 
-      {/* RIGHT ACTION */}
+      {/* RIGHT ACTION: CONDITIONAL BUTTONS */}
       <div className="mt-4 md:mt-0 flex gap-3 w-full md:w-auto">
-        {order.status !== "Delivered" && order.status !== "Cancelled" ? (
+        
+        {/* CASE 1: ASSIGNED (Needs Acceptance) */}
+        {order.status === "Assigned" && (
+            <>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        rejectOrder(order.id);
+                    }}
+                    className="px-6 py-2 border border-red-200 text-red-600 font-semibold rounded-lg hover:bg-red-50 transition text-sm"
+                >
+                    Reject
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        acceptOrder(order.id);
+                    }}
+                    className="px-6 py-2 bg-[#351c15] text-white font-bold rounded-lg hover:bg-[#4a2c23] transition text-sm shadow-sm"
+                >
+                    Accept
+                </button>
+            </>
+        )}
+
+        {/* CASE 2: OUT FOR DELIVERY (Active Actions) */}
+        {(order.status === "OutForDelivery" || order.status === "Out for delivery") && (
             <>
                 <button
                     onClick={(e) => {
@@ -145,7 +191,10 @@ export default function DriverDeliveries() {
                     Mark Delivered
                 </button>
             </>
-        ) : (
+        )}
+
+        {/* CASE 3: COMPLETED */}
+        {(order.status === "Delivered" || order.status === "Cancelled") && (
              <button
                 className="px-6 py-2 border border-gray-300 text-gray-600 font-semibold rounded-lg hover:bg-gray-50 transition text-sm"
             >
@@ -205,15 +254,54 @@ export default function DriverDeliveries() {
                     <p className="text-gray-400 text-lg">No orders found.</p>
                 </div>
            ) : (
-             <div className="flex flex-col pb-20">
-                {orders
-                    .filter(o => {
-                        if (activeTab === "pending") return o.status !== "Delivered" && o.status !== "Cancelled";
-                        if (activeTab === "completed") return o.status === "Delivered";
-                        return true; 
-                    })
-                    .map((order, i) => renderOrder(order, i))}
-             </div>
+             // SPLIT UI: NEW ASSIGNMENTS vs ACTIVE DELIVERIES
+             activeTab === 'today' ? (
+                <div className="space-y-8">
+                    {/* 1. NEW ASSIGNMENTS (Status: Assigned) */}
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span className="bg-blue-100 text-blue-700 p-1.5 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0 1 1 0 002 0z" />
+                                </svg>
+                            </span>
+                            New Assignments
+                        </h2>
+                        {orders.filter(o => o.status === 'Assigned').length === 0 ? (
+                             <p className="text-gray-400 text-sm italic ml-2">No new assignments.</p>
+                        ) : (
+                             orders.filter(o => o.status === 'Assigned').map((order, i) => renderOrder(order, i))
+                        )}
+                    </div>
+
+                    {/* 2. ACTIVE DELIVERIES (Status: OutForDelivery / Out for delivery) */}
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span className="bg-green-100 text-green-700 p-1.5 rounded-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                </svg>
+                            </span>
+                             Active Deliveries
+                        </h2>
+                        {orders.filter(o => o.status === 'OutForDelivery' || o.status === 'Out for delivery').length === 0 ? (
+                             <p className="text-gray-400 text-sm italic ml-2">No active deliveries.</p>
+                        ) : (
+                             orders.filter(o => o.status === 'OutForDelivery' || o.status === 'Out for delivery').map((order, i) => renderOrder(order, i))
+                        )}
+                    </div>
+                </div>
+             ) : (
+                 <div className="flex flex-col pb-20">
+                    {orders
+                        .filter(o => {
+                            if (activeTab === "pending") return o.status !== "Delivered" && o.status !== "Cancelled";
+                            if (activeTab === "completed") return o.status === "Delivered";
+                            return true; 
+                        })
+                        .map((order, i) => renderOrder(order, i))}
+                 </div>
+             )
            )}
         </div>
       </div>

@@ -34,11 +34,35 @@ export const GeofenceProvider = ({ children }) => {
     return R * c;
   };
 
+    const sendBrowserNotification = (title, body, tag) => {
+    if (!("Notification" in window) || Notification.permission !== "granted")
+      return;
+
+    if (document.visibilityState === "hidden") {
+      try {
+        new Notification(title, {
+          body,
+          icon: "/vite.svg",
+          tag: tag,
+          requireInteraction: false,
+        });
+      } catch (e) {
+        console.error("Error creating notification:", e);
+      }
+    }
+  };
+
   useEffect(() => {
     if ("Notification" in window && Notification.permission !== "granted") {
       Notification.requestPermission();
     }
   }, []);
+    const addAlert = (id, message, type = "info") => {
+    setAlerts((prev) => {
+      if (prev.find((a) => a.id === id)) return prev;
+      return [...prev, { id, message, type, time: new Date() }];
+    });
+  };
 
   // SIGNALR CONNECTION FOR GEOFENCE ALERTS
   useEffect(() => {
@@ -77,17 +101,6 @@ export const GeofenceProvider = ({ children }) => {
           }
         });
 
-        // Join specific groups if needed (the backend might add us automatically based on connection, 
-        // but typically we might need to invoke a JoinGroup method if the backend requires it.
-        // Looking at backend code: 
-        // AdminEndpoints maps /assign-driver -> calls geofenceService -> CheckAndNotifyAsync
-        // CheckAndNotifyAsync broadcasts to: "order-{id}", "user-{customerId}", "driver-{driverId}"
-        // We need to make sure we Subscribed to these groups? 
-        // Wait, standard SignalR doesn't auto-subscribe users to "user-{id}" unless we have a custom UserId provider 
-        // OR we explicitly join groups. 
-        // Let's assume for now the backend handles mapping UserID -> ConnectionID 
-        // OR we might need to invoke a backend method to 'Identify' ourselves.
-        // However, standard Auth usually maps UserIdentifier. Let's see if that works.
       })
       .catch((err) => console.error("GeofenceHub Connection Error:", err));
 
@@ -101,30 +114,9 @@ export const GeofenceProvider = ({ children }) => {
   }, [user]);
 
 
-  const sendBrowserNotification = (title, body, tag) => {
-    if (!("Notification" in window) || Notification.permission !== "granted")
-      return;
 
-    if (document.visibilityState === "hidden") {
-      try {
-        new Notification(title, {
-          body,
-          icon: "/vite.svg",
-          tag: tag,
-          requireInteraction: false,
-        });
-      } catch (e) {
-        console.error("Error creating notification:", e);
-      }
-    }
-  };
 
-  const addAlert = (id, message, type = "info") => {
-    setAlerts((prev) => {
-      if (prev.find((a) => a.id === id)) return prev;
-      return [...prev, { id, message, type, time: new Date() }];
-    });
-  };
+
 
   const removeAlert = (id) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
@@ -259,41 +251,7 @@ export const GeofenceProvider = ({ children }) => {
     }
   };
 
-  // PERIODIC LOCATION UPDATES (HEARTBEAT)
-  useEffect(() => {
-    if (!user || user.role !== "driver") return;
 
-    const updateLocation = () => {
-      if (!navigator.geolocation) return;
-
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const { latitude, longitude, speed, heading } = position.coords;
-            // console.log("Updating location heartbeart:", latitude, longitude);
-            await api.post("/driver/location", {
-              latitude,
-              longitude,
-              speed: speed || 0, // speed might be null
-              heading: heading || 0 // heading might be null
-            });
-          } catch (err) {
-            console.error("Failed to update driver location", err);
-          }
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-        },
-        { enableHighAccuracy: true }
-      );
-    };
-
-    updateLocation();
-
-    const intervalId = setInterval(updateLocation, 30 * 1000); // 30 seconds
-
-    return () => clearInterval(intervalId);
-  }, [user]);
 
   useEffect(() => {
     if (!user) return;
