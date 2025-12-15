@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import SellerSidebar from "./SellerSidebar";
+import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
 
-export default function SellerProfile() {
+export default function DriverProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -13,7 +13,7 @@ export default function SellerProfile() {
         const res = await api.get("/auth/profile");
         setProfile(res.data);
       } catch (err) {
-        console.error("Failed to fetch seller profile:", err);
+        console.error("Failed to fetch driver profile:", err);
       } finally {
         setLoading(false);
       }
@@ -23,8 +23,8 @@ export default function SellerProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex bg-[#f8f4ef]">
-        <SellerSidebar active="profile" />
+      <div className="min-h-screen flex bg-[#f7f3ef]">
+        <DriverSidebar active="profile" />
         <div className="flex-1 p-10 flex items-center justify-center">
             <div className="text-[#6b4f3a] text-xl animate-pulse">Loading Profile...</div>
         </div>
@@ -34,8 +34,8 @@ export default function SellerProfile() {
 
   if (!profile) {
      return (
-        <div className="min-h-screen flex bg-[#f8f4ef]">
-          <SellerSidebar active="profile" />
+        <div className="min-h-screen flex bg-[#f7f3ef]">
+          <DriverSidebar active="profile" />
           <div className="flex-1 p-10 flex items-center justify-center">
               <div className="text-red-500 text-xl">Failed to load profile.</div>
           </div>
@@ -45,12 +45,9 @@ export default function SellerProfile() {
 
   // Helper to format full name
   const fullName = `${profile.firstName} ${profile.lastName}`;
-  // Display seller type with first letter cap
-  const sellerTypeDisplay = profile.sellerType 
-    ? profile.sellerType.charAt(0).toUpperCase() + profile.sellerType.slice(1) 
-    : "Verified User";
+  const displayRole = profile.role ? profile.role.toUpperCase() : "DRIVER";
 
-  // Preferences Style Component Helpers
+  // Component Helpers
   const SectionCard = ({ title, description, children }) => (
     <div className="bg-white rounded-xl border border-[#e6d8c9] p-8 mb-8 shadow-sm">
       <div className="mb-6">
@@ -78,8 +75,8 @@ export default function SellerProfile() {
   );
 
   return (
-    <div className="min-h-screen flex bg-[#fbf9f6]">
-      <SellerSidebar active="profile" />
+    <div className="min-h-screen flex bg-[#f7f3ef]">
+      <DriverSidebar active="profile" />
 
       {/* MAIN CONTENT */}
       <div className="flex-1 px-10 py-10 overflow-y-auto">
@@ -87,13 +84,13 @@ export default function SellerProfile() {
             
             <div className="mb-10">
                 <h1 className="text-3xl font-bold text-[#351c15]">Settings</h1>
-                <p className="text-[#6b4f3a] mt-2 text-lg">Manage your profile details and business preferences.</p>
+                <p className="text-[#6b4f3a] mt-2 text-lg">Manage your profile details and preferences.</p>
             </div>
 
             {/* SECTION 1: IDENTITY */}
             <SectionCard 
                 title="Profile Information" 
-                description="This information will be displayed to customers and used for billing."
+                description="This information will be displayed to admin and customers during delivery."
             >
                 <div className="flex items-start gap-6 mb-4">
                     <div className="w-20 h-20 rounded-full bg-[#f0e6d8] flex-shrink-0 flex items-center justify-center text-2xl font-bold text-[#351c15] border-2 border-white shadow">
@@ -103,7 +100,7 @@ export default function SellerProfile() {
                         <FieldRow 
                             label="Full Name" 
                             value={fullName}
-                            helperText="Your name as it appears on your identity documents."
+                            helperText="Your name as it appears on your license."
                         />
                     </div>
                 </div>
@@ -111,11 +108,11 @@ export default function SellerProfile() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <FieldRow 
                         label="Role" 
-                        value={profile.role.toUpperCase()} 
+                        value={displayRole} 
                      />
                      <FieldRow 
-                        label="Account Type" 
-                        value={sellerTypeDisplay} 
+                        label="Status" 
+                        value="Active" // Placeholder for online/offline status
                      />
                 </div>
             </SectionCard>
@@ -129,20 +126,20 @@ export default function SellerProfile() {
                     <FieldRow 
                         label="Email Address" 
                         value={profile.email} 
-                        helperText="We'll use this email for account recovery and important updates."
+                        helperText="Used for login and important updates."
                     />
                     <FieldRow 
                         label="Phone Number" 
                         value={profile.phone} 
-                        helperText="Used for delivery coordination."
+                        helperText="Primary contact for deliveries."
                     />
                 </SectionCard>
             </div>
 
             {/* SECTION 3: ADDRESS */}
             <SectionCard 
-                title="Address Configuration" 
-                description="Manage your pickup and return locations."
+                title="Home Address" 
+                description="Your registered residence address."
             >
                 <FieldRow 
                     label="Street Address" 

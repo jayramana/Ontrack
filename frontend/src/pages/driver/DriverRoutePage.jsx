@@ -293,10 +293,14 @@ const DriverRoutePage = () => {
 
         setRouteOptions(options);
 
-        await previewRoute(0, options);
+        // OPTIMIZATION: Show the UI first, calculate map path in background
+        setLoading(false); 
+
+        // Non-blocking route preview
+        previewRoute(0, options).catch(err => console.error("Background route calc failed:", err));
+
       } catch (err) {
-        setError("Failed to load route");
-      } finally {
+        setError("Failed to load route data");
         setLoading(false);
       }
     };
@@ -304,39 +308,57 @@ const DriverRoutePage = () => {
     load();
   }, []);
 
-  // OSRM routing
+  // OSRM routing - DEBUG MODE
   const fetchOsrmRoute = async (stops) => {
-    const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
-    const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+    try {
+      const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
 
-    const res = await fetch(url);
-    const json = await res.json();
+      // DEBUG: Check URL length (OSRM has limits)
+      console.log("Requesting OSRM:", url); 
+      
+      const res = await fetch(url);
+      
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`OSRM API Error (${res.status}): ${text || res.statusText}`);
+      }
+      
+      const json = await res.json();
+      if (json.code !== "Ok" || !json.routes?.[0]) {
+        throw new Error(`OSRM Logic Error: ${json.message || json.code || "No route found"}`);
+      }
 
-    const route = json.routes?.[0];
-    if (!route) throw new Error("OSRM failed");
+      const route = json.routes[0];
+      
+      setRouteStats({
+        distance: (route.distance / 1000).toFixed(1),
+        duration: Math.round(route.duration / 60),
+      });
 
-    const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-
-    setRouteStats({
-      distance: (route.distance / 1000).toFixed(1),
-      duration: Math.round(route.duration / 60),
-    });
-
-    return coords;
+      return route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    } catch (err) {
+      console.error("OSRM Fetch Failed:", err);
+      throw err;
+    }
   };
 
   const previewRoute = async (index, opts = null) => {
-    try {
-      setLoadingRoute(true);
-      const option = (opts || routeOptions)[index];
+    const option = (opts || routeOptions)[index];
+    if (!option) return;
 
+    setLoadingRoute(true);
+    setError(null);
+
+    try {
       const coords = await fetchOsrmRoute(option.stops);
       setRouteCoords(coords);
-
-      setMapCenter(coords[Math.floor(coords.length / 2)]);
+      if (coords.length) setMapCenter(coords[Math.floor(coords.length / 2)]);
     } catch (err) {
-      setError("Route calculation failed");
+      // User requested NO FALLBACK, just show the specific error
+      setError(`Route Failed: ${err.message}`);
       setRouteCoords([]);
+      setRouteStats(null);
     } finally {
       setLoadingRoute(false);
     }

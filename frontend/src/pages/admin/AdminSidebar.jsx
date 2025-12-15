@@ -6,12 +6,10 @@ export default function AdminSidebar({ active }) {
 
   const menu = [
     { label: "Dashboard", key: "dashboard", path: "/admin/dashboard" },
-    { label: "Customer Queries", key: "queries", path: "/admin/queries" },
-    { label: "Delivery Insights", key: "insights", path: "/admin/insights" },
+    // { label: "Customer Queries", key: "queries", path: "/admin/queries" },
+    // { label: "Delivery Insights", key: "insights", path: "/admin/insights" },
     { label: "Warehouse Management", key: "warehouses", path: "/admin/warehouses" },
     { label: "Live Map", key: "live-map", path: "/admin/live-map" },
-    { label: "Transport Scheduler", key: "transports", path: "/admin/scheduler" },
-    { label: "Capacity Dashboard", key: "capacity", path: "/admin/capacity" },
   ];
 
   return (

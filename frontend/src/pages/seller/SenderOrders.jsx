@@ -22,6 +22,18 @@ export default function SenderOrders() {
     fetchOrders();
   }, []);
 
+  const [filterId, setFilterId] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const filteredAndSortedOrders = orders
+    .filter((order) => {
+      const matchesId = order.id.toString().includes(filterId);
+      const matchesStatus =
+        filterStatus === "" || order.status === filterStatus;
+      return matchesId && matchesStatus;
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
   return (
     <div className="min-h-screen flex bg-[#f8f4ef]">
 
@@ -46,11 +58,48 @@ export default function SenderOrders() {
           </Link>
         </div>
 
+        {/* Filters */}
+        <div className="mb-6 flex gap-4">
+          <div className="flex flex-col">
+            <label className="text-sm text-[#6b4f3a] mb-1 font-semibold">
+              Filter by Order ID
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 123"
+              value={filterId}
+              onChange={(e) => setFilterId(e.target.value)}
+              className="p-2 border border-[#e6d8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ffb500]"
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <label className="text-sm text-[#6b4f3a] mb-1 font-semibold">
+              Filter by Status
+            </label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="p-2 border border-[#e6d8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ffb500] bg-white"
+            >
+              <option value="">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Delivered">Delivered</option>
+              {/* Add other statuses as needed based on backend */}
+            </select>
+          </div>
+        </div>
+
         {/* Content */}
         {loading ? (
           <p className="text-[#6b4f3a]">Loading orders...</p>
-        ) : orders.length === 0 ? (
-          <p className="text-gray-500">You haven't placed any orders yet.</p>
+        ) : filteredAndSortedOrders.length === 0 ? (
+          <p className="text-gray-500">
+            {orders.length === 0
+              ? "You haven't placed any orders yet."
+              : "No orders match your filters."}
+          </p>
         ) : (
           <div className="bg-white rounded-xl shadow border border-[#e6d8c9] overflow-hidden">
 
@@ -77,7 +126,7 @@ export default function SenderOrders() {
               </thead>
 
               <tbody>
-                {orders.map((order) => (
+                {filteredAndSortedOrders.map((order) => (
                   <tr
                     key={order.id}
                     className="border-b border-[#e6d8c9] hover:bg-[#fdf7ed] transition"

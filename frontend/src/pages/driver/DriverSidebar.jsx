@@ -8,7 +8,8 @@ export default function DriverSidebar({ active }) {
 
   const menu = [
     { label: "Dashboard", key: "dashboard", path: "/driver/dashboard" },
-    { label: "My Route", key: "route", path: "/driver/route" },
+    { label: "My Deliveries", key: "deliveries", path: "/driver/deliveries" },
+    { label: "Route Planner", key: "route", path: "/driver/route" },
     { label: "Geofence Alerts", key: "geofence", path: "/driver/geofencealerts" },
     { label: "Report Issue", key: "issues", path: "/driver/report-issue" },
     { label: "Confirm Delivery", key: "confirm", path: "/driver/confirm" },

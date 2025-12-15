@@ -40,20 +40,31 @@ export default function DriverGeofenceAlerts() {
         for (const gf of myGeofences) {
           const order = oMap[gf.orderId];
 
-          if (order && order.status !== "Delivered" && myLocation) {
-            try {
-              const checkRes = await api.post("/geofence/check", {
-                DriverId: user.userId,
-                OrderId: order.id,
-                Lat: myLocation.currentLatitude,
-                Lon: myLocation.currentLongitude,
-              });
-              statuses[gf.geofenceId] = {
-                driverName: "You",
-                ...checkRes.data,
-              };
-            } catch {
-              statuses[gf.geofenceId] = { error: "Check failed" };
+          if (order && order.status !== "Delivered") {
+            // Validate Logic: User location must exist
+            if (myLocation && 
+                typeof myLocation.currentLatitude === 'number' && 
+                typeof myLocation.currentLongitude === 'number') {
+                
+                try {
+                  const checkRes = await api.post("/geofence/check", {
+                    DriverId: user.userId,
+                    OrderId: order.id,
+                    Lat: myLocation.currentLatitude,
+                    Lon: myLocation.currentLongitude,
+                  });
+                  statuses[gf.geofenceId] = {
+                    driverName: "You",
+                    ...checkRes.data,
+                  };
+                } catch (err) {
+                  console.error("Geofence Check API Failed:", err);
+                  statuses[gf.geofenceId] = { error: "Check failed" };
+                }
+            } else {
+                // Specific error when GPS coords are missing from backend
+                console.warn("Driver location missing or invalid:", myLocation);
+                statuses[gf.geofenceId] = { error: "Waiting for location..." };
             }
           }
         }
@@ -89,7 +100,6 @@ export default function DriverGeofenceAlerts() {
         key={gf.geofenceId}
         className="bg-white border border-[#e6d8c9] rounded-xl shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group"
       >
-        {/* HEADER */}
         <div className="bg-[#f8f4ef] border-b border-[#e6d8c9] p-4 flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold text-[#351c15]">{gf.name}</h3>
@@ -108,10 +118,8 @@ export default function DriverGeofenceAlerts() {
           </div>
         </div>
 
-        {/* BODY */}
         <div className="p-5">
 
-          {/* TOP ROW */}
           <div className="flex justify-between items-center mb-5 text-sm">
             <div className="flex flex-col">
               <span className="text-xs text-[#6b4f3a] font-bold uppercase">Radius</span>
@@ -130,11 +138,10 @@ export default function DriverGeofenceAlerts() {
             )}
           </div>
 
-          {/* STATUS BOX */}
           {status ? (
             status.error ? (
               <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded text-sm text-center font-medium">
-                Check Failed
+                {status.error}
               </div>
             ) : (
               <div
@@ -223,7 +230,6 @@ export default function DriverGeofenceAlerts() {
 
       <main className="flex-1 p-8">
 
-        {/* HEADER */}
         <header className="mb-8 pb-6 border-b border-[#e6d8c9] flex justify-between items-end">
           <div>
             <h1 className="text-3xl font-black text-[#351c15]">Geofence Monitor</h1>
@@ -232,7 +238,6 @@ export default function DriverGeofenceAlerts() {
             </p>
           </div>
 
-          {/* VIEW MODE */}
           <div className="flex items-center gap-4">
             <div className="bg-white border border-[#e6d8c9] rounded-lg flex overflow-hidden">
               <button
@@ -260,7 +265,6 @@ export default function DriverGeofenceAlerts() {
           </div>
         </header>
 
-        {/* LOADING */}
         {loading && geofences.length === 0 && (
           <div className="text-center py-20">
             <div className="animate-spin w-10 h-10 border-4 border-[#e6d8c9] border-t-[#351c15] rounded-full mx-auto mb-4"></div>
@@ -268,7 +272,6 @@ export default function DriverGeofenceAlerts() {
           </div>
         )}
 
-        {/* ACTIVE */}
         <section className="mb-10">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-[#351c15] flex items-center">
@@ -296,7 +299,6 @@ export default function DriverGeofenceAlerts() {
           )}
         </section>
 
-        {/* HISTORY */}
         <section>
           <h2 className="text-lg font-bold text-[#6b4f3a] mb-4 uppercase tracking-wider text-sm border-b border-[#e6d8c9] pb-2">
             Completed History

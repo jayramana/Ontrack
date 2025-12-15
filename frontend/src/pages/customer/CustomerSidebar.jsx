@@ -6,12 +6,12 @@ export default function CustomerSidebar({ active }) {
   const navigate = useNavigate();
 
   const menuItems = [
-    { label: "Dashboard", path: "/customer/dashboard", key: "dashboard" },
-    { label: "Live Tracking", path: "/customer/tracking", key: "tracking" },
+    { label: "Dashboard", key: "dashboard", path: "/customer/dashboard" },
+    { label: "My Orders", key: "orders", path: "/customer/orders" },
+    { label: "Track Package", key: "track", path: "/customer/track/0" }, // 0 or placeholder
     { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
-    { label: "Delivery Confirm", path: "/customer/deliveryconfirm", key: "confirm" },
     { label: "Set Availability", path: "/customer/availability", key: "availability" },
-    { label: "Profile", path: "/customer/profile", key: "profile" },
+    { label: "Profile", key: "profile", path: "/customer/profile" },
   ];
 
   return (

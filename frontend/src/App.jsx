@@ -17,9 +17,10 @@ import Signup from "./pages/Signup";
 
 // --- CUSTOMER PAGES ---
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
+import CustomerOrders from "./pages/customer/CustomerOrders"; // [NEW]
+import OrderDetails from "./pages/customer/OrderDetails"; // [NEW]
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
-import Profile from "./pages/customer/Profile";
 import Availability from "./pages/customer/Availability";
 
 // --- DRIVER PAGES ---
@@ -27,6 +28,9 @@ import DriverDashboard from "./pages/driver/DriverDashboard";
 import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
 import DriverRoutePage from "./pages/driver/DriverRoutePage";
+import DriverDeliveries from "./pages/driver/DriverDeliveries";
+import CustomerProfile from "./pages/customer/CustomerProfile";
+import DriverProfile from "./pages/driver/DriverProfile";
 
 // --- ADMIN PAGES ---
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -71,14 +75,6 @@ function App() {
               }
             />
 
-            <Route
-              path="/customer/profile"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
 
             <Route
               path="/customer/availability"
@@ -94,6 +90,24 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="customer">
                   <CustomerDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/customer/orders"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <CustomerOrders />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/customer/orders/:id"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <OrderDetails />
                 </ProtectedRoute>
               }
             />
@@ -116,6 +130,15 @@ function App() {
 
 
             <Route
+              path="/customer/profile"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <CustomerProfile />
+                </ProtectedRoute>
+              }
+            />
+            
+            <Route
               path="/driver/dashboard"
               element={
                 <ProtectedRoute requiredRole="driver">
@@ -125,8 +148,26 @@ function App() {
             />
 
             <Route
+              path="/driver/deliveries"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverDeliveries />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/driver/geofencealerts"
               element={<DriverGeofenceAlerts />}
+            />
+
+            <Route
+              path="/driver/profile"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverProfile />
+                </ProtectedRoute>
+              }
             />
 
             {/* ---------------- ADMIN ROUTES ---------------- */}

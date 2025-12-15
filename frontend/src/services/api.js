@@ -47,7 +47,15 @@ register: async (payload) => {
             PhoneSecondary: payload.phoneSecondary,
             Email: payload.email,
             Password: payload.password,
-            Role: payload.role
+            Role: payload.role,
+            // Address Fields
+            AddressLine1: payload.addressLine1,
+            AddressLine2: payload.addressLine2,
+            City: payload.city,
+            State: payload.state,
+            PostalCode: payload.postalCode,
+            Country: payload.country,
+            SellerType: payload.sellerType
         });
 
         return response.data;
