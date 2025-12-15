@@ -304,26 +304,72 @@ const DriverRoutePage = () => {
     load();
   }, []);
 
-  // OSRM routing
-  const fetchOsrmRoute = async (stops) => {
-    const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
-    const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+  // // OSRM routing
+  // const fetchOsrmRoute = async (stops) => {
+  //   const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+  //   const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
 
-    const res = await fetch(url);
-    const json = await res.json();
+  //   const res = await fetch(url);
+  //   const json = await res.json();
 
-    const route = json.routes?.[0];
-    if (!route) throw new Error("OSRM failed");
+  //   const route = json.routes?.[0];
+  //   if (!route) throw new Error("OSRM failed");
 
-    const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+  //   const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
 
-    setRouteStats({
-      distance: (route.distance / 1000).toFixed(1),
-      duration: Math.round(route.duration / 60),
-    });
+  //   setRouteStats({
+  //     distance: (route.distance / 1000).toFixed(1),
+  //     duration: Math.round(route.duration / 60),
+  //   });
 
-    return coords;
-  };
+  //   return coords;
+  // };
+
+  // OSRM routing (via backend proxy)
+const fetchOsrmRoute = async (stops) => {
+  if (!stops || stops.length < 2) {
+    throw new Error("At least 2 stops required");
+  }
+
+  // Build coordinates string
+  const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+
+  // Extract start & end (OSRM backend expects only start & end)
+  const points = coordinates.split(";");
+
+  const [startLng, startLat] = points[0].split(",");
+  const [endLng, endLat] = points[points.length - 1].split(",");
+
+  // ✅ CALL YOUR BACKEND (NO CORS)
+  const url =
+    `http://localhost:5066/api/route/osrm` +
+    `?startLng=${startLng}` +
+    `&startLat=${startLat}` +
+    `&endLng=${endLng}` +
+    `&endLat=${endLat}`;
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Route API failed");
+
+  const json = await res.json();
+
+  const route = json.routes?.[0];
+  if (!route) throw new Error("OSRM failed");
+
+  // Convert [lng, lat] → [lat, lng] for Leaflet
+  const coords = route.geometry.coordinates.map(
+    ([lng, lat]) => [lat, lng]
+  );
+
+  // Route stats
+  setRouteStats({
+    distance: (route.distance / 1000).toFixed(1), // km
+    duration: Math.round(route.duration / 60),    // minutes
+  });
+
+  return coords;
+};
+
 
   const previewRoute = async (index, opts = null) => {
     try {
