@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import CustomerSidebar from "./CustomerSidebar";
 import api from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 
 export default function CustomerProfile() {
+  const { logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -154,6 +156,20 @@ export default function CustomerProfile() {
                      <FieldRow label="Country" value={profile.country} />
                 </div>
             </SectionCard>
+
+            {/* SECTION 4: ACTIONS */}
+            <div className="mt-8 border-t border-gray-200 pt-8">
+                <h3 className="text-lg font-bold text-[#351c15] mb-4">Account Actions</h3>
+                <button 
+                    onClick={logout}
+                    className="px-6 py-3 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold hover:bg-red-100 transition-colors flex items-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+                    </svg>
+                    Sign Out
+                </button>
+            </div>
 
         </div>
       </div>

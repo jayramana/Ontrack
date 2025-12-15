@@ -187,6 +187,7 @@ const OrderDetails = () => {
       
       <div className="flex-1 overflow-y-auto max-h-screen">
         {/* HEADER MATCHING IMAGE */}
+        {/* HEADER MATCHING IMAGE */}
         <header className="bg-[#351c15] text-[#f9b400] sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
                 <div className="flex items-center gap-4">
@@ -198,263 +199,240 @@ const OrderDetails = () => {
                     </button>
                     <h1 className="text-xl font-bold tracking-wide text-[#fca311]">ORDER DETAILS</h1>
                 </div>
-                <div className="text-sm text-[#f7f3ef] opacity-80 font-mono">
-                    Order #{order.id}
+                {/* ALTERNATIVE: Status in Header */}
+                <div className="flex items-center gap-4">
+                    <span className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider ${getStatusColor(order.status)} border border-current shadow-sm`}>
+                         {order.status}
+                    </span>
+                    <div className="text-sm text-[#f7f3ef] opacity-80 font-mono hidden md:block">
+                        Order #{order.id}
+                    </div>
                 </div>
             </div>
         </header>
 
         <div className="max-w-7xl mx-auto px-8 py-8">
-            {/* Top Status Banner */}
-            <div className="bg-white rounded-xl shadow-sm border border-[#e6ddc5] p-8 mb-8 flex justify-between items-center relative overflow-hidden">
-                <div className="relative z-10">
-                    <p className="text-xs text-[#6f4e37] uppercase font-bold tracking-wider mb-2 opacity-80">Current Status</p>
-                    <h2 className="text-4xl font-extrabold text-[#351c15] mb-2">{order.status}</h2>
-                    <p className="text-sm text-[#6f4e37] opacity-80">
-                        Updated: {new Date(order.updatedAt || order.createdAt).toLocaleString()}
-                    </p>
-                </div>
-                <div className={`px-6 py-2 rounded-full font-bold text-sm ${getStatusColor(order.status)}`}>
-                    {order.status}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Info */}
-                <div className="lg:col-span-2 space-y-8">
-                    
-                    {/* Shipment Details */}
-                    <div className="bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
-                        <div className="bg-[#f4ebd0] px-6 py-4 border-b border-[#e6ddc5]">
-                            <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Shipment Information</h3>
-                        </div>
-                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
-                            <div>
-                                <h4 className="text-xs font-bold text-[#6f4e37] uppercase mb-2 opacity-70">Package Details</h4>
-                                <p className="text-[#351c15] font-bold text-lg">{order.packageDescription || "Standard Package"}</p>
-                                <p className="text-sm text-[#6f4e37] mt-1">Weight: {order.weight} kg</p>
-                            </div>
-                            <div>
-                                <h4 className="text-xs font-bold text-[#6f4e37] uppercase mb-2 opacity-70">
-                                    {order.status === "Delivered" ? "Delivered On" : "Estimated Delivery"}
-                                </h4>
-                                <p className="text-[#351c15] font-bold text-lg">
-                                    {order.status === "Delivered"
-                                        ? new Date(order.deliveredAt || order.createdAt).toLocaleDateString()
-                                        : order.deliveryDate 
-                                            ? new Date(order.deliveryDate).toLocaleDateString() 
-                                            : "Pending"}
-                                </p>
-                                {eta && order.status !== "Delivered" && (
-                                    <div className="mt-3 bg-[#e6ddc5] rounded px-3 py-2 animate-pulse">
-                                         <p className="text-xs text-[#6f4e37] font-bold uppercase">Live ETA</p>
-                                         <p className="text-[#351c15] font-bold text-base">{eta}</p>
-                                         <p className="text-xs text-[#6f4e37] opacity-80">{etaDistance?.toFixed(1)} km away</p>
-                                    </div>
-                                )}
-                            </div>
-                            
-                            <div className="md:col-span-2 h-px bg-[#f1e6d6] my-2"></div>
-
-                            <div>
-                                <h4 className="text-xs font-bold text-[#6f4e37] uppercase mb-2 opacity-70">From</h4>
-                                <p className="text-[#351c15] font-bold text-lg">{order.senderName}</p>
-                                <p className="text-sm text-[#555] mt-1 leading-relaxed">{order.pickupAddress}</p>
-                            </div>
-                            <div>
-                                <h4 className="text-xs font-bold text-[#6f4e37] uppercase mb-2 opacity-70">To</h4>
-                                <p className="text-[#351c15] font-bold text-lg">{order.receiverName}</p>
-                                <p className="text-sm text-[#555] mt-1 leading-relaxed">{order.receiverAddress}</p>
-                            </div>
-                        </div>
+            
+            {/* VERTICAL STACK LAYOUT (Unified Card) */}
+            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
+                
+                {/* 1. Shipment Details */}
+                <div>
+                    <div className="bg-[#f4ebd0] px-8 py-4 border-b border-[#e6ddc5] flex justify-between items-center">
+                        <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Shipment Information</h3>
+                        <span className="text-xs text-[#6f4e37] opacity-60 font-mono">
+                            Updated: {new Date(order.updatedAt || order.createdAt).toLocaleDateString()}
+                        </span>
                     </div>
-
-                    {/* Detailed Tracking Timeline */}
-                    <div className="bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
-                        <div className="bg-[#f4ebd0] px-6 py-4 border-b border-[#e6ddc5]">
-                            <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Tracking Timeline</h3>
+                    <div className="p-8 space-y-8">
+                        {/* Status Field Alternative */}
+                        <div>
+                             <h4 className="text-lg font-bold text-[#351c15] mb-1">Current Status</h4>
+                             <p className="text-gray-600 text-base">{order.status}</p>
                         </div>
-                        <div className="p-8">
-                            <div className="relative pl-2 space-y-0">
-                                {(() => {
-                                    // LOGIC TO DETERMINE STEPS
-                                    // User Request: 'InTransit' -> Arrived at Origin, 'Assigned' -> Arrived at Destination
-                                    
-                                    const statusRank = {
-                                      PendingAssignment: 0,        // Order confirmed
-                                      Picked: 20,                 // NEW explicit status
-                                      AtOriginWarehouse: 30,
-                                      'In Transit': 40,
-                                      AtDestinationWarehouse: 50,
-                                      Assigned: 55,
-                                      'OutForDelivery': 60,
-                                      'Out for delivery': 60,
-                                      DeliveryAttempted: 65,
-                                      Delivered: 70
-                                    };
+                        
+                        <div className="h-px bg-[#f1e6d6] w-full"></div>
 
-
-                                    const currentRank = statusRank[order.status] || 0;
-                                    
-                                    const steps = [
-                                        { 
-                                            title: "Order Placed", 
-                                            date: order.createdAt, 
-                                            sub: "Your order has been placed.",
-                                            active: true,
-                                            rank: 0 
-                                        },
-                                        { 
-                                            title: "Order Confirmed", 
-                                            date: order.createdAt, 
-                                            sub: "Seller has processed your order.",
-                                            active: currentRank >= 10,
-                                            rank: 10
-                                        },
-                                        {
-                                            title: "Picked Up",
-                                            date: order.createdAt, 
-                                            sub: "Courier has picked up your package.",
-                                            active: currentRank >= 20,
-                                            rank: 20
-                                        },
-                                        { 
-                                            title: `Arrived at Origin (${order.originWarehouse?.city || 'Warehouse'})`, 
-                                            date: null, 
-                                            sub: "Package received at facility.",
-                                            active: currentRank >= 30 && !!order.originWarehouse,
-                                            visible: !!order.originWarehouse,
-                                            rank: 30
-                                        },
-                                        {
-                                            title: "Shipped",
-                                            date: null,
-                                            sub: `En route to ${order.destinationWarehouse?.city || 'destination'}.`,
-                                            // Shows as active in transit
-                                            active: currentRank >= 30,
-                                            rank: 40
-                                        },
-                                        { 
-                                            title: `Arrived at Destination (${order.destinationWarehouse?.city || 'Hub'})`, 
-                                            date: null,
-                                            sub: "Package assigned to delivery partner.",
-                                            // Active if 'Assigned' or later
-                                            active: currentRank >= 50 && !!order.destinationWarehouse,
-                                            visible: !!order.destinationWarehouse,
-                                            rank: 50
-                                        },
-                                        { 
-                                            title: "Out for Delivery", 
-                                            date: null,
-                                            sub: "Driver is on the way.",
-                                            active: currentRank >= 60,
-                                            rank: 60
-                                        },
-                                        { 
-                                            title: "Delivered", 
-                                            date: order.deliveredAt, 
-                                            sub: "Package delivered successfully.",
-                                            active: currentRank >= 70,
-                                            rank: 70
-                                        }
-                                    ].filter(s => s.visible !== false);
-
-                                    return steps.map((step, idx) => {
-                                        const isLast = idx === steps.length - 1;
-                                        const isCompleted = step.active;
-                                        const isCurrent = steps[idx].active && (!steps[idx+1]?.active);
-
-                                        return (
-                                            <div key={idx} className="flex gap-6 relative min-h-[80px]">
-                                                {/* Connecting Line */}
-                                                {!isLast && (
-                                                    <div className={`absolute left-[7px] top-4 bottom-0 w-[2px] ${isCompleted && steps[idx+1]?.active ? 'bg-[#15803d]' : 'bg-gray-200'}`}></div>
-                                                )}
-                                                
-                                                {/* Status Dot */}
-                                                <div className={`relative z-10 w-4 h-4 rounded-full mt-1.5 flex-shrink-0 border-2 ${
-                                                    isCompleted 
-                                                        ? 'bg-[#15803d] border-[#15803d]' 
-                                                        : 'bg-white border-gray-300'
-                                                }`}>
-                                                    {isCurrent && <div className="absolute -inset-1 rounded-full border border-[#15803d] animate-ping"></div>}
-                                                </div>
-                                                
-                                                <div className={`-mt-1 pb-6 ${!isCompleted ? 'opacity-50 grayscale' : ''}`}>
-                                                    <h4 className={`text-base font-bold ${isCompleted ? 'text-[#351c15]' : 'text-gray-500'}`}>
-                                                        {step.title}
-                                                    </h4>
-                                                    <p className="text-sm text-gray-500 mt-0.5">{step.sub}</p>
-                                                    {step.date && isCompleted && (
-                                                        <p className="text-xs text-[#15803d] font-bold mt-1">
-                                                            {new Date(step.date).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    });
-                                })()}
-                            </div>
+                        <div>
+                            <h4 className="text-lg font-bold text-[#351c15] mb-1">Package Details</h4>
+                            <p className="text-gray-600 text-base">{order.packageDescription || "Standard Package"}</p>
+                            <p className="text-sm text-gray-500 mt-0.5">Weight: {order.weight} kg</p>
                         </div>
-                    </div>
+                        
+                        <div className="h-px bg-[#f1e6d6] w-full"></div>
 
-                </div>
-
-                {/* Sidebar / Actions */}
-                <div className="space-y-8">
-                    {/* Live Tracking Map Card */}
-                    <div className="bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
-                         <div className="bg-[#351c15] px-6 py-4">
-                            <h3 className="text-[#f9b400] font-bold uppercase tracking-wide text-sm">Live Location</h3>
-                        </div>
-                        <div className="p-6">
-                            {driverLocation ? (
-                                <div>
-                                    <div className="bg-[#f9f5f0] p-4 rounded-lg mb-4 border border-[#eee6da]">
-                                        <p className="text-xs text-[#6f4e37] uppercase font-bold mb-2">Driver Coordinates</p>
-                                        <p className="text-[#351c15] font-mono text-lg font-bold">
-                                            {driverLocation.latitude.toFixed(4)}, {driverLocation.longitude.toFixed(4)}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() =>
-                                            window.open(
-                                                `https://www.openstreetmap.org/?mlat=${driverLocation.latitude}&mlon=${driverLocation.longitude}`,
-                                                "_blank"
-                                            )
-                                        }
-                                        className="w-full bg-[#f9b400] hover:bg-[#ffc107] text-[#351c15] font-bold py-3 rounded-lg shadow-sm transition-all transform hover:-translate-y-0.5"
-                                    >
-                                        VIEW ON MAP
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="text-center py-6">
-                                    <p className="text-gray-400 text-sm italic">Live tracking unavailable.</p>
-                                    <p className="text-xs text-gray-400 mt-1">Driver not yet assigned or offline.</p>
+                        <div>
+                            <h4 className="text-lg font-bold text-[#351c15] mb-1">
+                                {order.status === "Delivered" ? "Delivered On" : "Estimated Delivery"}
+                            </h4>
+                            <p className="text-gray-600 text-base">
+                                {order.status === "Delivered"
+                                    ? new Date(order.deliveredAt || order.createdAt).toLocaleDateString()
+                                    : order.deliveryDate 
+                                        ? new Date(order.deliveryDate).toLocaleDateString() 
+                                        : "Pending"}
+                            </p>
+                            {/* ETA Display */}
+                            {eta && order.status !== "Delivered" && (
+                                <div className="mt-2 inline-flex items-center gap-2 bg-[#f4ebd0] px-3 py-1 rounded text-sm text-[#351c15]">
+                                     <span className="font-bold">ETA:</span> {eta}
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    {/* Actions */}
-                     <div className="bg-white rounded-xl shadow-sm border border-[#e6ddc5] p-6">
-                        <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm mb-6">Manage Delivery</h3>
                         
+                        <div className="h-px bg-[#f1e6d6] w-full"></div>
+
+                        <div>
+                            <h4 className="text-lg font-bold text-[#351c15] mb-1">From</h4>
+                            <p className="text-gray-600 text-base font-medium">{order.senderName}</p>
+                            <p className="text-gray-500 text-sm mt-0.5">{order.pickupAddress}</p>
+                        </div>
+
+                        <div className="h-px bg-[#f1e6d6] w-full"></div>
+
+                        <div>
+                            <h4 className="text-lg font-bold text-[#351c15] mb-1">To</h4>
+                            <p className="text-gray-600 text-base font-medium">{order.receiverName}</p>
+                            <p className="text-gray-500 text-sm mt-0.5">{order.receiverAddress}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-[#e6ddc5]"></div>
+
+                {/* 2. Detailed Tracking Timeline */}
+                <div>
+                    <div className="bg-[#f4ebd0] px-8 py-4 border-b border-[#e6ddc5]">
+                        <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Tracking Timeline</h3>
+                    </div>
+                    <div className="p-8">
+                        <div className="relative pl-2 space-y-0">
+                            {(() => {
+                                // LOGIC TO DETERMINE STEPS
+                                // User Request: 'InTransit' -> Arrived at Origin, 'Assigned' -> Arrived at Destination
+                                
+                                const statusRank = {
+                                  PendingAssignment: 0,        // Order confirmed
+                                  Picked: 20,                 // NEW explicit status
+                                  AtOriginWarehouse: 30,
+                                  'In Transit': 40,
+                                  AtDestinationWarehouse: 50,
+                                  Assigned: 55,
+                                  'OutForDelivery': 60,
+                                  'Out for delivery': 60,
+                                  DeliveryAttempted: 65,
+                                  Delivered: 70
+                                };
+
+
+                                const currentRank = statusRank[order.status] || 0;
+                                
+                                const steps = [
+                                    { 
+                                        title: "Order Placed", 
+                                        date: order.createdAt, 
+                                        sub: "Your order has been placed.",
+                                        active: true,
+                                        rank: 0 
+                                    },
+                                    { 
+                                        title: "Order Confirmed", 
+                                        date: order.createdAt, 
+                                        sub: "Seller has processed your order.",
+                                        active: currentRank >= 10,
+                                        rank: 10
+                                    },
+                                    {
+                                        title: "Picked Up",
+                                        date: order.createdAt, 
+                                        sub: "Courier has picked up your package.",
+                                        active: currentRank >= 20,
+                                        rank: 20
+                                    },
+                                    { 
+                                        title: `Arrived at Origin (${order.originWarehouse?.city || 'Warehouse'})`, 
+                                        date: null, 
+                                        sub: "Package received at facility.",
+                                        active: currentRank >= 30 && !!order.originWarehouse,
+                                        visible: !!order.originWarehouse,
+                                        rank: 30
+                                    },
+                                    {
+                                        title: "Shipped",
+                                        date: null, 
+                                        sub: `En route to ${order.destinationWarehouse?.city || 'destination'}.`,
+                                        // Shows as active in transit
+                                        active: currentRank >= 30,
+                                        rank: 40
+                                    },
+                                    { 
+                                        title: `Arrived at Destination (${order.destinationWarehouse?.city || 'Hub'})`, 
+                                        date: null,
+                                        sub: "Package assigned to delivery partner.",
+                                        // Active if 'Assigned' or later
+                                        active: currentRank >= 50 && !!order.destinationWarehouse,
+                                        visible: !!order.destinationWarehouse,
+                                        rank: 50
+                                    },
+                                    { 
+                                        title: "Out for Delivery", 
+                                        date: null, 
+                                        sub: "Driver is on the way.",
+                                        active: currentRank >= 60,
+                                        rank: 60
+                                    },
+                                    { 
+                                        title: "Delivered", 
+                                        date: order.deliveredAt, 
+                                        sub: "Package delivered successfully.",
+                                        active: currentRank >= 70,
+                                        rank: 70
+                                    }
+                                ].filter(s => s.visible !== false);
+
+                                return steps.map((step, idx) => {
+                                    const isLast = idx === steps.length - 1;
+                                    const isCompleted = step.active;
+                                    const isCurrent = steps[idx].active && (!steps[idx+1]?.active);
+
+                                    return (
+                                        <div key={idx} className="flex gap-6 relative min-h-[80px]">
+                                            {/* Connecting Line */}
+                                            {!isLast && (
+                                                <div className={`absolute left-[7px] top-4 bottom-0 w-[2px] ${isCompleted && steps[idx+1]?.active ? 'bg-[#15803d]' : 'bg-gray-200'}`}></div>
+                                            )}
+                                            
+                                            {/* Status Dot */}
+                                            <div className={`relative z-10 w-4 h-4 rounded-full mt-1.5 flex-shrink-0 border-2 ${
+                                                isCompleted 
+                                                    ? 'bg-[#15803d] border-[#15803d]' 
+                                                    : 'bg-white border-gray-300'
+                                            }`}>
+                                                {isCurrent && <div className="absolute -inset-1 rounded-full border border-[#15803d] animate-ping"></div>}
+                                            </div>
+                                            
+                                            <div className={`-mt-1 pb-6 ${!isCompleted ? 'opacity-50 grayscale' : ''}`}>
+                                                <h4 className={`text-base font-bold ${isCompleted ? 'text-[#351c15]' : 'text-gray-500'}`}>
+                                                    {step.title}
+                                                </h4>
+                                                <p className="text-sm text-gray-500 mt-0.5">{step.sub}</p>
+                                                {step.date && isCompleted && (
+                                                    <p className="text-xs text-[#15803d] font-bold mt-1">
+                                                        {new Date(step.date).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-[#e6ddc5]"></div>
+
+                {/* 3. Actions / Manage Delivery */}
+                <div className="bg-gray-50 p-8">
+                    <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm mb-6">Manage Delivery</h3>
+                    
+                    <div className="flex flex-col md:flex-row gap-4">
                         {order.status !== "Delivered" && (
                             <button
                                 onClick={() => setShowRescheduleDialog(true)}
-                                className="w-full border-2 border-[#351c15] text-[#351c15] hover:bg-[#351c15] hover:text-white font-bold py-3 rounded-lg transition-colors mb-3"
+                                className="flex-1 border-2 border-[#351c15] text-[#351c15] hover:bg-[#351c15] hover:text-white font-bold py-3 rounded-lg transition-colors"
                             >
                                 RESCHEDULE DELIVERY
                             </button>
                         )}
-                        <button className="w-full border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-3 rounded-lg text-sm transition-colors">
+                        <button className="flex-1 border border-gray-300 text-gray-600 hover:bg-white font-medium py-3 rounded-lg text-sm transition-colors">
                             Report a Problem
                         </button>
                     </div>
                 </div>
+
             </div>
         </div>
 
