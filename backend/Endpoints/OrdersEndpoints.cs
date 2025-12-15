@@ -429,6 +429,7 @@ public static class OrdersEndpoints
                     o.Id,
                     o.TrackingId,
                     o.Status,
+                    o.Price,
                     o.SenderName,
                     o.PickupAddress,
                     o.ReceiverName,
