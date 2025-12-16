@@ -3,6 +3,7 @@ import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
 import { Link } from "react-router-dom";
 import OrderDetailsModal from "./OrderDetailsModal";
+import DriverASRVerification from "./DriverASRVerification";
 
 export default function DriverDeliveries() {
   const [orders, setOrders] = useState([]);
@@ -12,6 +13,10 @@ export default function DriverDeliveries() {
   // Modal
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+
+  // ASR Modal
+  const [showASRModal, setShowASRModal] = useState(false);
+  const [selectedASROrderId, setSelectedASROrderId] = useState(null);
 
   const openOrderDetails = (id) => {
     setSelectedOrderId(id);
@@ -172,6 +177,29 @@ export default function DriverDeliveries() {
         {/* CASE 2: OUT FOR DELIVERY (Active Actions) */}
         {(order.status === "OutForDelivery" || order.status === "Out for delivery") && (
             <>
+                {order.isASR ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedASROrderId(order.id);
+                      setShowASRModal(true);
+                    }}
+                    className="px-6 py-2 border border-[#351c15] text-[#351c15] font-bold rounded-lg hover:bg-[#351c15] hover:text-white transition text-sm"
+                  >
+                    Verify ASR
+                  </button>
+                ) : (
+                  <button
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          markDelivered(order.id);
+                      }}
+                      className="px-6 py-2 border border-[#351c15] text-[#351c15] font-bold rounded-lg hover:bg-[#351c15] hover:text-white transition text-sm"
+                  >
+                      Mark Delivered
+                  </button>
+                )}
+
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -180,15 +208,6 @@ export default function DriverDeliveries() {
                     className="px-6 py-2 border border-red-200 text-red-600 font-semibold rounded-lg hover:bg-red-50 transition text-sm"
                 >
                     Failed
-                </button>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        markDelivered(order.id);
-                    }}
-                    className="px-6 py-2 border border-[#351c15] text-[#351c15] font-bold rounded-lg hover:bg-[#351c15] hover:text-white transition text-sm"
-                >
-                    Mark Delivered
                 </button>
             </>
         )}
@@ -310,6 +329,16 @@ export default function DriverDeliveries() {
         <OrderDetailsModal
           orderId={selectedOrderId}
           onClose={() => setShowOrderModal(false)}
+        />
+      )}
+
+      {showASRModal && (
+        <DriverASRVerification
+          orderId={selectedASROrderId}
+          onClose={() => {
+            setShowASRModal(false);
+            fetchTodaysOrders();
+          }}
         />
       )}
     </div>
