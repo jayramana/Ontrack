@@ -14,10 +14,8 @@ public static class CustomerEndpoints
     {
         var group = app.MapGroup("/api/customer").WithTags("Customer");
 
-        // Require Customer role for all protected customer actions
         group.RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
 
-        // GET: api/customer/orders
         group.MapGet("/orders", async (HttpContext http, AppDbContext context) =>
         {
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -38,11 +36,21 @@ public static class CustomerEndpoints
             return Results.Ok(orders);
         });
 
-        // GET: api/customer/track/{orderId}
-        group.MapGet("/track/{orderId}", async (int orderId, AppDbContext context) =>
+        group.MapGet("/track/{identifier}", async (string identifier, AppDbContext context) =>
         {
+            var isNumeric = int.TryParse(identifier, out int orderId);
+            if (!isNumeric && identifier.StartsWith("ORD-", StringComparison.OrdinalIgnoreCase))
+            {
+                 var numberPart = identifier.Substring(4);
+                 if (int.TryParse(numberPart, out int parsedId))
+                 {
+                     orderId = parsedId;
+                     isNumeric = true;
+                 }
+            }
+
             var order = await context.Orders
-                .Where(o => o.Id == orderId)
+                .Where(o => (isNumeric && o.Id == orderId) || o.TrackingId == identifier)
                 .Include(o => o.Driver)
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.DestinationWarehouse)
@@ -50,7 +58,7 @@ public static class CustomerEndpoints
                 .FirstOrDefaultAsync();
 
             if (order == null)
-                return Results.NotFound();
+                return Results.NotFound(new { message = "Order not found. Please check your Order ID or Tracking Number." });
 
             DriverLocation? driverLocation = null;
 
@@ -70,7 +78,6 @@ public static class CustomerEndpoints
             });
         });
 
-        // POST: api/customer/reschedule/{orderId}
         group.MapPost("/reschedule/{orderId}", async (
             int orderId,
             RescheduleDto request,

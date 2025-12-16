@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 using Backend.Domain.Entity;
 using Backend.Services;
+using Backend.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -157,6 +158,8 @@ app.MapOrdersEndpoints();
 app.MapWarehouseEndpoints();
 app.MapGeofenceEndpoints();
 app.MapRoadIssueEndpoints();
+app.MapRouteEndpoints();
+app.MapTrackingEndpoints();
 app.MapSellerAnalyticsEndpoints();
 
 
