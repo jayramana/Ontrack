@@ -237,25 +237,10 @@ const CustomerDashboard = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-3 bg-white px-4 py-2 rounded-full border border-[#e2e8f0] cursor-pointer hover:border-[#cbd5e1] transition-colors shadow-sm">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-[#2563eb] focus:ring-[#2563eb] rounded border-gray-300"
-                  checked={useLiveDriverLoc}
-                  onChange={(e) => setUseLiveDriverLoc(e.target.checked)}
-                />
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
-                  Simulate Driver Loc
-                </span>
-              </label>
-              
-               <div className="h-8 w-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center font-bold text-sm ring-4 ring-[#e2e8f0]">
-                  {user?.first_name?.[0]}
-              </div>
-            </div>
+
           </div>
         </header>
+
 
         {/* SCROLLABLE CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -330,15 +315,37 @@ const CustomerDashboard = () => {
                             <div className="h-64 w-full relative">
                               <Doughnut 
                                   data={{
-                                      labels: ['Delivered', 'On Route', 'Pending', 'Issues'],
+                                      labels: [
+                                          'Pending Assignment',
+                                          'At Origin Warehouse', 
+                                          'Assigned',
+                                          'In Transit',
+                                          'Out For Delivery',
+                                          'At Dest Warehouse',
+                                          'Delivered',
+                                          'Delivery Attempted'
+                                      ],
                                       datasets: [{
                                           data: [
+                                              orders.filter(o => o.status === 'PendingAssignment').length,
+                                              orders.filter(o => o.status === 'AtOriginWarehouse').length,
+                                              orders.filter(o => o.status === 'Assigned').length,
+                                              orders.filter(o => o.status === 'InTransit').length,
+                                              orders.filter(o => o.status === 'OutForDelivery').length,
+                                              orders.filter(o => o.status === 'AtDestinationWarehouse').length,
                                               orders.filter(o => o.status === 'Delivered').length,
-                                              orders.filter(o => ['InTransit', 'OutForDelivery'].includes(o.status)).length,
-                                              orders.filter(o => ['PendingAssignment', 'AtOriginWarehouse', 'AtDestinationWarehouse', 'Assigned'].includes(o.status)).length,
-                                              orders.filter(o => ['Cancelled', 'DeliveryAttempted'].includes(o.status)).length
+                                              orders.filter(o => o.status === 'DeliveryAttempted').length
                                           ],
-                                          backgroundColor: ['#10b981', '#3b82f6', '#cbd5e1', '#ef4444'],
+                                          backgroundColor: [
+                                              '#94a3b8', // PendingAssignment (Gray)
+                                              '#60a5fa', // AtOriginWarehouse (Blue)
+                                              '#facc15', // Assigned (Yellow)
+                                              '#f97316', // InTransit (Orange)
+                                              '#c026d3', // OutForDelivery (Purple)
+                                              '#3b82f6', // AtDestinationWarehouse (Blue)
+                                              '#22c55e', // Delivered (Green)
+                                              '#ef4444'  // DeliveryAttempted (Red)
+                                          ],
                                           borderWidth: 0,
                                           hoverOffset: 10
                                       }]

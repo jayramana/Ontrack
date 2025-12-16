@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import DriverSidebar from "./DriverSidebar";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
 export default function DriverProfile() {
   const [profile, setProfile] = useState(null);
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
 
   // TRACKING STATE
@@ -37,10 +39,10 @@ export default function DriverProfile() {
             await api.post("/driver/location", {
                 latitude,
                 longitude,
-                speed: speed || 0, // Speed in m/s (convert to km/h if needed by backend, assuming backend takes raw or handles it)
+                speed: speed || 0, 
                 heading: heading || 0
             });
-            console.log("📍 Location updated:", latitude, longitude);
+            console.log(" Location updated:", latitude, longitude);
         } catch (error) {
             console.error("Failed to send location update:", error);
         }
@@ -48,11 +50,9 @@ export default function DriverProfile() {
 
     const handleError = (error) => {
         console.error("Geolocation error:", error);
-        // Optionally disable tracking on critical errors
     };
 
     if (isTracking) {
-        // Immediate update when turned on
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(sendLocationUpdate, handleError);
             
@@ -101,11 +101,9 @@ export default function DriverProfile() {
       );
   }
 
-  // Helper to format full name
   const fullName = `${profile.firstName} ${profile.lastName}`;
   const displayRole = profile.role ? profile.role.toUpperCase() : "DRIVER";
 
-  // Component Helpers
   const SectionCard = ({ title, description, children, rightAction }) => (
     <div className="bg-white rounded-xl border border-[#e6d8c9] p-8 mb-8 shadow-sm">
       <div className="mb-6 flex justify-between items-start">
@@ -240,6 +238,8 @@ export default function DriverProfile() {
                         helperText="Primary contact for deliveries."
                     />
                 </SectionCard>
+
+
             </div>
 
             {/* SECTION 3: ADDRESS */}
@@ -260,6 +260,16 @@ export default function DriverProfile() {
                      <FieldRow label="Country" value={profile.country} />
                 </div>
             </SectionCard>
+
+            {/* LOGOUT */}
+            <div className="mt-8">
+                <button 
+                   onClick={logout}
+                   className="px-6 py-2 rounded-lg bg-red-700 text-white font-bold hover:bg-red-800 transition-colors text-sm"
+                >
+                   Log Out
+                </button>
+            </div>
 
         </div>
       </div>

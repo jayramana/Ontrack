@@ -1,58 +1,55 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Truck, LayoutDashboard, Warehouse, Map } from "lucide-react";
 
 export default function AdminSidebar({ active }) {
   const navigate = useNavigate();
 
   const menu = [
-    { label: "Dashboard", key: "dashboard", path: "/admin/dashboard" },
-    // { label: "Customer Queries", key: "queries", path: "/admin/queries" },
-    // { label: "Delivery Insights", key: "insights", path: "/admin/insights" },
-    { label: "Warehouse Management", key: "warehouses", path: "/admin/warehouses" },
-    { label: "Live Map", key: "live-map", path: "/admin/live-map" },
+    { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/admin/dashboard" },
+    { label: "Warehouse Management", icon: <Warehouse size={20} />, key: "warehouses", path: "/admin/warehouses" },
+    { label: "Live Map", icon: <Map size={20} />, key: "live-map", path: "/admin/live-map" },
   ];
 
   return (
-    <div className="w-64 bg-[#351c15] text-white flex flex-col p-6 min-h-screen shadow-xl">
+    <div className="
+      group bg-[#351c15] text-white min-h-screen shadow-xl
+      w-20 hover:w-64 transition-all duration-300
+      flex flex-col p-4
+    ">
 
       {/* Logo */}
-      <div className="flex items-center space-x-3 mb-10">
-        <h1 className="text-xl font-extrabold tracking-wide text-[#f9b400]">
+      <div className="flex items-center gap-3 mb-10 pl-2">
+        <Truck size={28} className="text-[#f9b400]" />
+        <h1 className="text-xl font-extrabold text-[#f9b400]
+          opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">
           OnTrack
         </h1>
       </div>
 
-      <p className="text-gray-300 text-sm mb-4 tracking-wider">ADMIN PORTAL</p>
+      <p className="text-gray-300 text-sm mb-4 tracking-wider
+        opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+        ADMIN PORTAL
+      </p>
 
-      {/* Menu */}
       <nav className="space-y-2">
-        {menu.map((item) => {
+        {menu.map(item => {
           const isActive = active === item.key;
           return (
             <button
               key={item.key}
-              type="button"
               onClick={() => navigate(item.path)}
-              className={[
-                "w-full text-left p-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2",
-                isActive
-                  ? "bg-[#6f4e37] text-[#f9b400]"
-                  : "text-white hover:bg-[#6f4e37]/80 hover:text-[#f9b400]"
-              ].join(" ")}
+              className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors
+                ${isActive ? "bg-[#6f4e37] text-[#f9b400]" : "hover:bg-[#6f4e37]/80"}`}
             >
-              {/* Active left highlight bar */}
-              <span
-                className={[
-                  "w-1.5 h-6 rounded-r-md mr-2",
-                  isActive ? "bg-[#f9b400]" : "bg-transparent"
-                ].join(" ")}
-              />
-              <span>{item.label}</span>
+              <span className="text-lg">{item.icon}</span>
+              <span className="opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">
+                {item.label}
+              </span>
             </button>
           );
         })}
       </nav>
-
     </div>
   );
 }

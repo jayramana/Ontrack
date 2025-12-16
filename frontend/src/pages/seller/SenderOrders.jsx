@@ -32,21 +32,7 @@ export default function SenderOrders() {
         filterStatus === "" || order.status === filterStatus;
       return matchesId && matchesStatus;
     })
-    .sort((a, b) => b.id - a.id); // Default Sort: Order ID Descending
-
-  const getStatusColor = (status) => {
-     return {
-      PendingAssignment: "bg-yellow-100 text-yellow-800",
-      AtOriginWarehouse: "bg-yellow-100 text-yellow-800",
-      Assigned: "bg-blue-100 text-blue-800",
-      InTransit: "bg-blue-50 text-blue-600",
-      OutForDelivery: "bg-purple-100 text-purple-800",
-      AtDestinationWarehouse: "bg-orange-100 text-orange-800",
-      Delivered: "bg-green-100 text-green-800",
-      DeliveryAttempted: "bg-red-100 text-red-800",
-      Cancelled: "bg-red-100 text-red-800",
-    }[status] || "bg-gray-200 text-gray-700";
-  };
+    .sort((a, b) => b.id - a.id);
 
   return (
     <div className="min-h-screen flex bg-[#f8f4ef]">
@@ -102,9 +88,10 @@ export default function SenderOrders() {
               <option value="Assigned">Assigned</option>
               <option value="InTransit">In Transit</option>
               <option value="OutForDelivery">Out For Delivery</option>
-              <option value="AtDestinationWarehouse">At Destination Warehouse</option>
+              <option value="AtDestinationWarehouse">At Dest Warehouse</option>
               <option value="Delivered">Delivered</option>
               <option value="DeliveryAttempted">Delivery Attempted</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
         </div>
@@ -119,64 +106,41 @@ export default function SenderOrders() {
               : "No orders match your filters."}
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
-             {filteredAndSortedOrders.map((order) => (
-                <div 
-                    key={order.id} 
-                    className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col md:flex-row gap-6 hover:shadow-lg transition-shadow"
-                >
-                    {/* LEFT: Main Info */}
-                    <div className="flex-1">
-                        <h3 className="text-lg font-medium text-blue-700 mb-2 cursor-pointer hover:underline">
-                            {order.packageDescription || order.status === "PendingAssignment" ? "New Shipment Request" : `Shipment #${order.id}`}
-                        </h3>
-                        
-                        {/* Status Badge (Mobile) */}
-                        <div className="md:hidden mb-2">
-                             <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${getStatusColor(order.status)}`}>
-                                {order.status.replace(/([A-Z])/g, ' $1').trim()}
-                             </span>
-                        </div>
-
-                        {/* Details (No Bullets) */}
-                        <div className="text-sm text-gray-600 space-y-1 mt-3">
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 w-20">Receiver:</span> 
-                                <span className="font-semibold text-gray-800">{order.receiverName}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 w-20">Order ID:</span> 
-                                <span className="font-mono text-gray-800">#{order.id}</span>
-                            </div>
-                             <div className="flex items-center gap-2">
-                                <span className="text-gray-500 w-20">Placed On:</span> 
-                                <span>{new Date(order.createdAt).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* RIGHT: Price & Status */}
-                    <div className="w-full md:w-1/4 flex flex-col items-start md:pl-8 md:border-l border-gray-100">
-                        <div className="text-3xl font-bold text-[#212121] mb-1">
-                            ₹{order.price || '0'}
-                        </div>
-                        <div className="text-xs text-green-600 font-medium mb-3">
-                            Free Delivery
-                        </div>
-                        
-                        <div className="mb-4 hidden md:block">
-                             <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wide border ${getStatusColor(order.status)}`}>
-                                {order.status.replace(/([A-Z])/g, ' $1').trim()}
-                             </span>
-                        </div>
-
-                        {/* Action */}
-                        <button className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline">
-                            View Details
-                        </button>
-                    </div>
-                </div>
-             ))}
+          <div className="bg-white rounded-xl shadow border border-[#e6d8c9] overflow-hidden">
+            <table className="min-w-full">
+              <thead className="bg-[#fff8e6] border-b border-[#e6d8c9]">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#351c15] uppercase">Order ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#351c15] uppercase">Receiver</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#351c15] uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#351c15] uppercase">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-bold text-[#351c15] uppercase">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAndSortedOrders.map((order) => (
+                  <tr key={order.id} className="border-b border-[#e6d8c9] hover:bg-[#fdf7ed] transition">
+                    <td className="px-6 py-4 font-semibold text-[#351c15]">#{order.id}</td>
+                    <td className="px-6 py-4 text-[#4e2a1f]">
+                      {order.receiverName}
+                      <div className="text-xs text-gray-500">{order.receiverEmail}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                        order.status === "Delivered" ? "bg-green-100 text-green-700" :
+                        ["Cancelled", "DeliveryAttempted"].includes(order.status) ? "bg-red-100 text-red-700" :
+                        ["Assigned", "OutForDelivery", "InTransit"].includes(order.status) ? "bg-blue-100 text-blue-800" :
+                        "bg-yellow-100 text-yellow-800"
+                      }`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[#6b4f3a]">{new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 font-semibold text-[#351c15]">₹{order.price}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

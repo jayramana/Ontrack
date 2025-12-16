@@ -1,60 +1,49 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-// import { FiPackage, FiUser, FiPlusCircle, FiList, FiHome } from "";
+import { Truck, LayoutDashboard, Package, PlusCircle, User, LogOut } from "lucide-react";
 
 export default function SellerSidebar({ active }) {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
   const menu = [
-    { label: "Dashboard", key: "dashboard", path: "/seller/dashboard",  },
-    { label: "My Orders", key: "orders", path: "/sender/orders", },
-    { label: "Create Shipment", key: "create", path: "/seller/create-shipment",},
-    { label: "Profile", key: "profile", path: "/seller/seller-profile", },
+    { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/seller/dashboard" },
+    { label: "My Orders", icon: <Package size={20} />, key: "orders", path: "/sender/orders" },
+    { label: "Create Shipment", icon: <PlusCircle size={20} />, key: "create", path: "/seller/create-shipment" },
+    { label: "Profile", icon: <User size={20} />, key: "profile", path: "/seller/seller-profile" },
   ];
 
   return (
-    <div className="w-64 bg-[#351c15] text-white min-h-screen flex flex-col p-6 shadow-xl">
+    <div className="group bg-[#351c15] text-white min-h-screen shadow-xl
+      w-20 hover:w-64 transition-all duration-300 flex flex-col p-4">
 
-      {/* LOGO */}
-      <div className="flex items-center space-x-3 mb-10">
-        <h1 className="text-xl font-extrabold tracking-wide text-[#f9b400]">
+      <div className="flex items-center gap-3 mb-10 pl-2">
+        <Truck size={28} className="text-[#f9b400]" />
+        <h1 className="text-xl font-extrabold text-[#f9b400]
+          opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
           OnTrack
         </h1>
       </div>
 
-      <p className="text-gray-300 text-sm mb-4 tracking-wider">SELLER PORTAL</p>
+      <p className="text-gray-300 text-sm mb-4 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+        SELLER PORTAL
+      </p>
 
-      {/* MENU */}
       <nav className="space-y-2">
-        {menu.map((item) => {
-          const isActive = active === item.key;
-
-          return (
-            <button
-              key={item.key}
-              onClick={() => navigate(item.path)}
-              className={[
-                "w-full flex items-center gap-3 p-3 rounded-lg font-medium transition-colors duration-200",
-                isActive
-                  ? "bg-[#6f4e37] text-[#f9b400]"
-                  : "text-white hover:bg-[#6f4e37]/80 hover:text-[#f9b400]"
-              ].join(" ")}
-            >
-              {/* Active Indicator Bar */}
-              <span
-                className={[
-                  "w-1.5 h-6 rounded-r-md",
-                  isActive ? "bg-[#f9b400]" : "bg-transparent"
-                ].join(" ")}
-              ></span>
-
-              <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+        {menu.map(item => (
+          <button
+            key={item.key}
+            onClick={() => navigate(item.path)}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg
+              ${active === item.key ? "bg-[#6f4e37] text-[#f9b400]" : "hover:bg-[#6f4e37]/80"}`}
+          >
+            <span className="text-lg">{item.icon}</span>
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              {item.label}
+            </span>
+          </button>
+        ))}
       </nav>
 
 

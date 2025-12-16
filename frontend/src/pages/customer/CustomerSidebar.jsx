@@ -1,62 +1,50 @@
-// src/components/CustomerSidebar.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { Truck, LayoutDashboard, Package, MapPin, Bell, Clock, User } from "lucide-react";
 
 export default function CustomerSidebar({ active }) {
   const navigate = useNavigate();
 
-  const menuItems = [
-    { label: "Dashboard", key: "dashboard", path: "/customer/dashboard" },
-    { label: "My Orders", key: "orders", path: "/customer/orders" },
-    { label: "Track Package", key: "track", path: "/customer/track/0" }, // 0 or placeholder
-    { label: "Geofence Alerts", path: "/customer/geofencealerts", key: "alerts" },
-    { label: "Set Availability", path: "/customer/availability", key: "availability" },
-    { label: "Profile", key: "profile", path: "/customer/profile" },
+  const menu = [
+    { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/customer/dashboard" },
+    { label: "My Orders", icon: <Package size={20} />, key: "orders", path: "/customer/orders" },
+    { label: "Track Package", icon: <MapPin size={20} />, key: "track", path: "/customer/track/0" },
+    { label: "Geofence Alerts", icon: <Bell size={20} />, key: "alerts", path: "/customer/geofencealerts" },
+    { label: "Availability", icon: <Clock size={20} />, key: "availability", path: "/customer/availability" },
+    { label: "Profile", icon: <User size={20} />, key: "profile", path: "/customer/profile" },
   ];
 
   return (
-    <div className="w-64 bg-[#351c15] text-white flex flex-col p-6 min-h-screen shadow-xl">
-      {/* Logo */}
-      <div className="flex items-center space-x-3 mb-10">
-        <h1 className="text-xl font-extrabold tracking-wide text-[#f9b400]">
+    <div className="group bg-[#351c15] text-white min-h-screen shadow-xl
+      w-20 hover:w-64 transition-all duration-300 flex flex-col p-4">
+
+      <div className="flex items-center gap-3 mb-10 pl-2">
+        <Truck size={28} className="text-[#f9b400]" />
+        <h1 className="text-xl font-extrabold text-[#f9b400]
+          opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
           OnTrack
         </h1>
       </div>
 
-      <p className="text-gray-300 text-sm mb-4 tracking-wider">CUSTOMER PORTAL</p>
+      <p className="text-gray-300 text-sm mb-4 opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+        CUSTOMER PORTAL
+      </p>
 
-      {/* Menu */}
       <nav className="space-y-2">
-        {menuItems.map((item) => {
-          const isActive = active === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => navigate(item.path)}
-              className={[
-                "w-full text-left p-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2",
-                // active styles
-                isActive
-                  ? "bg-[#6f4e37] text-[#f9b400]"
-                  // hover styles when NOT active
-                  : "text-white hover:bg-[#6f4e37]/80 hover:text-[#f9b400]"
-              ].join(" ")}
-            >
-              {/* optional left indicator for active */}
-              <span
-                className={[
-                  "w-1.5 h-6 rounded-r-md mr-2",
-                  isActive ? "bg-[#f9b400] block" : "bg-transparent"
-                ].join(" ")}
-              />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+        {menu.map(item => (
+          <button
+            key={item.key}
+            onClick={() => navigate(item.path)}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg
+              ${active === item.key ? "bg-[#6f4e37] text-[#f9b400]" : "hover:bg-[#6f4e37]/80"}`}
+          >
+            <span className="text-lg">{item.icon}</span>
+            <span className="opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+              {item.label}
+            </span>
+          </button>
+        ))}
       </nav>
-
-
     </div>
   );
 }

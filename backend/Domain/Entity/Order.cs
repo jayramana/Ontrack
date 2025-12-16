@@ -56,7 +56,6 @@ namespace Backend.Domain.Entity
         public User? Customer { get; set; }
 
         // ------ Warehouse References ------
-
         public int? OriginWarehouseId { get; set; }
 
         [ForeignKey("OriginWarehouseId")]
@@ -75,7 +74,7 @@ namespace Backend.Domain.Entity
         // ------ Priority & Scheduling ------
         public int Priority { get; set; } = 2;
         
-        // 🆕 FEATURE 1: AI PRIORITY FIELDS
+        // AI PRIORITY FIELDS
         public int? AiPriority { get; set; }
         public string? AiPriorityJustification { get; set; }
         
@@ -102,5 +101,28 @@ namespace Backend.Domain.Entity
         public double DeliveryLongitude { get; set; }
 
         public string TrackingId { get; set; } = Guid.NewGuid().ToString("N")[..10].ToUpper();
+
+        // ==============================
+        // 🆕 ASR (ADULT SIGNATURE REQUIRED) FIELDS
+        // ==============================
+        
+        /// <summary>
+        /// Indicates if this order requires Adult Signature verification
+        /// </summary>
+        public bool IsASR { get; set; } = false;
+
+        /// <summary>
+        /// ASR verification status: NotStarted, Pending, InProgress, Success, Failed, AdminOverride
+        /// </summary>
+        public string ASRStatus { get; set; } = "NotStarted";
+
+        /// <summary>
+        /// Foreign key to ASRVerification table
+        /// </summary>
+        public int? ASRVerificationId { get; set; }
+
+        [ForeignKey("ASRVerificationId")]
+        [JsonIgnore]
+        public ASRVerification? ASRVerification { get; set; }
     }
 }

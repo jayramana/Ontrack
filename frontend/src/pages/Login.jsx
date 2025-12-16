@@ -28,20 +28,25 @@ const Login = () => {
         setError('');
         setLoading(true);
 
+        // const result = await login(formData.email, formData.password, formData.role);
+
+        // if (result.success) {
+        //     if (formData.role === "Customer".toLowerCase()) {
+        //         navigate("/customer/dashboard");
+        //     } else if (formData.role === "Driver".toLowerCase()) {
+        //         navigate("/driver/dashboard");
+        //     } else if (formData.role === "Admin".toLowerCase()) {
+        //         navigate("/admin/dashboard");
+        //     } else if (formData.role === "Seller".toLowerCase()) {
+        //         navigate("/seller/dashboard");
+        //     }
+        //     return;
+        // }
+
         const result = await login(formData.email, formData.password, formData.role);
 
-        if (result.success) {
-            if (formData.role === "Customer".toLowerCase()) {
-                navigate("/customer/dashboard");
-            } else if (formData.role === "Driver".toLowerCase()) {
-                navigate("/driver/dashboard");
-            } else if (formData.role === "Admin".toLowerCase()) {
-                navigate("/admin/dashboard");
-            } else if (formData.role === "Seller".toLowerCase()) {
-                navigate("/seller/dashboard");
-            }
-            return;
-        }
+
+
 
         if (!result.success) {
             setError(result.message);

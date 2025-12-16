@@ -11,8 +11,6 @@ const OrderDetails = () => {
   const [driverLocation, setDriverLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState(null);
-  console.log(`Status : ${order?.status}`);
-  // Reschedule state
   // Reschedule state
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduleForm, setRescheduleForm] = useState({
@@ -186,8 +184,6 @@ const OrderDetails = () => {
       <CustomerSidebar active="orders" />
       
       <div className="flex-1 overflow-y-auto max-h-screen">
-        {/* HEADER MATCHING IMAGE */}
-        {/* HEADER MATCHING IMAGE */}
         <header className="bg-[#351c15] text-[#f9b400] sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
                 <div className="flex items-center gap-4">
@@ -202,17 +198,13 @@ const OrderDetails = () => {
                 {/* ALTERNATIVE: Status in Header */}
                 <div className="flex items-center gap-4">
                     <span className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider ${getStatusColor(order.status)} border border-current shadow-sm`}>
-                         {order.status}
-                    </span>
-                    <div className="text-sm text-[#f7f3ef] opacity-80 font-mono hidden md:block">
-                        Order #{order.id}
-                    </div>
+                {order.status}
+                </span>
                 </div>
             </div>
         </header>
 
         <div className="max-w-7xl mx-auto px-8 py-8">
-            
             {/* VERTICAL STACK LAYOUT (Unified Card) */}
             <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
                 

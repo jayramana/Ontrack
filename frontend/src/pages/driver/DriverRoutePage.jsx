@@ -251,7 +251,9 @@ const DriverRoutePage = () => {
         const nn = nearestNeighborRoute([...stops]);
         const optimized = twoOptOptimization(nn);
 
-        const priorityRoute = [...stops].sort((a, b) => b.priority - a.priority);
+        const priorityRoute = [...stops].sort(
+          (a, b) => b.priority - a.priority
+        );
 
         const timeWindowRoute = [...stops].sort((a, b) => {
           if (a.windowStart && b.windowStart)
@@ -294,11 +296,12 @@ const DriverRoutePage = () => {
         setRouteOptions(options);
 
         // OPTIMIZATION: Show the UI first, calculate map path in background
-        setLoading(false); 
+        setLoading(false);
 
         // Non-blocking route preview
-        previewRoute(0, options).catch(err => console.error("Background route calc failed:", err));
-
+        previewRoute(0, options).catch((err) =>
+          console.error("Background route calc failed:", err)
+        );
       } catch (err) {
         setError("Failed to load route data");
         setLoading(false);
@@ -308,39 +311,68 @@ const DriverRoutePage = () => {
     load();
   }, []);
 
-  // OSRM routing - DEBUG MODE
+  // // OSRM routing
+  // const fetchOsrmRoute = async (stops) => {
+  //   const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+  //   const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+
+  //   const res = await fetch(url);
+  //   const json = await res.json();
+
+  //   const route = json.routes?.[0];
+  //   if (!route) throw new Error("OSRM failed");
+
+  //   const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+
+  //   setRouteStats({
+  //     distance: (route.distance / 1000).toFixed(1),
+  //     duration: Math.round(route.duration / 60),
+  //   });
+
+  //   return coords;
+  // };
+
+  // OSRM routing (via backend proxy)
   const fetchOsrmRoute = async (stops) => {
-    try {
-      const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
-      const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
-
-      // DEBUG: Check URL length (OSRM has limits)
-      console.log("Requesting OSRM:", url); 
-      
-      const res = await fetch(url);
-      
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`OSRM API Error (${res.status}): ${text || res.statusText}`);
-      }
-      
-      const json = await res.json();
-      if (json.code !== "Ok" || !json.routes?.[0]) {
-        throw new Error(`OSRM Logic Error: ${json.message || json.code || "No route found"}`);
-      }
-
-      const route = json.routes[0];
-      
-      setRouteStats({
-        distance: (route.distance / 1000).toFixed(1),
-        duration: Math.round(route.duration / 60),
-      });
-
-      return route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-    } catch (err) {
-      console.error("OSRM Fetch Failed:", err);
-      throw err;
+    if (!stops || stops.length < 2) {
+      throw new Error("At least 2 stops required");
     }
+
+    // Build coordinates string
+    const coordinates = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+
+    // Extract start & end (OSRM backend expects only start & end)
+    const points = coordinates.split(";");
+
+    const [startLng, startLat] = points[0].split(",");
+    const [endLng, endLat] = points[points.length - 1].split(",");
+
+    // ✅ CALL YOUR BACKEND (NO CORS)
+    const url =
+      `http://localhost:5066/api/route/osrm` +
+      `?startLng=${startLng}` +
+      `&startLat=${startLat}` +
+      `&endLng=${endLng}` +
+      `&endLat=${endLat}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Route API failed");
+
+    const json = await res.json();
+
+    const route = json.routes?.[0];
+    if (!route) throw new Error("OSRM failed");
+
+    // Convert [lng, lat] → [lat, lng] for Leaflet
+    const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+
+    // Route stats
+    setRouteStats({
+      distance: (route.distance / 1000).toFixed(1), // km
+      duration: Math.round(route.duration / 60), // minutes
+    });
+
+    return coords;
   };
 
   const previewRoute = async (index, opts = null) => {
@@ -619,7 +651,9 @@ const DriverRoutePage = () => {
                         <Tooltip>
                           <div className="text-xs">
                             <strong
-                              style={{ color: getSeverityColor(issue.severity) }}
+                              style={{
+                                color: getSeverityColor(issue.severity),
+                              }}
                             >
                               ⚠️ {issue.issueType}
                             </strong>

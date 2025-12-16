@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Backend.Data;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
+
 using Backend.Domain.Entity;
 using Backend.Services;
 
@@ -14,6 +16,14 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
+
+// Add ASR Service
+builder.Services.AddScoped<ASRService>();
+
+// Update Gemini Service (ensure API key is configured)
+// builder.Services.AddScoped<GeminiService>();
+
+
 
 
 // Configure Entity Framework with PostgreSQL
@@ -32,9 +42,30 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure Python service URL
+builder.Services.Configure<Dictionary<string, string>>(options =>
+{
+    options["PythonVerificationService:Url"] = "http://localhost:5001";
+});
+
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? "YourSuperSecretKeyForJwtTokenGeneration12345";
+
+// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+//     .AddJwtBearer(options =>
+//     {
+//         options.TokenValidationParameters = new TokenValidationParameters
+//         {
+//             ValidateIssuer = true,
+//             ValidateAudience = true,
+//             ValidateLifetime = true,
+//             ValidateIssuerSigningKey = true,
+//             ValidIssuer = jwtSettings["Issuer"] ?? "OntrackAPI",
+//             ValidAudience = jwtSettings["Audience"] ?? "OntrackClient",
+//             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+//         };
+//     });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -45,14 +76,36 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"] ?? "OntrackAPI",
-            ValidAudience = jwtSettings["Audience"] ?? "OntrackClient",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+
+            // 🔥 CRITICAL FIX
+            RoleClaimType = ClaimTypes.Role
+        };
+        // 🔥 CRITICAL: Add this for SignalR authentication
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                
+                return Task.CompletedTask;
+            }
         };
     });
+
+builder.Services.AddScoped<VerificationService>();
+
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IEtaservice, LocationService>();
-builder.Services.AddScoped<GeminiService>();
+// builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<WarehouseAssignmentService>();
 builder.Services.AddScoped<DriverRouteOptimizationService>();
@@ -67,6 +120,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<GeminiOcrService>();
 
 builder.Services.AddScoped<GeofenceService>();
 var app = builder.Build();
@@ -79,7 +133,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Map ASR endpoints
+app.MapASREndpoints();
 
+app.MapGeocodingEndpoints();
+
+app.MapVerificationEndpoints();
 
 // Use CORS
 app.UseCors("AllowFrontend");
