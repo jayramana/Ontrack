@@ -17,7 +17,6 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // Check if user is already logged in on mount
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
@@ -35,22 +34,26 @@ export const AuthProvider = ({ children }) => {
             // Store token and user data
             localStorage.setItem('token', response.token);
             localStorage.setItem('user', JSON.stringify({
-                userId: response.userId,
-                name: response.name,
+                userId: response.user_id,
+                first_name: response.first_name,
+                last_name: response.last_name,
+                email : response.email,
                 role: response.role,
             }));
 
             setUser({
-                userId: response.userId,
-                name: response.name,
+                userId: response.user_id,
+                first_name: response.first_name,
+                last_name: response.last_name,
                 role: response.role,
             });
 
             // Redirect based on role
             const roleRoutes = {
-                Customer: '/customer/dashboard',
-                Driver: '/driver/dashboard',
-                Admin: '/admin/dashboard',
+                customer: '/customer/dashboard',
+                driver: '/driver/dashboard',
+                admin: '/admin/dashboard',
+                seller: '/seller/dashboard',
             };
 
             navigate(roleRoutes[response.role] || '/');
@@ -73,7 +76,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const hasRole = (role) => {
-        return user?.role === role;
+        console.log(`AuthContext check: UserRole=${user?.role}, Required=${role}`);
+        if (!user || !user.role) return false;
+        return user.role.toLowerCase() === role.toLowerCase();
     };
 
     const value = {

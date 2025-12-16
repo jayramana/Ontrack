@@ -1,148 +1,198 @@
-import { useAuth } from '../../context/AuthContext';
+// ANALYTICS DRIVER DASHBOARD
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext";
+import DriverSidebar from "./DriverSidebar";
+import api from "../../services/api";
+import { useNavigate } from "react-router-dom";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+} from "chart.js";
+import { Doughnut, Bar } from "react-chartjs-2";
 
-const DriverDashboard = () => {
-    const { user, logout } = useAuth();
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+);
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white shadow">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Driver Dashboard</h1>
-                            <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.name}!</p>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition duration-200"
-                        >
-                            Logout
-                        </button>
+export default function DriverDashboard() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const [stats, setStats] = useState({
+    total: 0,
+    delivered: 0,
+    pending: 0,
+    exceptions: 0,
+    highPriority: 0,
+    normalPriority: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [warehouse, setWarehouse] = useState(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        // Fetch ALL orders (history + today) for better analytics
+        // Using the new dedicated analytics endpoint
+        const response = await api.get("/driver/orders/today/analytics");
+        const orders = response.data || [];
+
+        if (orders.length > 0) {
+            setWarehouse(orders[0].currentWarehouse);
+        }
+
+        // Calculate Stats
+        const delivered = orders.filter((o) => o.status === "Delivered").length;
+        const pending = orders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
+        const exceptions = orders.filter((o) => o.status === "DeliveryAttempted" || o.status === "Cancelled").length;
+        
+        const highPriority = orders.filter((o) => o.priority === 1 && o.status === "Delivered").length;
+        const normalPriority = orders.filter((o) => o.priority === 2 && o.status === "Delivered").length;
+
+        setStats({
+          total: orders.length,
+          delivered,
+          pending,
+          exceptions,
+          highPriority,
+          normalPriority,
+        });
+
+      } catch (err) {
+        console.error("Failed to load analytics", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  // CHART DATA
+  const statusData = {
+    labels: ["Delivered", "Pending", "Exceptions"],
+    datasets: [
+      {
+        data: [stats.delivered, stats.pending, stats.exceptions],
+        backgroundColor: ["#15803d", "#f9b400", "#ef4444"], // Green, Yellow, Red
+        borderColor: ["#14532d", "#b45309", "#7f1d1d"],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const priorityData = {
+    labels: ["High Priority", "Normal Priority"],
+    datasets: [
+      {
+        label: "Completed Deliveries",
+        data: [stats.highPriority, stats.normalPriority],
+        backgroundColor: ["#dc2626", "#3b82f6"], // Red, Blue
+      },
+    ],
+  };
+
+  
+  return (
+    <div className="min-h-screen flex bg-[#f7f3ef]">
+      <DriverSidebar active="dashboard" />
+
+      <div className="flex-1 overflow-y-auto">
+        {/* HEADER */}
+        <header className="bg-[#fff8e7] border-b border-[#e6ddc5] shadow-sm sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-black text-[#351c15]">
+                Performance Dashboard
+              </h1>
+              <p className="text-[#6f4e37]">
+                Welcome back, {user?.first_name}. Here is your performance overview.
+              </p>
+            </div>
+             {warehouse && (
+                <div className="text-right">
+                  <p className="text-xs text-[#6f4e37] uppercase font-bold">Base Location</p>
+                  <p className="text-[#351c15] font-bold">{warehouse.name}</p>
+                  <p className="text-xs text-[#f9b400] font-bold">{warehouse.city}</p>
+                </div>
+              )}
+          </div>
+        </header>
+
+        <div className="max-w-7xl mx-auto p-8">
+            
+            {/* KPI CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Completion Rate</p>
+                    <p className="text-4xl font-black text-[#351c15] mt-2">
+                        {stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0}%
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">Daily Target: 95%</p>
+                </div>
+
+                 <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Total Jobs</p>
+                    <p className="text-4xl font-black text-[#351c15] mt-2">{stats.total}</p>
+                    <p className="text-xs text-gray-400 mt-1">Assigned Today</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Pending</p>
+                    <p className="text-4xl font-black text-[#f9b400] mt-2">{stats.pending}</p>
+                    <p className="text-xs text-gray-400 mt-1">Remaining Stops</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Exceptions</p>
+                    <p className="text-4xl font-black text-red-600 mt-2">{stats.exceptions}</p>
+                    <p className="text-xs text-gray-400 mt-1">Failed / Cancelled</p>
+                </div>
+            </div>
+
+            {/* CHARTS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                
+                {/* STATUS CHART */}
+                <div className="bg-white p-8 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <h3 className="text-xl font-bold text-[#351c15] mb-6 border-b border-[#eee] pb-4">
+                        Delivery Status Breakdown
+                    </h3>
+                    <div className="h-64 flex justify-center">
+                        <Doughnut data={statusData} options={{ maintainAspectRatio: false }} />
                     </div>
                 </div>
-            </header>
 
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Welcome Card */}
-                    <div className="bg-white rounded-xl shadow-md p-6 md:col-span-3">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-green-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                                    />
-                                </svg>
-                            </div>
-                            <div className="ml-4">
-                                <h2 className="text-xl font-semibold text-gray-800">
-                                    Welcome to Your Driver Portal
-                                </h2>
-                                <p className="text-gray-600 mt-1">
-                                    You are logged in as: <span className="font-semibold">{user?.role}</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Stats Cards */}
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Today's Deliveries</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-blue-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-blue-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">Completed</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-green-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-green-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-md p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600">In Transit</p>
-                                <p className="text-3xl font-bold text-gray-900 mt-2">0</p>
-                            </div>
-                            <div className="bg-orange-100 rounded-full p-3">
-                                <svg
-                                    className="h-8 w-8 text-orange-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M13 10V3L4 14h7v7l9-11h-7z"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Placeholder for future features */}
-                    <div className="bg-green-50 rounded-xl border-2 border-dashed border-green-200 p-8 md:col-span-3">
-                        <div className="text-center">
-                            <h3 className="text-lg font-semibold text-green-900 mb-2">
-                                🚚 Phase 1 Complete!
-                            </h3>
-                            <p className="text-green-700">
-                                Route management and delivery tracking features coming in Phase 2
-                            </p>
-                        </div>
+                {/* PRIORITY CHART */}
+                <div className="bg-white p-8 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <h3 className="text-xl font-bold text-[#351c15] mb-6 border-b border-[#eee] pb-4">
+                        Completed by Priority
+                    </h3>
+                    <div className="h-64">
+                         <Bar 
+                            data={priorityData} 
+                            options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } }
+                            }} 
+                        />
                     </div>
                 </div>
-            </main>
+
+            </div>
         </div>
-    );
-};
-
-export default DriverDashboard;
+      </div>
+    </div>
+  );
+}

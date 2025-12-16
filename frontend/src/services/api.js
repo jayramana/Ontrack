@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5066/api';
+export const API_BASE_URL = 'http://localhost:5066/api';
 
 
 // Create axios instance
@@ -11,7 +11,6 @@ const api = axios.create({
     },
 });
 
-// Add request interceptor to include auth token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -30,28 +29,40 @@ export const authAPI = {
     login: async (email, password, role) => {
         try {
             const response = await api.post('/auth/login', {
-                email,
-                password,
-                role,
+                Email : email,
+                Password : password,
+                Role : role,
             });
             return response.data;
         } catch (error) {
             throw error.response?.data?.message || 'Login failed';
         }
     },
-    register: async (name, email, password, role) => {
-        try {
-            const response = await api.post('/auth/register', {
-                name,
-                email,
-                password,
-                role,
-            });
-            return response.data;
-        } catch (error) {
-            throw error.response?.data?.message || 'Registration failed';
-        }
-    },
+register: async (payload) => {
+    try {
+        const response = await api.post('/auth/register', {
+            UserFName: payload.userFName,
+            UserLName: payload.userLName,
+            PhonePrimary: payload.phonePrimary,
+            PhoneSecondary: payload.phoneSecondary,
+            Email: payload.email,
+            Password: payload.password,
+            Role: payload.role,
+            // Address Fields
+            AddressLine1: payload.addressLine1,
+            AddressLine2: payload.addressLine2,
+            City: payload.city,
+            State: payload.state,
+            PostalCode: payload.postalCode,
+            Country: payload.country,
+            SellerType: payload.sellerType
+        });
+
+        return response.data;
+    } catch (error) {
+        throw error.response?.data?.message || 'Registration failed';
+    }
+}
 };
 
 export default api;

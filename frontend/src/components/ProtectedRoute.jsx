@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRole }) => {
+    const { user } = useAuth();
     const { isAuthenticated, hasRole, loading } = useAuth();
 
     if (loading) {
@@ -13,10 +14,12 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     }
 
     if (!isAuthenticated()) {
+        console.log("ProtectedRoute: User not authenticated. Redirecting to login.");
         return <Navigate to="/" replace />;
     }
 
     if (requiredRole && !hasRole(requiredRole)) {
+        console.log(`ProtectedRoute: Role mismatch. Required: ${requiredRole}, User Role: ${user?.role}`);
         return <Navigate to="/" replace />;
     }
 
