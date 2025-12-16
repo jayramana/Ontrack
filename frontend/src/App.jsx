@@ -75,6 +75,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/customer/track/:id"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <Tracking />
+                </ProtectedRoute>
+              }
+            />
 
 
             <Route

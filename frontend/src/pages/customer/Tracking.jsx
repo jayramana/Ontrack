@@ -1,108 +1,167 @@
 import { useState, useEffect } from "react";
 import MapComponent from "../../components/MapComponent";
 import * as signalR from "@microsoft/signalr";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import CustomerSidebar from "./CustomerSidebar";
+import api, { API_BASE_URL } from "../../services/api";
 
 function Tracking() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  
   const [driverLocation, setDriverLocation] = useState(null);
-  const [orderStatus] = useState("Out for Delivery");
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [connection, setConnection] = useState(null);
+  const [searchId, setSearchId] = useState("");
 
-  // Mock Order ID and Driver ID for demo
-  const driverId = 2;
+  useEffect(() => {
+    if (id) {
+        fetchOrderAndTrack(id);
+    }
+    
+    return () => {
+       if (connection) connection.stop();
+    };
+  }, [id]);
 
-  const setupSignalR = async () => {
+  const fetchOrderAndTrack = async (orderId) => {
+    setLoading(true);
+    try {
+        const response = await api.get(`/customer/track/${orderId}`);
+        setOrder(response.data.order);
+        if (response.data.driverLocation) {
+            setDriverLocation(response.data.driverLocation);
+        }
+        if (response.data.order?.driverId) {
+             setupSignalR(response.data.order.id);
+        }
+
+    } catch (error) {
+        console.error("Error fetching tracking info:", error);
+        setOrder(null);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const setupSignalR = async (currentOrderId) => {
+    if (connection) return;
+
     const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl("http://localhost:5066/hubs/logistics")
+      .withUrl(API_BASE_URL.replace("/api", "/hubs/logistics"), {
+        accessTokenFactory: () => localStorage.getItem("token") || ""
+      })
       .withAutomaticReconnect()
       .build();
 
-    newConnection.on("ReceiveDriverLocation", (id, lat, lng) => {
-      if (id === driverId) {
-        setDriverLocation({ lat, lng });
-      }
+    newConnection.on("ReceiveDriverLocation", (payload) => {
+        setDriverLocation({
+             latitude: payload.latitude, 
+             longitude: payload.longitude 
+        });
     });
 
     try {
       await newConnection.start();
-      await newConnection.invoke(
-        "JoinDriverTrackingGroup",
-        driverId,
-        Number(orderId)
-      );
+      await newConnection.invoke("JoinOrderGroup", Number(currentOrderId));
       setConnection(newConnection);
     } catch (err) {
       console.error('SignalR Connection Error: ', err);
     }
   };
 
-  useEffect(() => {
-    let isMounted = true;
-    const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl("http://localhost:5066/hubs/logistics")
-      .withAutomaticReconnect()
-      .build();
-
-    newConnection.on("ReceiveDriverLocation", (id, lat, lng) => {
-      if (id === driverId && isMounted) {
-        setDriverLocation({ lat, lng });
+  const handleSearch = (e) => {
+      e.preventDefault();
+      if(searchId) {
+          navigate(`/customer/track/${searchId}`);
       }
-    });
+  };
 
-    newConnection.start()
-      .then(() => newConnection.invoke("JoinDriverTrackingGroup", driverId))
-      .then(() => {
-        if (isMounted) setConnection(newConnection);
-      })
-      .catch(err => {
-        console.error('SignalR Connection Error: ', err);
-      });
+  
+  const renderInputForm = () => (
+      <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-[#e6ddc5] mt-10">
+          <h3 className="text-2xl font-bold text-[#351c15] mb-6 text-center">Track Your Package</h3>
+          <form onSubmit={handleSearch} className="space-y-4">
+              <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Order ID / Tracking Number</label>
+                  <input 
+                      type="text" 
+                      value={searchId}
+                      onChange={(e) => setSearchId(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f9b400] focus:border-transparent outline-none"
+                      placeholder="e.g. 1024"
+                      required
+                  />
+              </div>
+              <button 
+                  type="submit"
+                  className="w-full bg-[#351c15] text-white font-bold py-3 rounded-lg hover:bg-[#2b160f] transition-all"
+              >
+                  Track Now
+              </button>
+          </form>
+      </div>
+  );
 
-    return () => {
-      isMounted = false;
-      newConnection.stop();
-    };
-  }, []);
+  const renderTrackingView = () => (
+      <div className="space-y-6">
+          {/* Header Info */}
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-[#e6ddc5] flex justify-between items-center">
+              <div>
+                  <h2 className="text-xl font-bold text-[#351c15]">Order #{id}</h2>
+                  <p className="text-gray-500">{order?.status}</p>
+              </div>
+              <div className="text-right">
+                   <p className="text-sm text-gray-400">ETA</p>
+                   <p className="text-lg font-bold text-[#f9b400]">
+                       {order?.status === 'Delivered' ? 'Delivered' : 'Calculating...'}
+                   </p>
+              </div>
+          </div>
 
-  const markers = driverLocation ? [{
-    position: [driverLocation.lat, driverLocation.lng],
-    popup: "Your Driver"
-  }] : [];
+          {/* Map */}
+          <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl shadow p-4 h-[600px]">
+             {driverLocation ? (
+                  <MapComponent
+                    center={[driverLocation.latitude, driverLocation.longitude]}
+                    zoom={13}
+                    markers={[{
+                        position: [driverLocation.latitude, driverLocation.longitude],
+                        popup: "Driver Location"
+                    }, {
+                        position: [order?.deliveryLatitude || 13.0827, order?.deliveryLongitude || 80.2707],
+                        popup: "Data Delivery Location"
+                    }]}
+                    // Passes the driver location to update the view
+                    driverLocation={driverLocation} 
+                  />
+             ) : (
+                 <div className="h-full flex items-center justify-center text-gray-500">
+                     {order?.status === 'PendingAssignment' ? 'Waiting for driver assignment...' : 'Waiting for location signal...'}
+                 </div>
+             )}
+          </div>
+      </div>
+  );
 
   return (
     <div className="min-h-screen flex bg-[#f7f3ef]">
+      <CustomerSidebar active="track" />
 
-      {/* Sidebar */}
-      <CustomerSidebar active="tracking" />
-
-      {/* Main Content */}
-      <div className="flex-1 p-10">
-
-        {/* Title */}
-        <h2 className="text-3xl font-bold mb-4 text-[#351c15]">
-          Track Your Order
-        </h2>
-
-        {/* Status Box */}
-        <div className="mb-6 inline-block bg-[#fff8e7] border border-[#e6ddc5] px-4 py-2 rounded-xl shadow">
-          <span className="font-semibold text-[#351c15]">Status: </span>
-          <span className="text-[#6f4e37]">{orderStatus}</span>
-        </div>
-
-        {/* Map Card */}
-        <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl shadow p-4">
-          <MapComponent
-            center={
-              driverLocation
-                ? [driverLocation.lat, driverLocation.lng]
-                : [13.0827, 80.2707]
-            }
-            zoom={13}
-            markers={markers}
-          />
-        </div>
-
+      <div className="flex-1 p-10 overflow-y-auto">
+        {!id ? (
+            renderInputForm()
+        ) : loading ? (
+            <div className="flex justify-center items-center h-full">Loading tracking info...</div>
+        ) : !order ? (
+            <div className="text-center mt-10">
+                <p className="text-red-500 font-bold mb-4">Order not found</p>
+                <button onClick={() => navigate('/customer/tracking')} className="text-blue-600 hover:underline">Try another ID</button>
+            </div>
+        ) : (
+            renderTrackingView()
+        )}
       </div>
     </div>
   );

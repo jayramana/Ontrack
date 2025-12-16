@@ -205,10 +205,7 @@ const OrderDetails = () => {
         </header>
 
         <div className="max-w-7xl mx-auto px-8 py-8">
-            {/* VERTICAL STACK LAYOUT (Unified Card) */}
             <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
-                
-                {/* 1. Shipment Details */}
                 <div>
                     <div className="bg-[#f4ebd0] px-8 py-4 border-b border-[#e6ddc5] flex justify-between items-center">
                         <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Shipment Information</h3>
