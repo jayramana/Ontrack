@@ -502,9 +502,9 @@ namespace Backend.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
 
-        public GeminiService(IConfiguration configuration)
+        public GeminiService(HttpClient httpClient, IConfiguration configuration)
         {
-            _httpClient = new HttpClient();
+            _httpClient = httpClient;
             _apiKey = configuration["Gemini:ApiKey"] 
                 ?? throw new Exception("Gemini API Key not configured");
         }
@@ -773,7 +773,6 @@ If verification fails, set isVerified to false and provide detailed reasons.";
         }
     }
 
-    // ✅ DTOs for Gemini response (MUST be defined)
     public class ASRVerificationResult
     {
         public bool IsVerified { get; set; }

@@ -21,7 +21,7 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<ASRService>();
 
 // Update Gemini Service (ensure API key is configured)
-builder.Services.AddScoped<GeminiService>();
+// builder.Services.AddScoped<GeminiService>();
 
 
 
@@ -105,7 +105,7 @@ builder.Services.AddScoped<VerificationService>();
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IEtaservice, LocationService>();
-builder.Services.AddScoped<GeminiService>();
+// builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<WarehouseAssignmentService>();
 builder.Services.AddScoped<DriverRouteOptimizationService>();
