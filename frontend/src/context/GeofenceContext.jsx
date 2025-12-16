@@ -68,7 +68,6 @@ export const GeofenceProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    // Use environment variable or default to localhost
     const HUB_URL = "http://localhost:5066/geofencehub"; 
 
     const connection = new HubConnectionBuilder()
@@ -81,22 +80,17 @@ export const GeofenceProvider = ({ children }) => {
       .then(() => {
         console.log("Connected to GeofenceHub");
         
-        // Listen for backend-triggered geofence events
         connection.on("GeofenceTriggered", (payload) => {
           console.log("[SignalR] Geofence Alert Received:", payload);
           
           const alertId = `backend-gf-${payload.geofenceId}-${payload.event}`;
-          // Example payload: { geofenceId, name, event: "ENTER"|"EXIT", distanceMeters, ... }
           
-          // Only show 'ENTER' alerts or important 'EXIT' ones
           if (payload.event === "ENTER") {
             const msg = `Geofence Alert: Entered ${payload.name} (${payload.distanceMeters}m)`;
             sendBrowserNotification("Geofence Entry", msg, alertId);
             addAlert(alertId, msg, "success");
           } else if (payload.event === "EXIT") {
              const msg = `Geofence Update: Exited ${payload.name}`;
-             // Optional: Do we want to alert on exit? Maybe just log or subtle info
-             console.log(msg);
              addAlert(alertId, msg, "info"); // Show as info
           }
         });
@@ -113,18 +107,12 @@ export const GeofenceProvider = ({ children }) => {
     };
   }, [user]);
 
-
-
-
-
-
   const removeAlert = (id) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
   };
 
   const checkDriverGeofences = async () => {
     try {
-      console.log("Checking Driver Geofences (Local Polling)...");
       const meRes = await api.get(`/auth/${user.userId}`);
       const myLoc = meRes.data;
       if (!myLoc || !myLoc.currentLatitude) {
@@ -185,7 +173,6 @@ export const GeofenceProvider = ({ children }) => {
 
   const checkCustomerGeofences = async () => {
     try {
-      console.log("Checking Customer Geofences (Local Polling)...");
       const response = await api.get("/customer/orders");
       const activeOrders = response.data.filter(
         (o) =>
@@ -194,14 +181,11 @@ export const GeofenceProvider = ({ children }) => {
           o.status === "Assigned"
       );
       
-      console.log(`Found ${activeOrders.length} active orders.`);
 
       for (const order of activeOrders) {
         if (!order.driverId) continue;
 
         const trackRes = await api.get(`/customer/track/${order.id}`);
-        // PRIORITIZE LIVE PROFILE LOCATION OVER HISTORY
-        // The backend now returns 'driver' object with currentLat/Lon
         const driverProfile = trackRes.data.driver;
         const driverHistory = trackRes.data.driverLocation;
 
@@ -223,8 +207,6 @@ export const GeofenceProvider = ({ children }) => {
             order.deliveryLongitude
           );
           
-          console.log(`Order ${order.id}: Driver dist ${Math.round(dist)}m`);
-
           const alertId = `cust-order-${order.id}`;
 
           if (dist <= 1000) {

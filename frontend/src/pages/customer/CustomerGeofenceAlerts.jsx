@@ -99,25 +99,17 @@ export default function CustomerGeofenceAlerts() {
                 </svg>
              </div>
              <div>
-                <h3 className="text-lg font-bold text-gray-900">{gf.name}</h3>
-                <p className="text-sm text-gray-500">Zone ID: {gf.geofenceId}</p>
-             </div>
+                 <h3 className="text-lg font-bold text-gray-900">Geofence - #{gf.geofenceId}</h3>
+              </div>
           </div>
           
           <div className="pl-0 md:pl-14">
-             {order && (
-                <p className="text-sm text-gray-600 mb-1">
-                    <span className="font-semibold">Order:</span> {order.trackingId || `ORD-${order.id}`} • {order.receiverName}
-                </p>
-             )}
-            <div className="flex items-center gap-4 text-xs text-gray-500 font-medium">
-               <span className="bg-gray-100 px-2 py-1 rounded">Radius: {gf.radiusMeters}m</span>
-               {status && !status.error && (
-                   <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                       Driver Distance: {Math.round(status.distanceMeters)}m
-                   </span>
-               )}
-            </div>
+             <div className="flex flex-col gap-2 text-sm text-gray-600">
+                <p><span className="font-semibold text-gray-800">Order ID:</span> {order?.id}</p>
+                <p><span className="font-semibold text-gray-800">Radius:</span> {gf.radiusMeters}m</p>
+                <p><span className="font-semibold text-gray-800">Driver:</span> {status?.driverName || "Unknown"}</p>
+                <p><span className="font-semibold text-gray-800">Distance:</span> {status?.distanceMeters ? `${Math.round(status.distanceMeters)}m` : "Calculating..."}</p>
+             </div>
           </div>
         </div>
 

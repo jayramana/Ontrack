@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import CustomerSidebar from "./CustomerSidebar";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
 export default function CustomerProfile() {
   const [profile, setProfile] = useState(null);
+  const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
 
   // Fetch profile on mount
@@ -134,6 +136,8 @@ export default function CustomerProfile() {
                         helperText="Primary contact for deliveries."
                     />
                 </SectionCard>
+             
+
             </div>
 
             {/* SECTION 3: ADDRESS */}
@@ -154,6 +158,16 @@ export default function CustomerProfile() {
                      <FieldRow label="Country" value={profile.country} />
                 </div>
             </SectionCard>
+
+            {/* LOGOUT */}
+            <div className="mt-8">
+                <button 
+                   onClick={logout}
+                   className="px-6 py-2 rounded-lg bg-red-700 text-white font-bold hover:bg-red-800 transition-colors text-sm"
+                >
+                   Log Out
+                </button>
+            </div>
 
         </div>
       </div>

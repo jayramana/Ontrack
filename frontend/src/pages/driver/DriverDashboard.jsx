@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+// ANALYTICS DRIVER DASHBOARD
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
-import * as signalR from "@microsoft/signalr";
-
+import { useNavigate } from "react-router-dom";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -16,9 +16,6 @@ import {
 } from "chart.js";
 import { Doughnut, Bar } from "react-chartjs-2";
 
-import OrderDetailsModal from "./OrderDetailsModal";
-import DriverASRVerification from "./DriverASRVerification";
-
 ChartJS.register(
   ArcElement,
   Tooltip,
@@ -30,15 +27,8 @@ ChartJS.register(
 );
 
 export default function DriverDashboard() {
-  const { user } = useAuth();
-
-  /* =========================
-     STATE
-  ========================= */
-  const [orders, setOrders] = useState([]);
-  const [optimizedRoute, setOptimizedRoute] = useState([]);
-  const [warehouse, setWarehouse] = useState(null);
-
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [stats, setStats] = useState({
     total: 0,
     delivered: 0,
@@ -47,129 +37,57 @@ export default function DriverDashboard() {
     highPriority: 0,
     normalPriority: 0,
   });
-
   const [loading, setLoading] = useState(true);
+  const [warehouse, setWarehouse] = useState(null);
 
-  // Modals
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-
-  const [showASRModal, setShowASRModal] = useState(false);
-  const [selectedASROrderId, setSelectedASROrderId] = useState(null);
-
-  const [connection, setConnection] = useState(null);
-
-  /* =========================
-     DATA FETCH
-  ========================= */
-  const fetchTodaysOrders = async () => {
-    try {
-      const res = await api.get("/driver/orders/today");
-      setOrders(res.data || []);
-    } catch (err) {
-      console.error("Failed to fetch orders", err);
-    }
-  };
-
-  const fetchOptimizedRoute = async () => {
-    try {
-      const res = await api.get("/driver/route/optimized");
-      setOptimizedRoute(res.data || []);
-    } catch {}
-  };
-
-  const fetchAnalytics = async () => {
-    try {
-      const res = await api.get("/driver/orders/today/analytics");
-      const data = res.data || [];
-
-      if (data.length > 0) setWarehouse(data[0].currentWarehouse);
-
-      const delivered = data.filter((o) => o.status === "Delivered").length;
-      const pending = data.filter(
-        (o) => o.status !== "Delivered" && o.status !== "Cancelled"
-      ).length;
-      const exceptions = data.filter(
-        (o) => o.status === "DeliveryAttempted" || o.status === "Cancelled"
-      ).length;
-
-      const highPriority = data.filter(
-        (o) => o.priority === 1 && o.status === "Delivered"
-      ).length;
-      const normalPriority = data.filter(
-        (o) => o.priority === 2 && o.status === "Delivered"
-      ).length;
-
-      setStats({
-        total: data.length,
-        delivered,
-        pending,
-        exceptions,
-        highPriority,
-        normalPriority,
-      });
-    } catch (err) {
-      console.error("Failed to load analytics", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =========================
-     SIGNALR
-  ========================= */
   useEffect(() => {
-    if (!user?.userId) return;
-
-    let conn;
-
-    const setupSignalR = async () => {
+    const fetchAnalytics = async () => {
       try {
-        conn = new signalR.HubConnectionBuilder()
-          .withUrl("http://localhost:5066/hubs/logistics", {
-            accessTokenFactory: () => localStorage.getItem("token") || "",
-          })
-          .withAutomaticReconnect()
-          .build();
+        // Fetch ALL orders (history + today) for better analytics
+        // Using the new dedicated analytics endpoint
+        const response = await api.get("/driver/orders/today/analytics");
+        const orders = response.data || [];
 
-        conn.on("OrderRescheduled", fetchTodaysOrders);
-        conn.on("CustomerDocumentsUploaded", fetchTodaysOrders);
-        conn.on("ASRVerificationCompleted", fetchTodaysOrders);
-        conn.on("ASRAdminOverride", fetchTodaysOrders);
+        if (orders.length > 0) {
+            setWarehouse(orders[0].currentWarehouse);
+        }
 
-        await conn.start();
-        await conn.invoke("JoinDriverGroup", Number(user.userId));
-        setConnection(conn);
+        // Calculate Stats
+        const delivered = orders.filter((o) => o.status === "Delivered").length;
+        const pending = orders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
+        const exceptions = orders.filter((o) => o.status === "DeliveryAttempted" || o.status === "Cancelled").length;
+        
+        const highPriority = orders.filter((o) => o.priority === 1 && o.status === "Delivered").length;
+        const normalPriority = orders.filter((o) => o.priority === 2 && o.status === "Delivered").length;
+
+        setStats({
+          total: orders.length,
+          delivered,
+          pending,
+          exceptions,
+          highPriority,
+          normalPriority,
+        });
+
       } catch (err) {
-        console.error("SignalR Error", err);
+        console.error("Failed to load analytics", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    setupSignalR();
-
-    return () => {
-      if (conn) conn.stop().catch(() => {});
-    };
-  }, [user]);
-
-  /* =========================
-     INITIAL LOAD
-  ========================= */
-  useEffect(() => {
-    fetchTodaysOrders();
-    fetchOptimizedRoute();
     fetchAnalytics();
   }, []);
 
-  /* =========================
-     CHART DATA
-  ========================= */
+  // CHART DATA
   const statusData = {
     labels: ["Delivered", "Pending", "Exceptions"],
     datasets: [
       {
         data: [stats.delivered, stats.pending, stats.exceptions],
-        backgroundColor: ["#15803d", "#f9b400", "#ef4444"],
+        backgroundColor: ["#15803d", "#f9b400", "#ef4444"], // Green, Yellow, Red
+        borderColor: ["#14532d", "#b45309", "#7f1d1d"],
+        borderWidth: 1,
       },
     ],
   };
@@ -178,162 +96,103 @@ export default function DriverDashboard() {
     labels: ["High Priority", "Normal Priority"],
     datasets: [
       {
+        label: "Completed Deliveries",
         data: [stats.highPriority, stats.normalPriority],
-        backgroundColor: ["#dc2626", "#3b82f6"],
+        backgroundColor: ["#dc2626", "#3b82f6"], // Red, Blue
       },
     ],
   };
 
-  /* =========================
-     ACTIONS
-  ========================= */
-  const markDelivered = async (id, order) => {
-    if (
-      order.isASR &&
-      !["Success", "AdminOverride"].includes(order.asrStatus)
-    ) {
-      setSelectedASROrderId(id);
-      setShowASRModal(true);
-      return;
-    }
-
-    try {
-      await api.post(`/driver/mark-delivered/${id}`);
-      fetchTodaysOrders();
-      fetchOptimizedRoute();
-    } catch {}
-  };
-
-  const markAttempted = async (id) => {
-    const reason = prompt("Reason for failed attempt:");
-    if (!reason) return;
-    try {
-      await api.post(`/driver/mark-attempted/${id}`, { reason });
-      fetchTodaysOrders();
-      fetchOptimizedRoute();
-    } catch {}
-  };
-
-  /* =========================
-     UI HELPERS
-  ========================= */
-  const getASRBadge = (order) => {
-    if (!order.isASR) return null;
-    return (
-      <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
-        🔒 ASR
-      </span>
-    );
-  };
-
-  const renderOrder = (order, idx) => (
-    <div
-      key={order.id}
-      className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6 shadow"
-    >
-      <div className="flex justify-between mb-3">
-        <h3 className="font-bold text-lg">
-          Stop #{idx + 1} {getASRBadge(order)}
-        </h3>
-        <span className="text-sm font-semibold">{order.status}</span>
-      </div>
-
-      <p className="text-sm font-semibold">{order.receiverName}</p>
-      <p className="text-xs text-gray-600">{order.receiverAddress}</p>
-
-      <div className="flex gap-2 mt-4">
-        {(!order.isASR ||
-          ["Success", "AdminOverride"].includes(order.asrStatus)) && (
-          <button
-            onClick={() => markDelivered(order.id, order)}
-            className="flex-1 bg-green-700 text-white py-2 rounded"
-          >
-            Delivered
-          </button>
-        )}
-
-        <button
-          onClick={() => markAttempted(order.id)}
-          className="flex-1 bg-yellow-400 py-2 rounded"
-        >
-          Attempted
-        </button>
-      </div>
-    </div>
-  );
-
-  /* =========================
-     RENDER
-  ========================= */
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading…
-      </div>
-    );
-  }
-
+  
   return (
     <div className="min-h-screen flex bg-[#f7f3ef]">
       <DriverSidebar active="dashboard" />
 
       <div className="flex-1 overflow-y-auto">
-        <header className="bg-[#fff8e7] border-b p-6">
-          <h1 className="text-3xl font-black">Performance Dashboard</h1>
-          <p className="text-sm text-gray-600">
-            Welcome back, {user?.first_name}
-          </p>
+        {/* HEADER */}
+        <header className="bg-[#fff8e7] border-b border-[#e6ddc5] shadow-sm sticky top-0 z-10">
+          <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-black text-[#351c15]">
+                Performance Dashboard
+              </h1>
+              <p className="text-[#6f4e37]">
+                Welcome back, {user?.first_name}. Here is your performance overview.
+              </p>
+            </div>
+             {warehouse && (
+                <div className="text-right">
+                  <p className="text-xs text-[#6f4e37] uppercase font-bold">Base Location</p>
+                  <p className="text-[#351c15] font-bold">{warehouse.name}</p>
+                  <p className="text-xs text-[#f9b400] font-bold">{warehouse.city}</p>
+                </div>
+              )}
+          </div>
         </header>
 
-        <main className="max-w-7xl mx-auto p-8 space-y-10">
-          {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Kpi label="Total Jobs" value={stats.total} />
-            <Kpi label="Delivered" value={stats.delivered} />
-            <Kpi label="Pending" value={stats.pending} />
-            <Kpi label="Exceptions" value={stats.exceptions} />
-          </div>
+        <div className="max-w-7xl mx-auto p-8">
+            
+            {/* KPI CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Completion Rate</p>
+                    <p className="text-4xl font-black text-[#351c15] mt-2">
+                        {stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0}%
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">Daily Target: 95%</p>
+                </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-xl">
-              <Doughnut data={statusData} />
-            </div>
-            <div className="bg-white p-6 rounded-xl">
-              <Bar data={priorityData} />
-            </div>
-          </div>
+                 <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Total Jobs</p>
+                    <p className="text-4xl font-black text-[#351c15] mt-2">{stats.total}</p>
+                    <p className="text-xs text-gray-400 mt-1">Assigned Today</p>
+                </div>
 
-          {/* Orders */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {orders.map((o, i) => renderOrder(o, i))}
-          </div>
-        </main>
+                <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Pending</p>
+                    <p className="text-4xl font-black text-[#f9b400] mt-2">{stats.pending}</p>
+                    <p className="text-xs text-gray-400 mt-1">Remaining Stops</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <p className="text-[#6f4e37] font-bold text-sm uppercase">Exceptions</p>
+                    <p className="text-4xl font-black text-red-600 mt-2">{stats.exceptions}</p>
+                    <p className="text-xs text-gray-400 mt-1">Failed / Cancelled</p>
+                </div>
+            </div>
+
+            {/* CHARTS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                
+                {/* STATUS CHART */}
+                <div className="bg-white p-8 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <h3 className="text-xl font-bold text-[#351c15] mb-6 border-b border-[#eee] pb-4">
+                        Delivery Status Breakdown
+                    </h3>
+                    <div className="h-64 flex justify-center">
+                        <Doughnut data={statusData} options={{ maintainAspectRatio: false }} />
+                    </div>
+                </div>
+
+                {/* PRIORITY CHART */}
+                <div className="bg-white p-8 rounded-xl border border-[#e6ddc5] shadow-sm">
+                    <h3 className="text-xl font-bold text-[#351c15] mb-6 border-b border-[#eee] pb-4">
+                        Completed by Priority
+                    </h3>
+                    <div className="h-64">
+                         <Bar 
+                            data={priorityData} 
+                            options={{ 
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } }
+                            }} 
+                        />
+                    </div>
+                </div>
+
+            </div>
+        </div>
       </div>
-
-      {showOrderModal && (
-        <OrderDetailsModal
-          orderId={selectedOrderId}
-          onClose={() => setShowOrderModal(false)}
-        />
-      )}
-
-      {showASRModal && (
-        <DriverASRVerification
-          orderId={selectedASROrderId}
-          onClose={() => {
-            setShowASRModal(false);
-            fetchTodaysOrders();
-          }}
-        />
-      )}
     </div>
   );
 }
-
-const Kpi = ({ label, value }) => (
-  <div className="bg-white p-6 rounded-xl shadow">
-    <p className="text-sm text-gray-500">{label}</p>
-    <p className="text-3xl font-black">{value}</p>
-  </div>
-);

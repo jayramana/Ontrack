@@ -27,7 +27,9 @@ export default function DriverDeliveries() {
     try {
       setLoading(true);
       const response = await api.get("/driver/orders/today/analytics");
-      setOrders(response.data || []);
+      const data = response.data || [];
+      const sorted = data.sort((a, b) => b.id - a.id);
+      setOrders(sorted);
     } catch (err) {
       console.error("Failed to fetch orders", err);
     } finally {
@@ -39,9 +41,6 @@ export default function DriverDeliveries() {
     fetchTodaysOrders();
   }, []);
 
-  // ---------------------------------------------
-  // ORDER ACTIONS
-  // ---------------------------------------------
   const markDelivered = async (id) => {
     if(!window.confirm("Confirm delivery?")) return;
     try {
@@ -63,9 +62,6 @@ export default function DriverDeliveries() {
     }
   };
 
-  // ---------------------------------------------
-  // UPS BADGES
-  // ---------------------------------------------
   const getPriorityBadge = (p) => {
     const styles = {
       1: "bg-red-100 text-red-800",
@@ -118,7 +114,7 @@ export default function DriverDeliveries() {
             className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
                 order.status === "Delivered"
                 ? "bg-green-100 text-green-700"
-                : order.status === "Cancelled"
+                : order.status === "Cancelled" || order.status === "DeliveryAttempted"
                 ? "bg-red-100 text-red-700"
                 : order.status === "Assigned"
                 ? "bg-blue-100 text-blue-700"
@@ -131,8 +127,9 @@ export default function DriverDeliveries() {
 
         {/* Middle: Main Info */}
         <h3 className="text-lg font-bold text-gray-900 mb-1">
-          {order.receiverName} <span className="text-gray-400 mx-2">•</span> {order.receiverAddress}
+          Order - #{order.id}
         </h3>
+        <p className="text-gray-600 mb-1">{order.receiverAddress}</p>
 
         {/* Bottom: Meta Info */}
         <p className="text-xs text-gray-500 font-medium mt-1">
@@ -192,11 +189,11 @@ export default function DriverDeliveries() {
                   <button
                       onClick={(e) => {
                           e.stopPropagation();
-                          markDelivered(order.id);
+                      markDelivered(order.id);
                       }}
-                      className="px-6 py-2 border border-[#351c15] text-[#351c15] font-bold rounded-lg hover:bg-[#351c15] hover:text-white transition text-sm"
+                      className="px-6 py-2 border border-green-200 text-green-600 font-semibold rounded-lg hover:bg-green-50 transition text-sm"
                   >
-                      Mark Delivered
+                      Delivered
                   </button>
                 )}
 
@@ -207,7 +204,7 @@ export default function DriverDeliveries() {
                     }}
                     className="px-6 py-2 border border-red-200 text-red-600 font-semibold rounded-lg hover:bg-red-50 transition text-sm"
                 >
-                    Failed
+                    Attempted
                 </button>
             </>
         )}
@@ -314,8 +311,8 @@ export default function DriverDeliveries() {
                  <div className="flex flex-col pb-20">
                     {orders
                         .filter(o => {
-                            if (activeTab === "pending") return o.status !== "Delivered" && o.status !== "Cancelled";
-                            if (activeTab === "completed") return o.status === "Delivered";
+                            if (activeTab === "pending") return !["Delivered", "Cancelled", "DeliveryAttempted"].includes(o.status);
+                            if (activeTab === "completed") return ["Delivered", "Cancelled", "DeliveryAttempted"].includes(o.status);
                             return true; 
                         })
                         .map((order, i) => renderOrder(order, i))}

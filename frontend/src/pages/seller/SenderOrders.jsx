@@ -32,7 +32,7 @@ export default function SenderOrders() {
         filterStatus === "" || order.status === filterStatus;
       return matchesId && matchesStatus;
     })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .sort((a, b) => b.id - a.id);
 
   return (
     <div className="min-h-screen flex bg-[#f8f4ef]">
@@ -83,10 +83,15 @@ export default function SenderOrders() {
               className="p-2 border border-[#e6d8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ffb500] bg-white"
             >
               <option value="">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
+              <option value="PendingAssignment">Pending Assignment</option>
+              <option value="AtOriginWarehouse">At Origin Warehouse</option>
+              <option value="Assigned">Assigned</option>
+              <option value="InTransit">In Transit</option>
+              <option value="OutForDelivery">Out For Delivery</option>
+              <option value="AtDestinationWarehouse">At Dest Warehouse</option>
               <option value="Delivered">Delivered</option>
-              {/* Add other statuses as needed based on backend */}
+              <option value="DeliveryAttempted">Delivery Attempted</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
           </div>
         </div>
@@ -148,7 +153,9 @@ export default function SenderOrders() {
                           ${
                             order.status === "Delivered"
                               ? "bg-green-100 text-green-700"
-                              : order.status === "Approved"
+                              : ["Cancelled", "DeliveryAttempted"].includes(order.status)
+                              ? "bg-red-100 text-red-700"
+                              : ["Assigned", "OutForDelivery", "InTransit"].includes(order.status)
                               ? "bg-blue-100 text-blue-800"
                               : "bg-yellow-100 text-yellow-800"
                           }

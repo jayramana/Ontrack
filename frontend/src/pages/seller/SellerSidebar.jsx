@@ -46,17 +46,7 @@ export default function SellerSidebar({ active }) {
         ))}
       </nav>
 
-      <div className="mt-auto pt-4">
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 p-3 text-red-300 hover:text-red-400 w-full rounded-lg hover:bg-[#6f4e37]/50"
-        >
-          <LogOut size={20} />
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Sign Out
-          </span>
-        </button>
-      </div>
+
     </div>
   );
 }

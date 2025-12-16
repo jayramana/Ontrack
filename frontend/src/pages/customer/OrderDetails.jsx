@@ -11,8 +11,6 @@ const OrderDetails = () => {
   const [driverLocation, setDriverLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState(null);
-  console.log(`Status : ${order?.status}`);
-  // Reschedule state
   // Reschedule state
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduleForm, setRescheduleForm] = useState({
@@ -186,7 +184,6 @@ const OrderDetails = () => {
       <CustomerSidebar active="orders" />
       
       <div className="flex-1 overflow-y-auto max-h-screen">
-        {/* HEADER MATCHING IMAGE */}
         <header className="bg-[#351c15] text-[#f9b400] sticky top-0 z-40 shadow-md">
             <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
                 <div className="flex items-center gap-4">
@@ -198,9 +195,7 @@ const OrderDetails = () => {
                     </button>
                     <h1 className="text-xl font-bold tracking-wide text-[#fca311]">ORDER DETAILS</h1>
                 </div>
-                <div className="text-sm text-[#f7f3ef] opacity-80 font-mono">
-                    Order #{order.id}
-                </div>
+
             </div>
         </header>
 
