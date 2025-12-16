@@ -38,6 +38,7 @@ import CustomerQueries from "./pages/admin/CustomerQueries";
 import DeliveryInsights from "./pages/admin/DeliveryInsights";
 import LiveMap from "./pages/admin/LiveMap";
 import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
+import AdminASRPanel from "./pages/admin/AdminASRPanel";
 //import TransportScheduler from "./pages/admin/TransportScheduler";
 //import CapacityDashboard from "./pages/admin/CapacityDashboard";
 
@@ -173,6 +174,7 @@ function App() {
             {/* ---------------- ADMIN ROUTES ---------------- */}
             <Route path="/admin/queries" element={<CustomerQueries />} />
             <Route path="/admin/insights" element={<DeliveryInsights />} />
+            <Route path="/admin/asr" element={<AdminASRPanel />} />
 
             <Route
               path="/admin/dashboard"

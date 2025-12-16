@@ -61,9 +61,13 @@ public static class OrdersEndpoints
                         : null,
                     ScheduledTimeSlot = dto.ScheduledTimeSlot,
                     
+                    // 🆕 ASR FIELD
+                    IsASR = dto.IsASR ?? false,
+                    ASRStatus = (dto.IsASR ?? false) ? "NotStarted" : "NotApplicable",
+                    
                     // Metadata
                     TrackingId = Guid.NewGuid().ToString("N")[..10].ToUpper(),
-                    Status = "AtOriginWarehouse", // Changed from Pending
+                    Status = "AtOriginWarehouse",
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -81,7 +85,6 @@ public static class OrdersEndpoints
                 }
 
                 // --- WAREHOUSE LOGIC ---
-                // Helper to extract pincode from address string
                 string? TryExtractPincode(string addr)
                 {
                     if (string.IsNullOrWhiteSpace(addr)) return null;
@@ -144,7 +147,7 @@ public static class OrdersEndpoints
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_SENDER });
 
-
+        // ... REST OF YOUR ENDPOINTS (keep as is) ...
 
         group.MapPost("/{id}/reschedule", async (
             int id,
@@ -246,6 +249,7 @@ public static class OrdersEndpoints
 
         }).RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_CUSTOMER });
 
+        // Keep all other endpoints the same...
         group.MapGet("/track-public/{trackingId}", async (
             string trackingId,
             AppDbContext context
@@ -279,6 +283,8 @@ public static class OrdersEndpoints
                     order.EstimatedDeliveryDate,
                     order.CreatedAt,
                     order.AiPriority,
+                    order.IsASR,
+                    order.ASRStatus,
                     driver = order.Driver != null ? new
                     {
                         order.Driver.UserId,
@@ -320,7 +326,8 @@ public static class OrdersEndpoints
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.CurrentWarehouse)
                 .Include(o => o.DestinationWarehouse)
-                .OrderByDescending(o => o.CreatedAt)
+                .OrderByDescending(o => o.IsASR)  // 🆕 ASR orders first
+                .ThenByDescending(o => o.CreatedAt)
                 .Select(o => new
                 {
                     o.Id,
@@ -333,6 +340,8 @@ public static class OrdersEndpoints
                     o.CreatedAt,
                     o.EstimatedDeliveryDate,
                     o.AiPriority,
+                    o.IsASR,
+                    o.ASRStatus,
                     driverId = o.DriverId,
                     driverName = o.Driver != null ? o.Driver.UserFName + " " + o.Driver.UserLName : null
                 })
@@ -350,7 +359,8 @@ public static class OrdersEndpoints
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.CurrentWarehouse)
                 .Include(o => o.DestinationWarehouse)
-                .OrderByDescending(o => o.CreatedAt)
+                .OrderByDescending(o => o.IsASR)  // 🆕 ASR orders first
+                .ThenByDescending(o => o.CreatedAt)
                 .Select(o => new
                 {
                     o.Id,
@@ -363,6 +373,8 @@ public static class OrdersEndpoints
                     o.CreatedAt,
                     o.EstimatedDeliveryDate,
                     o.AiPriority,
+                    o.IsASR,
+                    o.ASRStatus,
                     driverId = o.DriverId,
                     driverName = o.Driver != null ? o.Driver.UserFName + " " + o.Driver.UserLName : null
                 })
@@ -376,6 +388,7 @@ public static class OrdersEndpoints
         {
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
             int userId = int.Parse(userIdClaim?.Value ?? "0");
+            Console.WriteLine($"[DEBUG] /my-orders requested by UserId: {userId}");
 
             var orders = await context.Orders
                 .Where(o => o.CustomerId == userId)
@@ -400,6 +413,8 @@ public static class OrdersEndpoints
                     o.RescheduleReason,
                     o.AiPriority,
                     o.AiPriorityJustification,
+                    o.IsASR,
+                    o.ASRStatus,
                     o.DriverId,
                     driver = o.Driver != null ? new { o.Driver.UserId, DriverName = o.Driver.UserFName + " " + o.Driver.UserLName } : null,
                     originWarehouse = o.OriginWarehouse != null ? new { o.OriginWarehouse.Id, o.OriginWarehouse.Name, o.OriginWarehouse.City } : null,
@@ -439,6 +454,8 @@ public static class OrdersEndpoints
                     o.CreatedAt,
                     o.EstimatedDeliveryDate,
                     o.AiPriority,
+                    o.IsASR,
+                    o.ASRStatus,
                     driver = o.Driver != null ? new { o.Driver.UserId, DriverName = (o.Driver.UserFName + " " + o.Driver.UserLName) } : null
                 })
                 .ToListAsync();
