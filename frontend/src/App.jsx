@@ -15,6 +15,9 @@ import GlobalGeofenceAlerts from "./components/GlobalGeofenceAlerts";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
+//track
+import TrackPackage from "./pages/TrackPackage";
+
 // --- CUSTOMER PAGES ---
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import Tracking from "./pages/customer/Tracking";
@@ -58,6 +61,7 @@ function App() {
             {/* ---------------- PUBLIC ROUTES ---------------- */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/track" element={<TrackPackage />} />
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
 

@@ -5,7 +5,7 @@ using System.Text;
 using Backend.Data;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
-
+using Backend.Endpoints;
 using Backend.Domain.Entity;
 using Backend.Services;
 
@@ -136,6 +136,9 @@ if (app.Environment.IsDevelopment())
 // Map ASR endpoints
 app.MapASREndpoints();
 
+
+
+
 app.MapGeocodingEndpoints();
 
 app.MapVerificationEndpoints();
@@ -157,7 +160,9 @@ app.MapOrdersEndpoints();
 app.MapWarehouseEndpoints();
 app.MapGeofenceEndpoints();
 app.MapRoadIssueEndpoints();
+app.MapTrackingEndpoints();
 
+app.MapDiagnosticEndpoints();
 
 app.MapHub<GeofenceHub>("/geofencehub");
 app.MapHub<EtaHub>("/etahub");

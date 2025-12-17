@@ -1,42 +1,46 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.10-slim
 
-# Install system dependencies (force HTTPS APT mirrors to avoid 403 from HTTP)
-RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list \
-    && sed -i 's|http://security.debian.org|https://security.debian.org|g' /etc/apt/sources.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-    ca-certificates \
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     libsm6 \
     libxext6 \
-    libxrender1 \
+    libxrender-dev \
     libgomp1 \
-    libglib2.0-0 \
-    libgl1 \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+# Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python packages
+# Copy requirements first (for caching)
 COPY requirements.txt .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download DeepFace models (optional but recommended)
-# Models will be cached in /root/.deepface/weights/
-RUN python -c "from deepface.commons import functions; functions.build_model('ArcFace')" || echo "Model will download on first use"
+# Pre-create DeepFace directories with correct permissions
+RUN mkdir -p /home/appuser/.deepface/weights && \
+    chown -R appuser:appuser /home/appuser/.deepface
 
-# Copy application files
+# Copy application code
 COPY app.py .
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app /root/.deepface 2>/dev/null || true
+# Change ownership
+RUN chown -R appuser:appuser /app
 
+# Switch to non-root user
 USER appuser
 
+# Expose port
 EXPOSE 5001
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5001/health', timeout=5)" || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:5001/health')"
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--threads", "2", "--timeout", "120", "--access-logfile", "-", "app:app"]
+# Run with gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "--threads", "4", "--timeout", "120", "app:app"]

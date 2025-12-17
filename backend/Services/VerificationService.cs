@@ -516,7 +516,7 @@ namespace Backend.Services
         }
 
         // =====================================================
-        // GEMINI 2.5 FLASH – Aadhaar OCR
+        // GEMINI 2.5 FLASH – Aadhaar OCR (IMPROVED)
         // =====================================================
         public async Task<GeminiAadhaarOcr?> AadhaarOcrWithGeminiAsync(string base64Image)
         {
@@ -525,6 +525,11 @@ namespace Backend.Services
                 var cleanBase64 = base64Image.Contains(",")
                     ? base64Image.Split(',')[1]
                     : base64Image;
+
+                // Determine image format from base64 header
+                var mimeType = "image/jpeg";
+                if (base64Image.StartsWith("data:image/png"))
+                    mimeType = "image/png";
 
                 var request = new
                 {
@@ -539,68 +544,108 @@ namespace Backend.Services
                                 {
                                     inlineData = new
                                     {
-                                        mimeType = "image/jpeg",
+                                        mimeType = mimeType,
                                         data = cleanBase64
                                     }
                                 },
                                 new
                                 {
                                     text = """
-                                    Extract Aadhaar card details from this image.
-                                    Return ONLY valid JSON (no markdown, no explanation).
+                                    Extract data from this Aadhaar card.
+                                    Return a JSON object. MASK any sensitive data if required, but otherwise return full visible text.
 
+                                    Response Format (JSON ONLY):
                                     {
-                                      "name": "",
-                                      "dob": "",
-                                      "yearOfBirth": "",
-                                      "gender": "",
-                                      "aadhaarNumber": "",
-                                      "address": ""
+                                      "name": "Name",
+                                      "dob": "DD/MM/YYYY",
+                                      "yearOfBirth": "YYYY",
+                                      "gender": "Male/Female",
+                                      "aadhaarNumber": "0000 0000 0000",
+                                      "address": "Address string"
                                     }
 
                                     Rules:
-                                    - Extract full 12-digit Aadhaar number if visible
-                                    - Extract complete name exactly as shown
-                                    - Extract date of birth in DD/MM/YYYY format if available
-                                    - If DOB not available, extract year of birth
-                                    - Extract gender (M/F/Male/Female)
-                                    - Extract full address if visible
+                                    - If yearOfBirth is visible but full DOB is not, fill yearOfBirth.
+                                    - If full DOB is visible, fill both dob and yearOfBirth.
+                                    - If a field is missing, use empty string.
                                     """
                                 }
                             }
                         }
+                    },
+                    generationConfig = new
+                    {
+                        temperature = 0.1,
+                        topK = 1,
+                        topP = 1,
+                        maxOutputTokens = 1024,
+                        responseMimeType = "application/json"
                     }
                 };
 
+                Console.WriteLine("🔍 Calling Gemini API for OCR...");
+                
                 var res = await _http.PostAsync(
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={_config["Gemini:ApiKey"]}",
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_config["Gemini:ApiKey"]}",
                     new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json")
                 );
 
                 if (!res.IsSuccessStatusCode)
+                {
+                    var error = await res.Content.ReadAsStringAsync();
+                    Console.WriteLine($"❌ Gemini API error: {res.StatusCode} - {error}");
                     return null;
+                }
 
                 var raw = await res.Content.ReadAsStringAsync();
-                var text = JsonDocument.Parse(raw)
-                    .RootElement
+                Console.WriteLine($"📄 Raw Gemini response: {raw.Substring(0, Math.Min(500, raw.Length))}...");
+
+                var doc = JsonDocument.Parse(raw);
+                
+                // Check for API errors
+                if (doc.RootElement.TryGetProperty("error", out var errorProp))
+                {
+                    Console.WriteLine($"❌ Gemini API error: {errorProp.GetProperty("message").GetString()}");
+                    return null;
+                }
+
+                var text = doc.RootElement
                     .GetProperty("candidates")[0]
                     .GetProperty("content")
                     .GetProperty("parts")[0]
                     .GetProperty("text")
                     .GetString();
 
+                Console.WriteLine($"📝 Gemini text response: {text}");
+
                 var cleanedJson = ExtractJson(text);
                 if (string.IsNullOrEmpty(cleanedJson))
+                {
+                    Console.WriteLine("❌ Failed to extract valid JSON from Gemini response");
                     return null;
+                }
 
-                return JsonSerializer.Deserialize<GeminiAadhaarOcr>(
+                Console.WriteLine($"✅ Cleaned JSON: {cleanedJson}");
+
+                var result = JsonSerializer.Deserialize<GeminiAadhaarOcr>(
                     cleanedJson,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
                 );
+
+                // Validate that at least name is extracted
+                if (result != null && !string.IsNullOrWhiteSpace(result.Name))
+                {
+                    Console.WriteLine($"✅ OCR Success - Name: {result.Name}, Gender: {result.Gender}, Aadhaar: {result.AadhaarNumber}");
+                    return result;
+                }
+                
+                Console.WriteLine("❌ OCR failed - No name extracted");
+                return null;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Gemini OCR error: {ex.Message}");
+                Console.WriteLine($"❌ Gemini OCR exception: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return null;
             }
         }
@@ -675,7 +720,7 @@ namespace Backend.Services
                 };
 
                 var res = await _http.PostAsync(
-                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={_config["Gemini:ApiKey"]}",
+                    $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_config["Gemini:ApiKey"]}",
                     new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json")
                 );
 
@@ -797,22 +842,6 @@ namespace Backend.Services
                     Reason = $"Face match error: {ex.Message}"
                 };
             }
-        }
-
-        // =====================================================
-        // COMPATIBILITY WRAPPERS (used by endpoints)
-        // =====================================================
-        public async Task<GeminiAadhaarOcr?> VerifyAadhaarAsync(string aadhaarBase64)
-        {
-            // Use Gemini OCR by default for Aadhaar image verification
-            return await AadhaarOcrWithGeminiAsync(aadhaarBase64);
-        }
-
-        public async Task<FaceMatchResult> VerifyFaceMatchAsync(
-            string idBase64,
-            string liveBase64)
-        {
-            return await FaceMatchAsync(idBase64, liveBase64);
         }
 
         // =====================================================
