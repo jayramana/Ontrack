@@ -26,7 +26,7 @@ function Availability() {
       <CustomerSidebar active="availability" />
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 p-10">
+      <div className="flex-1 p-10 transition-all duration-300">
 
         {/* HEADER */}
         <h2 className="text-3xl font-bold text-[#351c15] mb-1">

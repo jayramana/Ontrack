@@ -814,7 +814,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen flex bg-[#f8f4ef]">
       <AdminSidebar active="dashboard" />
 
-      <div className="flex-1">
+      <div className="flex-1 ml-20 transition-all duration-300">
         {/* HEADER */}
         <div className="bg-white border-b border-[#e6d8c9] shadow-sm p-6">
           <div className="flex justify-between items-center">

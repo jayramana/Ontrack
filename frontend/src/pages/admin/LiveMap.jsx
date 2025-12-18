@@ -69,55 +69,90 @@ export default function LiveMap() {
     }));
 
   return (
-    <div className="min-h-screen flex bg-[#f8f4ef]">
-      {/* Sidebar */}
-      <AdminSidebar active="livemap" />
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
+      <AdminSidebar active="live-map" />
 
-      {/* Main Content */}
-      <div className="flex-1 p-10">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#351c15]">Live Fleet Map</h1>
-          <p className="text-[#6b4f3a]">Monitor all driver locations in real time</p>
+      <div className="flex-1 px-10 py-10 space-y-10 overflow-y-auto">
+
+        {/* HEADER */}
+        <div>
+          <h1 className="text-3xl font-black tracking-tight">
+            Live Fleet Map
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Monitor all driver locations in real time
+          </p>
         </div>
 
-        {/* Map Card */}
-        <div className="bg-white rounded-xl shadow border border-[#e6d8c9] p-6 mb-10">
-          <h2 className="text-xl font-bold text-[#351c15] mb-4">Driver Map</h2>
+        {/* MAP CARD */}
+        <section
+          className="
+            bg-white/5 backdrop-blur-xl
+            border border-white/10
+            rounded-3xl p-6
+          "
+        >
+          <h2 className="text-lg font-bold mb-4">
+            Driver Map
+          </h2>
 
-          <div className="rounded-xl overflow-hidden border border-[#e6d8c9]">
-            <MapComponent center={[13.0827, 80.2707]} zoom={12} markers={markers} />
+          <div className="rounded-2xl overflow-hidden border border-white/10">
+            <MapComponent
+              center={[13.0827, 80.2707]}
+              zoom={12}
+              markers={markers}
+            />
           </div>
-        </div>
+        </section>
 
-        {/* Driver List */}
-        <div className="bg-white rounded-xl shadow border border-[#e6d8c9] p-6">
-          <h3 className="text-xl font-bold text-[#351c15] mb-4">Active Drivers</h3>
+        {/* DRIVER LIST */}
+        <section
+          className="
+            bg-white/5 backdrop-blur-xl
+            border border-white/10
+            rounded-3xl p-6
+          "
+        >
+          <h3 className="text-lg font-bold mb-4">
+            Active Drivers
+          </h3>
 
           {drivers.length === 0 ? (
-            <p className="text-[#6b4f3a]">No driver locations available.</p>
+            <p className="text-slate-400">
+              No driver locations available.
+            </p>
           ) : (
             <ul className="space-y-3">
               {drivers.map((d) => (
                 <li
                   key={d.userId}
-                  className="p-4 bg-[#fdf7ed] border border-[#e6d8c9] rounded-lg shadow-sm hover:bg-[#fff9ef] transition"
+                  className="
+                    bg-white/5 border border-white/10
+                    rounded-2xl p-4
+                    hover:bg-white/10 transition
+                  "
                 >
-                  <div className="flex justify-between">
-                    <div className="font-semibold text-[#351c15]">
+                  <div className="flex justify-between items-center">
+                    <div className="font-semibold">
                       {d.userFName} {d.userLName}
                     </div>
-                    <div
-                      className={
-                        d.isAvailable ? "text-green-700" : "text-red-700"
-                      }
+
+                    <span
+                      className={`
+                        px-3 py-1 rounded-full text-xs font-bold uppercase
+                        ${
+                          d.isAvailable
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-red-500/20 text-red-400"
+                        }
+                      `}
                     >
                       {d.isAvailable ? "Available" : "Busy"}
-                    </div>
+                    </span>
                   </div>
 
                   {d.currentLatitude && (
-                    <p className="text-sm text-[#6b4f3a] mt-1">
+                    <p className="text-sm text-slate-400 mt-2">
                       Lat: {d.currentLatitude.toFixed(4)}, Lng:{" "}
                       {d.currentLongitude.toFixed(4)}
                     </p>
@@ -126,7 +161,7 @@ export default function LiveMap() {
               ))}
             </ul>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );

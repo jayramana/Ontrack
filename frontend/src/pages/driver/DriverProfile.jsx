@@ -4,17 +4,16 @@ import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
 export default function DriverProfile() {
-  const [profile, setProfile] = useState(null);
   const { logout } = useAuth();
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // TRACKING STATE
-  // Initialize from localStorage if available, else default to false
-  const [isTracking, setIsTracking] = useState(() => {
-    return localStorage.getItem("driver_tracking_enabled") === "true";
-  });
+  /* ================= TRACKING STATE ================= */
+  const [isTracking, setIsTracking] = useState(
+    () => localStorage.getItem("driver_tracking_enabled") === "true"
+  );
 
-  // Fetch profile on mount
+  /* ================= FETCH PROFILE ================= */
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -29,247 +28,216 @@ export default function DriverProfile() {
     fetchProfile();
   }, []);
 
-  // LOCATION TRACKING LOGIC
+  /* ================= LOCATION TRACKING (UNCHANGED LOGIC) ================= */
   useEffect(() => {
     let intervalId;
 
     const sendLocationUpdate = async (position) => {
-        try {
-            const { latitude, longitude, speed, heading } = position.coords;
-            await api.post("/driver/location", {
-                latitude,
-                longitude,
-                speed: speed || 0, 
-                heading: heading || 0
-            });
-            console.log(" Location updated:", latitude, longitude);
-        } catch (error) {
-            console.error("Failed to send location update:", error);
-        }
+      try {
+        const { latitude, longitude, speed, heading } = position.coords;
+        await api.post("/driver/location", {
+          latitude,
+          longitude,
+          speed: speed || 0,
+          heading: heading || 0,
+        });
+      } catch (err) {
+        console.error("Location update failed", err);
+      }
     };
 
-    const handleError = (error) => {
-        console.error("Geolocation error:", error);
+    const handleError = (err) => {
+      console.error("Geolocation error:", err);
     };
 
     if (isTracking) {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(sendLocationUpdate, handleError);
-            
-            // Set interval for every 30 seconds
-            intervalId = setInterval(() => {
-                navigator.geolocation.getCurrentPosition(sendLocationUpdate, handleError);
-            }, 30000);
-        } else {
-            alert("Geolocation is not supported by your browser.");
-            setIsTracking(false);
-        }
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(sendLocationUpdate, handleError);
+        intervalId = setInterval(() => {
+          navigator.geolocation.getCurrentPosition(sendLocationUpdate, handleError);
+        }, 30000);
+      } else {
+        alert("Geolocation not supported");
+        setIsTracking(false);
+      }
     }
 
-    // Capture state in localStorage for persistence
     localStorage.setItem("driver_tracking_enabled", isTracking);
-
-    return () => {
-        if (intervalId) clearInterval(intervalId);
-    };
+    return () => intervalId && clearInterval(intervalId);
   }, [isTracking]);
 
-  const toggleTracking = () => {
-      setIsTracking(!isTracking);
-  };
+  const toggleTracking = () => setIsTracking((v) => !v);
 
-
+  /* ================= LOADING / ERROR ================= */
   if (loading) {
     return (
-      <div className="min-h-screen flex bg-[#f7f3ef]">
+      <div className="min-h-screen flex bg-[#0b0f14] text-slate-400">
         <DriverSidebar active="profile" />
-        <div className="flex-1 p-10 flex items-center justify-center">
-            <div className="text-[#6b4f3a] text-xl animate-pulse">Loading Profile...</div>
+        <div className="flex-1 flex items-center justify-center animate-pulse">
+          Loading profile…
         </div>
       </div>
     );
   }
 
   if (!profile) {
-     return (
-        <div className="min-h-screen flex bg-[#f7f3ef]">
-          <DriverSidebar active="profile" />
-          <div className="flex-1 p-10 flex items-center justify-center">
-              <div className="text-red-500 text-xl">Failed to load profile.</div>
-          </div>
+    return (
+      <div className="min-h-screen flex bg-[#0b0f14] text-slate-400">
+        <DriverSidebar active="profile" />
+        <div className="flex-1 flex items-center justify-center text-red-400">
+          Failed to load profile
         </div>
-      );
+      </div>
+    );
   }
 
   const fullName = `${profile.firstName} ${profile.lastName}`;
-  const displayRole = profile.role ? profile.role.toUpperCase() : "DRIVER";
+  const displayRole = profile.role?.toUpperCase() || "DRIVER";
 
-  const SectionCard = ({ title, description, children, rightAction }) => (
-    <div className="bg-white rounded-xl border border-[#e6d8c9] p-8 mb-8 shadow-sm">
-      <div className="mb-6 flex justify-between items-start">
-        <div>
-            <h3 className="text-xl font-bold text-[#351c15]">{title}</h3>
-            {description && <p className="text-sm text-[#8a6a1c] mt-1 opacity-80">{description}</p>}
-        </div>
-        {rightAction && <div>{rightAction}</div>}
+  /* ================= UI HELPERS (same as customer) ================= */
+  const InfoCard = ({ title, description, children }) => (
+    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        {description && (
+          <p className="text-sm text-slate-400 mt-1">{description}</p>
+        )}
       </div>
-      
-      <div className="space-y-6">
-        {children}
-      </div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 
-  const FieldRow = ({ label, value, helperText, isAddress = false }) => (
+  const Field = ({ label, value, isAddress = false }) => (
     <div>
-      <label className="block text-base font-semibold text-[#351c15] mb-2">
+      <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
         {label}
-      </label>
-      {helperText && <p className="text-xs text-gray-500 mb-2">{helperText}</p>}
-      
-      <div className={`p-3.5 bg-gray-50 border border-gray-200 rounded-lg text-[#351c15] ${isAddress ? "whitespace-pre-line" : ""}`}>
-        {value || <span className="text-gray-400 italic">Not set</span>}
+      </p>
+      <div
+        className={`text-slate-100 font-medium ${
+          isAddress ? "whitespace-pre-line" : ""
+        }`}
+      >
+        {value || <span className="text-slate-500 italic">Not set</span>}
       </div>
     </div>
   );
 
+  /* ================= UI ================= */
   return (
-    <div className="min-h-screen flex bg-[#f7f3ef]">
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
       <DriverSidebar active="profile" />
 
-      {/* MAIN CONTENT */}
       <div className="flex-1 px-10 py-10 overflow-y-auto">
-        <div className="max-w-4xl">
-            
-            <div className="mb-10 flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-bold text-[#351c15]">Settings</h1>
-                    <p className="text-[#6b4f3a] mt-2 text-lg">Manage your profile details and preferences.</p>
-                </div>
-                
-                {/* GLOBAL ALERT IF TRACKING OFF */}
-                {!isTracking && (
-                    <div className="bg-red-100 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center shadow-sm animate-pulse">
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <span className="font-bold text-sm">Location Tracking is OFF. Please enable it for live updates.</span>
-                    </div>
-                )}
-            </div>
+        <div className="max-w-5xl mx-auto space-y-12">
 
-            {/* SECTION 0: LOCATION TRACKING */}
-            <SectionCard
-                title="Location Tracking"
-                description="Enable this to share your live location with customers and admins."
-                rightAction={
-                    <button
-                        onClick={toggleTracking}
-                        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#f9b400] ${
-                            isTracking ? 'bg-[#15803d]' : 'bg-gray-300'
-                        }`}
-                    >
-                        <span className="sr-only">Enable Location Tracking</span>
-                        <span
-                            className={`${
-                                isTracking ? 'translate-x-7' : 'translate-x-1'
-                            } inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300 shadow-md`}
-                        />
-                    </button>
-                }
-            >
-                <div>
-                    <p className="text-[#351c15] font-medium">
-                        Status: <span className={isTracking ? "text-[#15803d] font-bold" : "text-red-500 font-bold"}>
-                            {isTracking ? "Active (Updating every 30s)" : "Inactive"}
-                        </span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                        Your location is secure and only shared with active order participants.
-                    </p>
-                </div>
-            </SectionCard>
+          {/* PAGE TITLE */}
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white">
+              Profile
+            </h1>
+            <p className="text-slate-400 mt-1">
+              Manage your driver information & live tracking
+            </p>
+          </div>
 
+          {/* ================= IDENTITY + TRACKING (IMPORTANT) ================= */}
+          <section className="relative bg-gradient-to-br from-[#1a1f29] to-[#0f141c] rounded-3xl p-8 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#ff8a3d22,transparent_60%)]" />
 
-            {/* SECTION 1: IDENTITY */}
-            <SectionCard 
-                title="Profile Information" 
-                description="This information will be displayed to admin and customers during delivery."
-            >
-                <div className="flex items-start gap-6 mb-4">
-                    <div className="w-20 h-20 rounded-full bg-[#f0e6d8] flex-shrink-0 flex items-center justify-center text-2xl font-bold text-[#351c15] border-2 border-white shadow">
-                         {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                        <FieldRow 
-                            label="Full Name" 
-                            value={fullName}
-                            helperText="Your name as it appears on your license."
-                        />
-                    </div>
-                </div>
+            <div className="relative flex flex-col sm:flex-row items-center gap-8">
+              {/* Avatar */}
+              <div className="w-24 h-24 rounded-full bg-white/10 border border-white/20
+                flex items-center justify-center text-3xl font-black text-white">
+                {profile.firstName[0]}
+                {profile.lastName[0]}
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <FieldRow 
-                        label="Role" 
-                        value={displayRole} 
-                     />
-                     <FieldRow 
-                        label="Status" 
-                        value="Active" // Placeholder for online/offline status
-                     />
-                </div>
-            </SectionCard>
+              {/* Identity */}
+              <div className="flex-1">
+                <h2 className="text-3xl font-black">{fullName}</h2>
+                <p className="text-slate-400 mt-1">{displayRole}</p>
 
-            {/* SECTION 2: CONTACT */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <SectionCard 
-                    title="Contact Details" 
-                    description="Manage your contact information for notifications and updates."
-                >
-                    <FieldRow 
-                        label="Email Address" 
-                        value={profile.email} 
-                        helperText="Used for login and important updates."
+                {/* TRACKING STATUS */}
+                <div className="mt-4 flex items-center gap-4">
+                  <div
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold
+                      ${isTracking
+                        ? "bg-green-500/10 text-green-400"
+                        : "bg-red-500/10 text-red-400"}`}
+                  >
+                    ● {isTracking ? "Live Tracking ON" : "Tracking OFF"}
+                  </div>
+
+                  {/* TOGGLE */}
+                  <button
+                    onClick={toggleTracking}
+                    className={`relative w-14 h-8 rounded-full transition
+                      ${isTracking ? "bg-[#ff8a3d]" : "bg-white/20"}`}
+                  >
+                    <span
+                      className={`absolute top-1 h-6 w-6 rounded-full bg-black transition
+                        ${isTracking ? "left-7" : "left-1"}`}
                     />
-                    <FieldRow 
-                        label="Phone Number" 
-                        value={profile.phone} 
-                        helperText="Primary contact for deliveries."
-                    />
-                </SectionCard>
-
-
-            </div>
-
-            {/* SECTION 3: ADDRESS */}
-            <SectionCard 
-                title="Home Address" 
-                description="Your registered residence address."
-            >
-                <FieldRow 
-                    label="Street Address" 
-                    value={`${profile.addressLine1 || ''}${profile.addressLine2 ? '\n' + profile.addressLine2 : ''}`} 
-                    isAddress={true}
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <FieldRow label="City" value={profile.city} />
-                     <FieldRow label="Postal Code" value={profile.postalCode} />
-                     <FieldRow label="State" value={profile.state} />
-                     <FieldRow label="Country" value={profile.country} />
+                  </button>
                 </div>
-            </SectionCard>
-
-            {/* LOGOUT */}
-            <div className="mt-8">
-                <button 
-                   onClick={logout}
-                   className="px-6 py-2 rounded-lg bg-red-700 text-white font-bold hover:bg-red-800 transition-colors text-sm"
-                >
-                   Log Out
-                </button>
+              </div>
             </div>
+          </section>
+
+          {/* ================= INFO GRID ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            <InfoCard
+              title="Contact Details"
+              description="Used for delivery updates"
+            >
+              <Field label="Email" value={profile.email} />
+              <Field label="Phone" value={profile.phone} />
+            </InfoCard>
+
+            <InfoCard
+              title="Account Information"
+              description="Driver role & status"
+            >
+              <Field label="Role" value={displayRole} />
+              <Field label="Status" value="Active" />
+            </InfoCard>
+
+          </div>
+
+          {/* ================= ADDRESS ================= */}
+          <InfoCard
+            title="Home Address"
+            description="Registered residence"
+          >
+            <Field
+              label="Street Address"
+              value={`${profile.addressLine1 || ""}${
+                profile.addressLine2 ? "\n" + profile.addressLine2 : ""
+              }`}
+              isAddress
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+              <Field label="City" value={profile.city} />
+              <Field label="Postal Code" value={profile.postalCode} />
+              <Field label="State" value={profile.state} />
+              <Field label="Country" value={profile.country} />
+            </div>
+          </InfoCard>
+
+          {/* ================= DANGER ZONE ================= */}
+          <div className="pt-6 border-t border-white/10">
+            <button
+              onClick={logout}
+              className="px-6 py-3 rounded-xl
+                bg-red-500/10 border border-red-500/30
+                text-red-400 font-bold
+                hover:bg-red-500/20 hover:text-red-300 transition"
+            >
+              Log Out
+            </button>
+          </div>
 
         </div>
       </div>

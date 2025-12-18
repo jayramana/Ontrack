@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import MapPicker from "../../components/MapPicker";
-import SellerSidebar from "./SellerSidebar"
+import SellerSidebar from "./SellerSidebar";
 
 function PlaceOrder() {
   const [formData, setFormData] = useState({
@@ -28,7 +28,7 @@ function PlaceOrder() {
     scheduledDate: "",
     scheduledTimeSlot: "",
     price: 0,
-    isASR: false, // 🆕 ASR field
+    isASR: false,
   });
 
   const [showPickupPicker, setShowPickupPicker] = useState(false);
@@ -37,23 +37,21 @@ function PlaceOrder() {
 
   const navigate = useNavigate();
 
-  // 🆕 Fetch Profile for Autofill
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await api.get("/auth/profile");
         const profile = res.data;
         if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                senderName: `${profile.firstName} ${profile.lastName}`.trim(),
-                senderPhone: profile.phone || "",
-                senderEmail: profile.email || "",
-                // Note: Pickup address explicitly NOT autofilled per user request
-            }));
+          setFormData(prev => ({
+            ...prev,
+            senderName: `${profile.firstName} ${profile.lastName}`.trim(),
+            senderPhone: profile.phone || "",
+            senderEmail: profile.email || "",
+          }));
         }
       } catch (err) {
-        console.error("Failed to fetch profile for autofill:", err);
+        console.error(err);
       }
     };
     fetchProfile();
@@ -61,7 +59,7 @@ function PlaceOrder() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((s) => ({
+    setFormData(s => ({
       ...s,
       [name]: type === "checkbox" ? checked : value,
     }));
@@ -69,7 +67,7 @@ function PlaceOrder() {
 
   const handleMapPick = (type, { lat, lng, address, pincode }) => {
     if (type === "pickup") {
-      setFormData((s) => ({
+      setFormData(s => ({
         ...s,
         pickupLatitude: lat,
         pickupLongitude: lng,
@@ -78,7 +76,7 @@ function PlaceOrder() {
       }));
       setShowPickupPicker(false);
     } else {
-      setFormData((s) => ({
+      setFormData(s => ({
         ...s,
         deliveryLatitude: lat,
         deliveryLongitude: lng,
@@ -99,10 +97,9 @@ function PlaceOrder() {
         ? 30
         : 10;
 
-    // 🆕 ASR adds extra cost
     let asrPrice = formData.isASR ? 100 : 0;
 
-    setFormData((s) => ({
+    setFormData(s => ({
       ...s,
       price: weightPrice + sizePrice + asrPrice,
     }));
@@ -112,301 +109,103 @@ function PlaceOrder() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // Prepare payload: include coordinates only if available (null -> omitted)
-      const payload = {
-        senderName: formData.senderName,
-        senderPhone: formData.senderPhone,
-        senderEmail: formData.senderEmail,
-        pickupAddress: formData.pickupAddress,
-        pickupPincode: formData.pickupPincode,
-        // If null, let backend geocode from address
-        pickupLatitude: formData.pickupLatitude,
-        pickupLongitude: formData.pickupLongitude,
-
-        receiverName: formData.receiverName,
-        receiverPhone: formData.receiverPhone,
-        receiverEmail: formData.receiverEmail,
-        receiverAddress: formData.receiverAddress,
-        receiverPincode: formData.deliveryPincode || formData.receiverPincode,
-        deliveryLatitude: formData.deliveryLatitude,
-        deliveryLongitude: formData.deliveryLongitude,
-
-        deliveryType: formData.deliveryType,
-        parcelSize: formData.parcelSize,
+      await api.post("/orders", {
+        ...formData,
         weight: parseFloat(formData.weight || 0),
-        deliveryNotes: formData.deliveryNotes,
         scheduledDate: formData.scheduledDate || null,
         scheduledTimeSlot: formData.scheduledTimeSlot || null,
-        price: formData.price,
-        isASR: formData.isASR,
-      };
-
-      // Send to server
-      await api.post("/orders", payload);
+      });
       alert("Order placed successfully!");
-      // Redirect to valid page, e.g. dashboard or orders list
       navigate("/seller/dashboard");
-    } catch (error) {
-      console.error("Error placing order:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.innerException ||
-        error.message ||
-        "Failed to place order.";
-      alert(`Error: ${errorMessage}`);
+    } catch {
+      alert("Failed to place order");
     } finally {
       setSubmitting(false);
     }
   };
 
+  const inputClass =
+    "p-2 rounded bg-white/10 border border-white/10 text-slate-100 placeholder:text-slate-500";
+
   return (
-    <main className="flex">
-      <SellerSidebar />
+    <main className="flex bg-[#0b0f14] text-slate-100">
+      <SellerSidebar active="create" />
+
       <div className="p-6 w-[80%] mx-auto">
-        <h2 className="text-3xl font-bold mb-6 text-[#351c15]">
-          Place New Order
-        </h2>
+        <h2 className="text-3xl font-black mb-6">Place New Order</h2>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-6 bg-white p-8 rounded-xl shadow-md border border-[#e6d8c9]"
+          className="space-y-6 bg-white/5 backdrop-blur-xl p-8 rounded-2xl border border-white/10"
         >
-          {/* Sender */}
-          <div className="border-b pb-4">
-            <h3 className="text-xl font-semibold mb-4 text-[#351c15]">
+          {/* ================= SENDER ================= */}
+          <div className="border-b border-white/10 pb-4">
+            <h3 className="text-xl font-bold mb-4 text-[#ff8a3d]">
               Sender Details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                name="senderName"
-                value={formData.senderName}
-                onChange={handleChange}
-                placeholder="Sender Name"
-                required
-                readOnly
-                className="p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-              />
-              <input
-                name="senderPhone"
-                value={formData.senderPhone}
-                onChange={handleChange}
-                placeholder="Sender Phone"
-                required
-                readOnly
-                className="p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-              />
-              <input
-                name="senderEmail"
-                value={formData.senderEmail}
-                onChange={handleChange}
-                placeholder="Sender Email"
-                type="email"
-                readOnly
-                className="p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-              />
-              <div className="md:col-span-2">
-                <label className="block mb-1 font-medium text-[#4b382e]">
-                  Pickup Address
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    name="pickupAddress"
-                    value={formData.pickupAddress}
-                    onChange={handleChange}
-                    placeholder="Street, area, etc."
-                    className="flex-1 p-2 border rounded"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPickupPicker(true)}
-                    className="px-3 py-2 bg-[#ffb500] text-[#351c15] font-semibold rounded hover:bg-[#e6a300] transition"
-                  >
-                    Pick on map
-                  </button>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <input
-                    name="pickupPincode"
-                    value={formData.pickupPincode}
-                    onChange={handleChange}
-                    placeholder="Pincode"
-                    className="p-2 border rounded"
-                  />
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Latitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.pickupLatitude
-                        ? formData.pickupLatitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Longitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.pickupLongitude
-                        ? formData.pickupLongitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <input readOnly value={formData.senderName} className={inputClass} />
+              <input readOnly value={formData.senderPhone} className={inputClass} />
+              <input readOnly value={formData.senderEmail} className={inputClass} />
             </div>
           </div>
 
-          {/* Receiver */}
-          <div className="border-b pb-4">
-            <h3 className="text-xl font-semibold mb-4 text-[#351c15]">
+          {/* ================= RECEIVER ================= */}
+          <div className="border-b border-white/10 pb-4">
+            <h3 className="text-xl font-bold mb-4 text-[#ff8a3d]">
               Receiver Details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                name="receiverName"
-                value={formData.receiverName}
-                onChange={handleChange}
-                placeholder="Receiver Name"
-                required
-                className="p-2 border rounded"
-              />
-              <input
-                name="receiverPhone"
-                value={formData.receiverPhone}
-                onChange={handleChange}
-                placeholder="Receiver Phone"
-                required
-                className="p-2 border rounded"
-              />
-              <input
-                name="receiverEmail"
-                value={formData.receiverEmail}
-                onChange={handleChange}
-                placeholder="Receiver Email"
-                className="p-2 border rounded"
-              />
-              <div className="md:col-span-2">
-                <label className="block mb-1 font-medium text-[#4b382e]">
-                  Receiver Address
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    name="receiverAddress"
-                    value={formData.receiverAddress}
-                    onChange={handleChange}
-                    placeholder="Delivery address"
-                    className="flex-1 p-2 border rounded"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowDeliveryPicker(true)}
-                    className="px-3 py-2 bg-[#ffb500] text-[#351c15] font-semibold rounded hover:bg-[#e6a300] transition"
-                  >
-                    Pick on map
-                  </button>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <input
-                    name="receiverPincode"
-                    value={formData.receiverPincode}
-                    onChange={handleChange}
-                    placeholder="Pincode"
-                    className="p-2 border rounded"
-                  />
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Latitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.deliveryLatitude
-                        ? formData.deliveryLatitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Longitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.deliveryLongitude
-                        ? formData.deliveryLongitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <input name="receiverName" value={formData.receiverName} onChange={handleChange} className={inputClass} placeholder="Receiver name"/>
+              <input name="receiverPhone" value={formData.receiverPhone} onChange={handleChange} className={inputClass} placeholder="Receiver phone"/>
+              <input name="receiverEmail" value={formData.receiverEmail} onChange={handleChange} className={inputClass} placeholder="Receiver email"/>
             </div>
           </div>
 
-          {/* Package */}
+          {/* ================= PACKAGE DETAILS ================= */}
           <div>
-            <h3 className="text-xl font-semibold mb-4 text-[#351c15]">
+            <h3 className="text-xl font-bold mb-4 text-[#ff8a3d]">
               Package & Delivery
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select
-                name="deliveryType"
-                value={formData.deliveryType}
-                onChange={handleChange}
-                className="p-2 border rounded"
-              >
+
+            <div className="grid md:grid-cols-3 gap-4 [&_option]:text-black">
+              <select name="deliveryType" value={formData.deliveryType} onChange={handleChange} className={inputClass}>
                 <option value="Normal">Normal</option>
                 <option value="Express">Express</option>
               </select>
-              <select
-                name="parcelSize"
-                value={formData.parcelSize}
-                onChange={handleChange}
-                className="p-2 border rounded"
-              >
+
+              <select name="parcelSize" value={formData.parcelSize} onChange={handleChange} className={inputClass}>
                 <option value="Small">Small</option>
                 <option value="Medium">Medium</option>
                 <option value="Large">Large</option>
               </select>
+
               <input
                 name="weight"
+                type="number"
+                placeholder="Weight (kg)"
                 value={formData.weight}
                 onChange={handleChange}
                 onBlur={calculatePrice}
-                placeholder="Weight (kg)"
-                type="number"
-                className="p-2 border rounded"
+                className={inputClass}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-[#4b382e] mb-1">
-                  Scheduled Date
-                </label>
-                <input
-                  type="date"
-                  name="scheduledDate"
-                  value={formData.scheduledDate}
-                  onChange={handleChange}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#4b382e] mb-1">
-                  Time Slot (Optional)
-                </label>
-                <select
-                  name="scheduledTimeSlot"
-                  value={formData.scheduledTimeSlot}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">Any Time</option>
-                  <option value="Morning (9AM - 12PM)">
-                    Morning (9AM - 12PM)
-                  </option>
-                  <option value="Afternoon (12PM - 4PM)">
-                    Afternoon (12PM - 4PM)
-                  </option>
-                  <option value="Evening (4PM - 8PM)">
-                    Evening (4PM - 8PM)
-                  </option>
-                </select>
-              </div>
+            <div className="grid md:grid-cols-2 gap-4 mt-4 [&_option]:text-black">
+              <input type="date" name="scheduledDate" value={formData.scheduledDate} onChange={handleChange} className={inputClass} />
+
+              <select name="scheduledTimeSlot" value={formData.scheduledTimeSlot} onChange={handleChange} className={inputClass}>
+                <option value="">Any Time</option>
+                <option value="Morning">Morning</option>
+                <option value="Afternoon">Afternoon</option>
+                <option value="Evening">Evening</option>
+              </select>
             </div>
 
-            {/* 🆕 ASR Checkbox */}
-            <div className="mt-4 bg-red-50 border-2 border-red-300 rounded-lg p-4">
+            {/* ASR */}
+            <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -414,40 +213,29 @@ function PlaceOrder() {
                   checked={formData.isASR}
                   onChange={(e) => {
                     handleChange(e);
-                    // Recalculate price when ASR changes
                     setTimeout(calculatePrice, 100);
                   }}
-                  className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-500"
                 />
-                <div>
-                  <span className="text-lg font-bold text-red-800">
-                    🔒 Require Adult Signature (ASR)
-                  </span>
-                  <p className="text-sm text-red-700 mt-1">
-                    Customer must provide ID verification and signature before
-                    delivery. Additional ₹100 fee applies.
-                  </p>
-                </div>
+                <span className="font-bold text-red-400">
+                  Require Adult Signature (₹100)
+                </span>
               </label>
             </div>
 
-            <div className="mt-4">
-              <textarea
-                name="deliveryNotes"
-                value={formData.deliveryNotes}
-                onChange={handleChange}
-                placeholder="Delivery notes"
-                className="w-full p-2 border rounded"
-                rows="2"
-              />
-            </div>
+            <textarea
+              name="deliveryNotes"
+              value={formData.deliveryNotes}
+              onChange={handleChange}
+              placeholder="Delivery notes"
+              rows="2"
+              className={`${inputClass} mt-4 w-full`}
+            />
           </div>
 
-          <div className="bg-[#fdf7ed] p-4 rounded-lg flex justify-between items-center border border-[#e6d8c9]">
-            <span className="text-lg font-semibold text-[#351c15]">
-              Estimated Price:
-            </span>
-            <span className="text-2xl font-bold text-[#ffb500]">
+          {/* ================= PRICE ================= */}
+          <div className="flex justify-between bg-white/5 p-4 rounded-xl border border-white/10">
+            <span className="text-slate-400">Estimated Price</span>
+            <span className="text-2xl font-black text-[#ff8a3d]">
               ₹{formData.price}
             </span>
           </div>
@@ -455,37 +243,18 @@ function PlaceOrder() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#351c15] text-white py-3 rounded-lg font-semibold hover:bg-[#4a2a21] transition disabled:opacity-50"
+            className="w-full bg-[#ff8a3d] text-black py-3 rounded-xl font-bold hover:opacity-90"
           >
             {submitting ? "Placing order..." : "Confirm & Place Order"}
           </button>
         </form>
 
-        {/* Map pickers as modal-like components */}
         {showPickupPicker && (
-          <MapPicker
-            initialPosition={
-              formData.pickupLatitude && formData.pickupLongitude
-                ? [formData.pickupLatitude, formData.pickupLongitude]
-                : null
-            }
-            onCancel={() => setShowPickupPicker(false)}
-            onSelect={(payload) => handleMapPick("pickup", payload)}
-            title="Pick Pickup Location"
-          />
+          <MapPicker onCancel={() => setShowPickupPicker(false)} onSelect={(p) => handleMapPick("pickup", p)} />
         )}
 
         {showDeliveryPicker && (
-          <MapPicker
-            initialPosition={
-              formData.deliveryLatitude && formData.deliveryLongitude
-                ? [formData.deliveryLatitude, formData.deliveryLongitude]
-                : null
-            }
-            onCancel={() => setShowDeliveryPicker(false)}
-            onSelect={(payload) => handleMapPick("delivery", payload)}
-            title="Pick Delivery Location"
-          />
+          <MapPicker onCancel={() => setShowDeliveryPicker(false)} onSelect={(p) => handleMapPick("delivery", p)} />
         )}
       </div>
     </main>

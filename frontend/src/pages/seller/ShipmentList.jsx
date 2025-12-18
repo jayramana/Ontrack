@@ -21,7 +21,7 @@ export default function ShipmentList() {
       <SellerSidebar active="shipments" />
 
       {/* MAIN AREA */}
-      <div className="flex-1 px-10 py-8">
+      <div className="flex-1 px-10 py-8 transition-all duration-300">
 
         {/* HEADER */}
         <div className="mb-8">

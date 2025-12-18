@@ -8,7 +8,7 @@ export default function SellerProfile() {
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
 
-  // Fetch profile on mount
+  /* ---------------- FETCH PROFILE ---------------- */
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -25,152 +25,161 @@ export default function SellerProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex bg-[#f8f4ef]">
+      <div className="min-h-screen flex bg-[#0b0f14] text-slate-400">
         <SellerSidebar active="profile" />
-        <div className="flex-1 p-10 flex items-center justify-center">
-            <div className="text-[#6b4f3a] text-xl animate-pulse">Loading Profile...</div>
+        <div className="flex-1 flex items-center justify-center text-lg animate-pulse">
+          Loading profile…
         </div>
       </div>
     );
   }
 
   if (!profile) {
-     return (
-        <div className="min-h-screen flex bg-[#f8f4ef]">
-          <SellerSidebar active="profile" />
-          <div className="flex-1 p-10 flex items-center justify-center">
-              <div className="text-red-500 text-xl">Failed to load profile.</div>
-          </div>
+    return (
+      <div className="min-h-screen flex bg-[#0b0f14] text-slate-400">
+        <SellerSidebar active="profile" />
+        <div className="flex-1 flex items-center justify-center text-red-400 text-lg">
+          Failed to load profile.
         </div>
-      );
+      </div>
+    );
   }
 
-  // Helper to format full name
   const fullName = `${profile.firstName} ${profile.lastName}`;
-  // Display seller type with first letter cap
-  const sellerTypeDisplay = profile.sellerType 
-    ? profile.sellerType.charAt(0).toUpperCase() + profile.sellerType.slice(1) 
+  const sellerTypeDisplay = profile.sellerType
+    ? profile.sellerType.charAt(0).toUpperCase() + profile.sellerType.slice(1)
     : "Verified User";
 
-  // Preferences Style Component Helpers
-  const SectionCard = ({ title, description, children }) => (
-    <div className="bg-white rounded-xl border border-[#e6d8c9] p-8 mb-8 shadow-sm">
-      <div className="mb-6">
-        <h3 className="text-xl font-bold text-[#351c15]">{title}</h3>
-        {description && <p className="text-sm text-[#8a6a1c] mt-1 opacity-80">{description}</p>}
+  /* ---------------- UI HELPERS ---------------- */
+  const InfoCard = ({ title, description, children }) => (
+    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        {description && (
+          <p className="text-sm text-slate-400 mt-1">{description}</p>
+        )}
       </div>
-      
-      <div className="space-y-6">
-        {children}
-      </div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 
-  const FieldRow = ({ label, value, helperText, isAddress = false }) => (
+  const Field = ({ label, value, isAddress = false }) => (
     <div>
-      <label className="block text-base font-semibold text-[#351c15] mb-2">
+      <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
         {label}
-      </label>
-      {helperText && <p className="text-xs text-gray-500 mb-2">{helperText}</p>}
-      
-      <div className={`p-3.5 bg-gray-50 border border-gray-200 rounded-lg text-[#351c15] ${isAddress ? "whitespace-pre-line" : ""}`}>
-        {value || <span className="text-gray-400 italic">Not set</span>}
+      </p>
+      <div
+        className={`text-slate-100 font-medium ${
+          isAddress ? "whitespace-pre-line" : ""
+        }`}
+      >
+        {value || <span className="text-slate-500 italic">Not set</span>}
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen flex bg-[#fbf9f6]">
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
       <SellerSidebar active="profile" />
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <div className="flex-1 px-10 py-10 overflow-y-auto">
-        <div className="max-w-4xl">
-            
-            <div className="mb-10">
-                <h1 className="text-3xl font-bold text-[#351c15]">Settings</h1>
-                <p className="text-[#6b4f3a] mt-2 text-lg">Manage your profile details and business preferences.</p>
-            </div>
+        <div className="max-w-5xl mx-auto space-y-12">
 
-            {/* SECTION 1: IDENTITY */}
-            <SectionCard 
-                title="Profile Information" 
-                description="This information will be displayed to customers and used for billing."
+          {/* PAGE TITLE */}
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white">
+              Seller Profile
+            </h1>
+            <p className="text-slate-400 mt-1">
+              Manage your business information and preferences
+            </p>
+          </div>
+
+          {/* ================= IDENTITY ================= */}
+          <section className="relative bg-gradient-to-br from-[#1a1f29] to-[#0f141c] rounded-3xl p-8 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#ff8a3d22,transparent_60%)]" />
+
+            <div className="relative flex flex-col sm:flex-row items-center gap-8">
+              {/* Avatar */}
+              <div className="w-24 h-24 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-3xl font-black text-white">
+                {profile.firstName?.[0]}
+                {profile.lastName?.[0]}
+              </div>
+
+              {/* Identity */}
+              <div className="flex-1">
+                <h2 className="text-3xl font-black">{fullName}</h2>
+                <p className="text-slate-400 mt-1">
+                  {profile.role?.toUpperCase()} · {sellerTypeDisplay}
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-sm font-semibold">
+                  ● Active Seller Account
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ================= INFO GRID ================= */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            {/* CONTACT */}
+            <InfoCard
+              title="Contact Details"
+              description="Used for order updates and communication"
             >
-                <div className="flex items-start gap-6 mb-4">
-                    <div className="w-20 h-20 rounded-full bg-[#f0e6d8] flex-shrink-0 flex items-center justify-center text-2xl font-bold text-[#351c15] border-2 border-white shadow">
-                         {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                        <FieldRow 
-                            label="Full Name" 
-                            value={fullName}
-                            helperText="Your name as it appears on your identity documents."
-                        />
-                    </div>
-                </div>
+              <Field label="Email" value={profile.email} />
+              <Field label="Phone" value={profile.phone} />
+            </InfoCard>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <FieldRow 
-                        label="Role" 
-                        value={profile.role.toUpperCase()} 
-                     />
-                     <FieldRow 
-                        label="Account Type" 
-                        value={sellerTypeDisplay} 
-                     />
-                </div>
-            </SectionCard>
-
-            {/* SECTION 2: CONTACT */}
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <SectionCard 
-                    title="Contact Details" 
-                    description="Manage your contact information for notifications and updates."
-                >
-                    <FieldRow 
-                        label="Email Address" 
-                        value={profile.email} 
-                        helperText="We'll use this email for account recovery and important updates."
-                    />
-                    <FieldRow 
-                        label="Phone Number" 
-                        value={profile.phone} 
-                        helperText="Used for delivery coordination."
-                    />
-                </SectionCard>
-
-
-            </div>
-
-            {/* SECTION 3: ADDRESS */}
-            <SectionCard 
-                title="Address Configuration" 
-                description="Manage your pickup and return locations."
+            {/* ACCOUNT */}
+            <InfoCard
+              title="Account Information"
+              description="Your seller role and account type"
             >
-                <FieldRow 
-                    label="Street Address" 
-                    value={`${profile.addressLine1 || ''}${profile.addressLine2 ? '\n' + profile.addressLine2 : ''}`} 
-                    isAddress={true}
-                />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                     <FieldRow label="City" value={profile.city} />
-                     <FieldRow label="Postal Code" value={profile.postalCode} />
-                     <FieldRow label="State" value={profile.state} />
-                     <FieldRow label="Country" value={profile.country} />
-                </div>
-            </SectionCard>
+              <Field label="Role" value={profile.role?.toUpperCase()} />
+              <Field label="Account Type" value={sellerTypeDisplay} />
+            </InfoCard>
 
-            {/* LOGOUT */}
-            <div className="mt-8">
-                <button 
-                   onClick={logout}
-                   className="px-6 py-2 rounded-lg bg-red-700 text-white font-bold hover:bg-red-800 transition-colors text-sm"
-                >
-                   Log Out
-                </button>
+          </div>
+
+          {/* ================= ADDRESS ================= */}
+          <InfoCard
+            title="Business Address"
+            description="Pickup and return location details"
+          >
+            <Field
+              label="Street Address"
+              value={`${profile.addressLine1 || ""}${
+                profile.addressLine2 ? "\n" + profile.addressLine2 : ""
+              }`}
+              isAddress
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
+              <Field label="City" value={profile.city} />
+              <Field label="Postal Code" value={profile.postalCode} />
+              <Field label="State" value={profile.state} />
+              <Field label="Country" value={profile.country} />
             </div>
+          </InfoCard>
+
+          {/* ================= LOGOUT ================= */}
+          <div className="pt-6 border-t border-white/10">
+            <button
+              onClick={logout}
+              className="
+                px-6 py-3 rounded-xl
+                bg-red-500/10 border border-red-500/30
+                text-red-400 font-bold
+                hover:bg-red-500/20 hover:text-red-300
+                transition
+              "
+            >
+              Log Out
+            </button>
+          </div>
 
         </div>
       </div>

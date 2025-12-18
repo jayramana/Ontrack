@@ -248,173 +248,230 @@ import { useEffect, useState } from "react";
 import api from "../../services/api";
 
 const DriverDetailsModal = ({ driverId, onClose }) => {
-    const [driverInfo, setDriverInfo] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [driverInfo, setDriverInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const loadDriverDetails = async () => {
-            try {
-                const res = await api.get(`/admin/driver/${driverId}`);
-                setDriverInfo(res.data);
-            } catch (error) {
-                console.error("Error loading driver:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadDriverDetails();
-    }, [driverId]);
+  useEffect(() => {
+    const loadDriverDetails = async () => {
+      try {
+        const res = await api.get(`/admin/driver/${driverId}`);
+        setDriverInfo(res.data);
+      } catch (error) {
+        console.error("Error loading driver:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDriverDetails();
+  }, [driverId]);
 
-    if (loading) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                <div className="bg-white rounded-xl p-6 shadow-lg">
-                    <p>Loading driver details...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (!driverInfo) return null;
-
-    const { driver, statistics, orders } = driverInfo;
-
+  if (loading) {
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-xl p-6 w-full max-w-3xl shadow-lg my-8">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">Driver Details</h2>
-                    <button 
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-                    >
-                        ×
-                    </button>
-                </div>
-
-                <div className="space-y-4">
-                    {/* Driver Info Card */}
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold">
-                                {driver.userFName?.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-xl font-bold text-gray-800">{driver.userFName} {driver.userLName}</h3>
-                                <p className="text-gray-600">{driver.userEmail}</p>
-                                <div className="mt-1">
-                                    <span className={`px-3 py-1 rounded-full text-sm ${
-                                        driver.isAvailable 
-                                            ? 'bg-green-100 text-green-700' 
-                                            : 'bg-red-100 text-red-700'
-                                    }`}>
-                                        {driver.isAvailable ? '🟢 Available' : '🔴 Busy'}
-                                    </span>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    {/* Current Location */}
-                    {driver.currentLatitude && driver.currentLongitude && (
-                        <div className="border rounded-lg p-4">
-                            <h3 className="font-semibold text-gray-800 mb-2 flex items-center">
-                                <span className="text-xl mr-2">📍</span> Current Location
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                                Lat: {driver.currentLatitude.toFixed(6)}, Lng: {driver.currentLongitude.toFixed(6)}
-                            </p>
-                            <a
-                                href={`https://www.google.com/maps?q=${driver.currentLatitude},${driver.currentLongitude}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline text-sm mt-1 inline-block"
-                            >
-                                View on Google Maps →
-                            </a>
-                        </div>
-                    )}
-
-                    {/* Statistics */}
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="border rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">Total Completed</p>
-                            <p className="text-3xl font-bold text-green-600">{statistics.totalCompleted}</p>
-                        </div>
-                        <div className="border rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">Today Completed</p>
-                            <p className="text-3xl font-bold text-blue-600">{statistics.todayCompleted}</p>
-                        </div>
-                        <div className="border rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-600">Active Deliveries</p>
-                            <p className="text-3xl font-bold text-orange-600">{statistics.activeDeliveries}</p>
-                        </div>
-                    </div>
-
-                    {/* Recent Orders */}
-                    <div className="border rounded-lg p-4">
-                        <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
-                            <span className="text-xl mr-2">📦</span> Recent Orders (Last 20)
-                        </h3>
-                        {orders.length === 0 ? (
-                            <p className="text-gray-500 text-sm">No orders found</p>
-                        ) : (
-                            <div className="max-h-64 overflow-y-auto">
-                                <table className="min-w-full text-sm">
-                                    <thead className="bg-gray-50 sticky top-0">
-                                        <tr>
-                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Tracking ID</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Pickup</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Delivery</th>
-                                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {orders.map((order) => (
-                                            <tr key={order.id} className="hover:bg-gray-50">
-                                                <td className="px-3 py-2 font-medium text-blue-600">
-                                                    {order.trackingId}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    <span className={`px-2 py-1 text-xs rounded-full ${
-                                                        order.status === 'Delivered' 
-                                                            ? 'bg-green-100 text-green-700'
-                                                            : 'bg-yellow-100 text-yellow-700'
-                                                    }`}>
-                                                        {order.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-3 py-2 text-gray-600 truncate max-w-xs">
-                                                    {order.pickupAddress}
-                                                </td>
-                                                <td className="px-3 py-2 text-gray-600 truncate max-w-xs">
-                                                    {order.receiverAddress}
-                                                </td>
-                                                <td className="px-3 py-2 text-gray-500">
-                                                    {new Date(order.createdAt).toLocaleDateString()}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="mt-6">
-                    <button 
-                        onClick={onClose}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-slate-300">
+          Loading driver details…
         </div>
+      </div>
     );
+  }
+
+  if (!driverInfo) return null;
+
+  const { driver, statistics, orders } = driverInfo;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="
+        bg-[#0f141c]
+        border border-white/10
+        backdrop-blur-xl
+        rounded-3xl
+        p-6
+        w-full max-w-4xl
+        shadow-2xl
+      ">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black text-white">
+            Driver Details
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white text-2xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-6">
+
+          {/* DRIVER INFO */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center gap-5">
+            <div className="
+              w-16 h-16 rounded-full
+              bg-[#ff8a3d]/20
+              text-[#ff8a3d]
+              flex items-center justify-center
+              text-2xl font-black
+            ">
+              {driver.userFName?.charAt(0)?.toUpperCase()}
+            </div>
+
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white">
+                {driver.userFName} {driver.userLName}
+              </h3>
+              <p className="text-slate-400 text-sm">{driver.userEmail}</p>
+
+              <span
+                className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold
+                  ${
+                    driver.isAvailable
+                      ? "bg-green-500/20 text-green-400"
+                      : "bg-red-500/20 text-red-400"
+                  }
+                `}
+              >
+                {driver.isAvailable ? "Available" : "Busy"}
+              </span>
+            </div>
+          </div>
+
+          {/* LOCATION */}
+          {driver.currentLatitude && driver.currentLongitude && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+              <h4 className="font-semibold text-white mb-2 flex items-center gap-2">
+                📍 Current Location
+              </h4>
+
+              <p className="text-sm text-slate-400">
+                Lat: {driver.currentLatitude.toFixed(6)} | Lng:{" "}
+                {driver.currentLongitude.toFixed(6)}
+              </p>
+
+              <a
+                href={`https://www.google.com/maps?q=${driver.currentLatitude},${driver.currentLongitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#ff8a3d] text-sm font-semibold hover:underline mt-1 inline-block"
+              >
+                View on Google Maps →
+              </a>
+            </div>
+          )}
+
+          {/* STATISTICS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[
+              {
+                label: "Total Completed",
+                value: statistics.totalCompleted,
+                color: "text-green-400",
+              },
+              {
+                label: "Today Completed",
+                value: statistics.todayCompleted,
+                color: "text-blue-400",
+              },
+              {
+                label: "Active Deliveries",
+                value: statistics.activeDeliveries,
+                color: "text-orange-400",
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center"
+              >
+                <p className="text-sm text-slate-400">{s.label}</p>
+                <p className={`text-3xl font-black ${s.color}`}>
+                  {s.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* RECENT ORDERS */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <h4 className="font-semibold text-white mb-4 flex items-center gap-2">
+              📦 Recent Orders (Last 20)
+            </h4>
+
+            {orders.length === 0 ? (
+              <p className="text-slate-500 text-sm">No orders found</p>
+            ) : (
+              <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10">
+                <table className="min-w-full text-sm">
+                  <thead className="sticky top-0 bg-[#0b0f14]">
+                    <tr className="text-slate-400 text-xs uppercase">
+                      <th className="px-4 py-3 text-left">Tracking</th>
+                      <th className="px-4 py-3 text-left">Status</th>
+                      <th className="px-4 py-3 text-left">Pickup</th>
+                      <th className="px-4 py-3 text-left">Delivery</th>
+                      <th className="px-4 py-3 text-left">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {orders.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-white/5 transition"
+                      >
+                        <td className="px-4 py-3 text-[#ff8a3d] font-semibold">
+                          {order.trackingId}
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-bold
+                              ${
+                                order.status === "Delivered"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : "bg-yellow-500/20 text-yellow-400"
+                              }
+                            `}
+                          >
+                            {order.status}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-400 truncate max-w-xs">
+                          {order.pickupAddress}
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-400 truncate max-w-xs">
+                          {order.receiverAddress}
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-500">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="mt-6">
+          <button
+            onClick={onClose}
+            className="
+              w-full py-3 rounded-xl
+              bg-[#ff8a3d]
+              text-black font-bold
+              hover:opacity-90 transition
+            "
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default DriverDetailsModal;

@@ -20,7 +20,7 @@ export default function TrackPackage() {
       const res = await api.get(`/track/${trackingId}`);
       setData(res.data);
     } catch (err) {
-      setError("Tracking ID not found", err.message);
+      setError("Tracking ID not found", err);
       setData(null);
     } finally {
       setLoading(false);
@@ -28,7 +28,7 @@ export default function TrackPackage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#351c15] to-[#4e2a1f] p-4">
+    <div className="min-h-screen bg-linear-to-br from-[#351c15] to-[#4e2a1f] p-4">
       <div className="max-w-4xl mx-auto bg-[#f8f4ef] rounded-2xl shadow-xl p-8 border border-[#e6d8c9]">
 
         {/* Header */}

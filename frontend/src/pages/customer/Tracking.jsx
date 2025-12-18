@@ -149,7 +149,7 @@ function Tracking() {
     <div className="min-h-screen flex bg-[#f7f3ef]">
       <CustomerSidebar active="track" />
 
-      <div className="flex-1 p-10 overflow-y-auto">
+      <div className="flex-1 p-10 overflow-y-auto transition-all duration-300">
         {!id ? (
             renderInputForm()
         ) : loading ? (

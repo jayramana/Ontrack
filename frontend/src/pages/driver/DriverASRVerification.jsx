@@ -184,7 +184,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
       return;
     }
 
-    if (!asrStatus?.id) {
+    if (!asrStatus?.asrId) {
       alert("ASR not initiated yet. Please initiate ASR first.");
       return;
     }
@@ -195,7 +195,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
       // Convert photo to base64
       const photoBase64 = await fileToBase64(customerPhoto);
       
-      const response = await api.post(`/asr/driver/upload-captures/${asrStatus.id}`, {
+      const response = await api.post(`/asr/driver/upload-captures/${asrStatus.asrId}`, {
         customerPhotoUrl: photoBase64,
         signatureUrl: signatureData
       });

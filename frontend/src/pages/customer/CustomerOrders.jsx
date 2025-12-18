@@ -9,13 +9,14 @@ import CustomerASRUpload from "./CustomerASRUpload";
 export default function CustomerOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [showASRUploadModal, setShowASRUploadModal] = useState(false);
   const [selectedASROrderId, setSelectedASROrderId] = useState(null);
-  
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  /* ---------------- FETCH + SIGNALR (UNCHANGED) ---------------- */
   useEffect(() => {
     fetchOrders();
 
@@ -35,17 +36,15 @@ export default function CustomerOrders() {
       .catch((err) => console.error("SignalR Connection Error: ", err));
 
     connection.on("ASRVerificationRequested", (data) => {
-        setSelectedASROrderId(data.orderId);
-        setShowASRUploadModal(true);
+      setSelectedASROrderId(data.orderId);
+      setShowASRUploadModal(true);
     });
 
     connection.on("ASRVerificationCompleted", () => {
-        fetchOrders();
+      fetchOrders();
     });
 
-    return () => {
-      connection.stop();
-    };
+    return () => connection.stop();
   }, [user]);
 
   const fetchOrders = async () => {
@@ -60,18 +59,27 @@ export default function CustomerOrders() {
     }
   };
 
-  const getStatusColor = (status) => {
+  /* ---------------- STATUS UI HELPERS ---------------- */
+  const getStatusBadge = (status) => {
+    const styles = {
+      PendingAssignment: "bg-slate-500/20 text-slate-300",
+      AtOriginWarehouse: "bg-blue-500/20 text-blue-300",
+      Assigned: "bg-yellow-500/20 text-yellow-300",
+      InTransit: "bg-orange-500/20 text-orange-300",
+      OutForDelivery: "bg-purple-500/20 text-purple-300",
+      AtDestinationWarehouse: "bg-indigo-500/20 text-indigo-300",
+      Delivered: "bg-green-500/20 text-green-300",
+      DeliveryAttempted: "bg-red-500/20 text-red-300",
+    };
+
     return (
-      {
-        PendingAssignment: "bg-[#f7e8d0] text-[#351c15]",
-        AtOriginWarehouse: "bg-[#fff8e7] text-[#351c15]",
-        Assigned: "bg-[#f9b400]/30 text-[#351c15]",
-        InTransit: "bg-[#f9b400]/20 text-[#351c15]",
-        OutForDelivery: "bg-[#f9b400]/20 text-[#351c15]",
-        AtDestinationWarehouse: "bg-[#fff8e7] text-[#351c15]",
-        Delivered: "bg-green-100 text-green-800",
-        DeliveryAttempted: "bg-red-100 text-red-800",
-      }[status] || "bg-gray-200 text-gray-700"
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${
+          styles[status] || "bg-slate-500/20 text-slate-300"
+        }`}
+      >
+        {status}
+      </span>
     );
   };
 
@@ -79,17 +87,17 @@ export default function CustomerOrders() {
     if (!order.isASR) return null;
 
     const colors = {
-      NotStarted: "bg-gray-100 text-gray-800",
-      Pending: "bg-yellow-100 text-yellow-800",
-      InProgress: "bg-blue-100 text-blue-800",
-      Success: "bg-green-100 text-green-800",
-      Failed: "bg-red-100 text-red-800",
+      NotStarted: "bg-slate-500/20 text-slate-300",
+      Pending: "bg-yellow-500/20 text-yellow-300",
+      InProgress: "bg-blue-500/20 text-blue-300",
+      Success: "bg-green-500/20 text-green-300",
+      Failed: "bg-red-500/20 text-red-300",
     };
 
     return (
       <span
         className={`px-2 py-1 rounded-full text-xs font-bold ${
-          colors[order.asrStatus] || "bg-gray-100 text-gray-800"
+          colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
         }`}
       >
         🔒 ASR: {order.asrStatus || "Required"}
@@ -97,99 +105,130 @@ export default function CustomerOrders() {
     );
   };
 
+  /* ---------------- ORDER CARD ---------------- */
   const renderOrderCard = (o) => (
     <div
       key={o.id}
-      className="bg-white border border-gray-200 rounded-xl p-6 mb-4 flex flex-col md:flex-row items-start md:items-center justify-between hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => navigate(`/customer/orders/${o.id}`)}
+      className="
+        bg-white/5 backdrop-blur-xl border border-white/10
+        rounded-3xl p-6 mb-6
+        hover:bg-white/10 transition
+        cursor-pointer
+      "
     >
-      <div className="flex-1 w-full md:w-auto">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="px-3 py-1 bg-[#fff8e7] text-[#351c15] text-xs font-bold rounded-full tracking-wide">
-             {o.trackingId || `ORD-${o.id}`}
-          </span>
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${getStatusColor(o.status)}`}
+      <div className="flex flex-col lg:flex-row justify-between gap-6">
+
+        {/* LEFT */}
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <span className="px-3 py-1 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
+              {o.trackingId || `ORD-${o.id}`}
+            </span>
+            {getStatusBadge(o.status)}
+            {getASRStatusBadge(o)}
+          </div>
+
+          <h3 className="text-lg font-bold text-white mb-1">
+            Order #{o.id}
+          </h3>
+
+          <p className="text-slate-400 text-sm mb-2">
+            {o.receiverAddress}
+          </p>
+
+          <p className="text-xs text-slate-500">
+            Booked on {new Date(o.createdAt).toLocaleDateString()}
+          </p>
+
+          {/* ROUTE */}
+          <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+            <span>{o.originWarehouse?.name || "Origin"}</span>
+            <span>→</span>
+            <span className="text-[#ff8a3d] font-bold">
+              {o.currentWarehouse?.name || "In Transit"}
+            </span>
+            <span>→</span>
+            <span>{o.destinationWarehouse?.name || "Destination"}</span>
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="flex flex-col items-end gap-3">
+          <p className="text-2xl font-black text-white">
+            ₹{o.price || 0}
+          </p>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/customer/orders/${o.id}`);
+            }}
+            className="
+              px-6 py-2 rounded-xl
+              bg-white/10 border border-white/20
+              text-white font-bold text-sm
+              hover:bg-white/20 transition
+              w-full lg:w-auto
+            "
           >
-            {o.status}
-          </span>
-          {getASRStatusBadge(o)}
+            View Details
+          </button>
+
+          {o.isASR && ["Pending", "NotStarted"].includes(o.asrStatus) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedASROrderId(o.id);
+                setShowASRUploadModal(true);
+              }}
+              className="
+                px-6 py-2 rounded-xl
+                bg-red-500/20 border border-red-500/30
+                text-red-300 font-bold text-sm
+                hover:bg-red-500/30 transition
+                w-full lg:w-auto
+              "
+            >
+              Upload ID
+            </button>
+          )}
         </div>
 
-        <h3 className="text-lg font-bold text-gray-900 mb-1">
-          Order - #{o.id}
-        </h3>
-        <p className="text-gray-600 mb-1">{o.receiverAddress}</p>
-
-        <p className="text-xs text-gray-500 font-medium mt-1 mb-3">
-           Booked: {new Date(o.createdAt).toLocaleDateString()} 
-        </p>
-
-        <div className="text-xs text-gray-500 flex items-center gap-2 mt-2 bg-gray-50 w-fit px-3 py-1.5 rounded-lg border border-gray-100">
-             <span className={!o.currentWarehouse && !o.destinationWarehouse ? "font-bold text-gray-700" : ""}>
-                {o.originWarehouse?.name || 'Origin'}
-             </span>
-             <span className="text-gray-300">→</span>
-             <span className={o.currentWarehouse ? "font-bold text-indigo-600 bg-indigo-50 px-1 rounded" : ""}>
-                {o.currentWarehouse?.name || (o.status === "InTransit" ? "In Transit" : "Processing")}
-             </span>
-             <span className="text-gray-300">→</span>
-             <span className={o.destinationWarehouse || o.status === "Delivered" ? "font-bold text-gray-700" : ""}>
-                {o.destinationWarehouse?.name || 'Dest'}
-             </span>
-        </div>
       </div>
-
-       {/* RIGHT ACTION */}
-       <div className="mt-4 md:mt-0 flex flex-col items-end gap-2 w-full md:w-auto">
-           <p className="text-xl font-bold text-[#351c15] mb-1">₹{o.price || '0'}</p>
-           <button
-             onClick={() => navigate(`/customer/orders/${o.id}`)}
-             className="px-6 py-2 border border-[#351c15] text-[#351c15] font-bold rounded-lg hover:bg-[#351c15] hover:text-white transition text-sm w-full md:w-auto"
-           >
-             View Details
-           </button>
-           
-           {o.isASR && ["Pending", "NotStarted"].includes(o.asrStatus) && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedASROrderId(o.id);
-                  setShowASRUploadModal(true);
-                }}
-                className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition text-sm w-full md:w-auto"
-              >
-                Upload ID
-              </button>
-            )}
-       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen flex bg-[#f8f9fa]">
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
       <CustomerSidebar active="orders" />
 
-      <main className="flex-1 p-8 overflow-y-auto">
-         <header className="mb-8 border-b border-gray-200 pb-6">
-            <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-            <p className="text-gray-500 mt-1">Track and manage your shipments.</p>
-         </header>
+      <main className="flex-1 px-10 py-10 overflow-y-auto">
 
-         {loading ? (
-            <div className="text-center py-20 text-gray-500">Loading orders...</div>
-         ) : orders.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
-                <p className="text-gray-500">No orders found.</p>
-                <button className="mt-4 px-6 py-2 bg-[#351c15] text-white rounded-lg">Place New Order</button>
-            </div>
-         ) : (
-            <div>
-                {orders.map(renderOrderCard)}
-            </div>
-         )}
-         
-         {/* ASR UPLOAD MODAL */}
+        {/* HEADER */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-black text-white">My Orders</h1>
+          <p className="text-slate-400 mt-1">
+            Track and manage your shipments
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-20 text-slate-400">
+            Loading orders…
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
+            <p className="text-slate-400">No orders found</p>
+            <button className="mt-6 px-6 py-2 rounded-xl bg-[#ff8a3d] text-black font-bold">
+              Place New Order
+            </button>
+          </div>
+        ) : (
+          <div>{orders.map(renderOrderCard)}</div>
+        )}
+
+        {/* ASR MODAL */}
         {showASRUploadModal && (
           <CustomerASRUpload
             orderId={selectedASROrderId}
@@ -199,6 +238,7 @@ export default function CustomerOrders() {
             }}
           />
         )}
+
       </main>
     </div>
   );

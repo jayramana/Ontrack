@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
+import AdminSidebar from './AdminSidebar';
 
 const OrderDetailsModal = ({ orderId, onClose }) => {
     const [order, setOrder] = useState(null);
@@ -29,6 +30,7 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <AdminSidebar active="orders"/>
             <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center rounded-t-xl">

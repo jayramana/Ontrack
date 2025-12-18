@@ -14,6 +14,7 @@ import GlobalGeofenceAlerts from "./components/GlobalGeofenceAlerts";
 // Auth
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import HomePage from "./HomePage";
 
 // --- CUSTOMER PAGES ---
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
@@ -49,6 +50,8 @@ import ShipmentList from "./pages/seller/ShipmentList";
 import PlaceOrder from "./pages/seller/PlaceOrder";
 import SenderOrders from "./pages/seller/SenderOrders";
 
+import SenderChart from "./components/charts/Sender/SenderChart";
+
 import "./index.css";
 
 function App() {
@@ -62,6 +65,7 @@ function App() {
             {/* ---------------- PUBLIC ROUTES ---------------- */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/" element={<HomePage />} />
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
 
@@ -278,6 +282,9 @@ function App() {
 
             {/* ---------------- FALLBACK ROUTE ---------------- */}
             <Route path="*" element={<FallbackRedirect />} />
+            {/* // Test Routes */}
+            <Route path="/test" element={<SenderChart />}/>
+              
           </Routes>
         </GeofenceProvider>
       </AuthProvider>
