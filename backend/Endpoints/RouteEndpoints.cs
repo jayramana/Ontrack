@@ -1,17 +1,17 @@
 using Microsoft.Extensions.Caching.Memory;
 using System.Globalization;
-using System.Text.Json;
-using Backend.DTO;
+
+namespace Backend.Endpoints;
 
 public static class RouteEndpoints
 {
-    const int MaxStops = 25;
-    const double MinLat = 8.0, MaxLat = 13.6;
-    const double MinLng = 76.0, MaxLng = 80.4;
-    
-    // Made static readonly to be accessible from static methods
-    static readonly Uri OsrmBase = new Uri("http://router.project-osrm.org/");
-    static readonly SemaphoreSlim osrmGate = new SemaphoreSlim(8, 8);
+    // CONSTANTS
+    private const int MaxStops = 25;
+    private const double MinLat = 8.0, MaxLat = 13.6;
+    private const double MinLng = 76.0, MaxLng = 80.4;
+
+    private static readonly Uri OsrmBase = new("http://router.project-osrm.org/");
+    private static readonly SemaphoreSlim osrmGate = new(8, 8);
 
     public static void MapRouteEndpoints(this IEndpointRouteBuilder app)
     {
@@ -27,162 +27,182 @@ public static class RouteEndpoints
             if (req.stops.Count > MaxStops)
                 return Results.BadRequest($"Max {MaxStops} stops allowed.");
 
-            if (req.stops.Any(s => !IsInTN(s.lat, s.lng)))
-                return Results.BadRequest("All coordinates must be inside Tamil Nadu.");
+            foreach (var s in req.stops)
+            {
+                if (!IsInTN(s.lat, s.lng))
+                    return Results.BadRequest("All coordinates must be inside Tamil Nadu.");
+            }
 
             var start = req.driverLocation != null &&
                         IsInTN(req.driverLocation.lat, req.driverLocation.lng)
                 ? req.driverLocation
                 : req.stops[0];
 
-            var points = new List<StopDto> { start };
-            points.AddRange(req.stops);
-
-            var cacheKey = "osrm:table:" + string.Join("|", points.Select(p =>
-                $"{Math.Round(p.lng, 5).ToString(CultureInfo.InvariantCulture)}," +
-                $"{Math.Round(p.lat, 5).ToString(CultureInfo.InvariantCulture)}"));
-
-            if (!cache.TryGetValue(cacheKey, out OsrmTableResult table))
-            {
-                table = await CallOsrmTable(points, httpFactory, osrmGate, OsrmBase);
-                cache.Set(cacheKey, table, TimeSpan.FromMinutes(10));
-            }
-
             var orderedStops = req.optimizationMode switch
             {
-                "PriorityFirst" => OptimizePriorityFirst(req.stops, table),
-                "TimeWindow"    => OptimizeTimeWindow(req.stops),
-                "AvoidIssues"   => OptimizeAvoidIssues(req.stops, req.roadIssues ?? []),
-                _               => OptimizeBalanced(req.stops, table, req.roadIssues ?? [])
+                "PriorityFirst" => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? []),
+                "TimeWindow"    => OptimizeTimeWindow(req.stops, start),
+                "AvoidIssues"   => OptimizeAvoidIssues(req.stops, start, req.roadIssues ?? []),
+                "AIOptimized"   => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? []),
+                _               => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? [])
             };
 
-            var routePts = new List<StopDto> { start };
-            routePts.AddRange(orderedStops);
+            var routePoints = new List<StopDto> { start };
+            routePoints.AddRange(orderedStops);
 
-            var routeJson = await CallOsrmRouteRaw(routePts, httpFactory, osrmGate, OsrmBase);
-            return Results.Text(routeJson, "application/json");
-        });
+            var routeJson = await CallOsrmRouteRaw(routePoints, httpFactory);
+            return Results.Content(routeJson, "application/json");
+        })
+        .WithTags("Route Optimization");
     }
 
-    static List<StopDto> OptimizeBalanced(
+    // ---------------- OPTIMIZATION LOGIC ----------------
+
+    private static List<StopDto> OptimizeWithPriorityAndDistance(
         List<StopDto> stops,
-        OsrmTableResult table,
+        StopDto start,
         List<RoadIssueDto> issues)
     {
-        return stops
-            .OrderBy(s => table.Durations[0][stops.IndexOf(s) + 1] ?? double.MaxValue)
-            .ThenByDescending(s => s.priority)
-            .ToList();
+        var high = stops.Where(s => s.priority >= 4).ToList();
+        var normal = stops.Where(s => s.priority < 4).ToList();
+
+        var result = new List<StopDto>();
+
+        if (high.Any())
+            result.AddRange(NearestNeighborSort(high, start));
+
+        if (normal.Any())
+        {
+            var cur = result.Any() ? result.Last() : start;
+            result.AddRange(NearestNeighborSort(normal, cur));
+        }
+
+        return result;
     }
 
-    static List<StopDto> OptimizePriorityFirst(
-        List<StopDto> stops,
-        OsrmTableResult table)
+    private static List<StopDto> OptimizeTimeWindow(List<StopDto> stops, StopDto start)
     {
-        return stops
-            .OrderByDescending(s => s.priority)
-            .ThenBy(s => table.Durations[0][stops.IndexOf(s) + 1] ?? double.MaxValue)
-            .ToList();
+        var timed = stops.Where(s => s.windowStart.HasValue).ToList();
+        var normal = stops.Where(s => !s.windowStart.HasValue).ToList();
+
+        var result = new List<StopDto>();
+
+        if (timed.Any())
+        {
+            result.AddRange(
+                timed.OrderBy(s => s.windowStart)
+                     .ThenBy(s => Haversine(start.lat, start.lng, s.lat, s.lng))
+            );
+        }
+
+        if (normal.Any())
+        {
+            var cur = result.Any() ? result.Last() : start;
+            result.AddRange(NearestNeighborSort(normal, cur));
+        }
+
+        return result;
     }
 
-    static List<StopDto> OptimizeTimeWindow(List<StopDto> stops) =>
-        stops.OrderBy(s => s.windowStart ?? DateTime.MaxValue)
-             .ThenByDescending(s => s.priority)
-             .ToList();
-
-    static List<StopDto> OptimizeAvoidIssues(
+    private static List<StopDto> OptimizeAvoidIssues(
         List<StopDto> stops,
+        StopDto start,
         List<RoadIssueDto> issues)
     {
-        return stops
+        var sorted = stops
             .OrderBy(s => IssueRiskScore(s, issues))
             .ThenByDescending(s => s.priority)
             .ToList();
+
+        return NearestNeighborSort(sorted, start);
     }
 
+    // ---------------- HELPERS ----------------
 
-    static async Task<OsrmTableResult> CallOsrmTable(
-        List<StopDto> pts,
-        IHttpClientFactory factory,
-        SemaphoreSlim gate,
-        Uri baseUri)
+    private static List<StopDto> NearestNeighborSort(List<StopDto> stops, StopDto start)
     {
-        var coords = string.Join(";", pts.Select(p =>
-            $"{p.lng.ToString(CultureInfo.InvariantCulture)}," +
-            $"{p.lat.ToString(CultureInfo.InvariantCulture)}"));
+        var remaining = new List<StopDto>(stops);
+        var result = new List<StopDto>();
+        var current = start;
 
-        var url = new Uri(baseUri, $"table/v1/driving/{coords}?annotations=duration");
-        var client = factory.CreateClient();
-
-        await gate.WaitAsync();
-        try
+        while (remaining.Any())
         {
-            var json = await client.GetStringAsync(url);
-            var root = JsonDocument.Parse(json).RootElement;
-            return OsrmTableResult.FromJson(root);
+            var nearest = remaining
+                .OrderBy(s => Haversine(current.lat, current.lng, s.lat, s.lng))
+                .First();
+
+            result.Add(nearest);
+            remaining.Remove(nearest);
+            current = nearest;
         }
-        finally { gate.Release(); }
+
+        return result;
     }
 
-    static async Task<string> CallOsrmRouteRaw(
-        List<StopDto> pts,
-        IHttpClientFactory factory,
-        SemaphoreSlim gate,
-        Uri baseUri)
-    {
-        var coords = string.Join(";", pts.Select(p =>
-            $"{p.lng.ToString(CultureInfo.InvariantCulture)}," +
-            $"{p.lat.ToString(CultureInfo.InvariantCulture)}"));
+    private static bool IsInTN(double lat, double lng) =>
+        lat >= MinLat && lat <= MaxLat && lng >= MinLng && lng <= MaxLng;
 
-        var url = new Uri(baseUri, $"route/v1/driving/{coords}?overview=full&geometries=geojson");
-        var client = factory.CreateClient();
-
-        await gate.WaitAsync();
-        try { return await client.GetStringAsync(url); }
-        finally { gate.Release(); }
-    }
-
-    static bool IsInTN(double lat, double lng) =>
-        lat >= 8.0 && lat <= 13.6 && lng >= 76.0 && lng <= 80.4;
-
-    static double IssueRiskScore(StopDto stop, List<RoadIssueDto> issues)
+    private static double IssueRiskScore(StopDto stop, List<RoadIssueDto> issues)
     {
         double score = 0;
         foreach (var i in issues)
         {
             var d = Haversine(stop.lat, stop.lng, i.latitude, i.longitude);
-            if (d < 1.5 && i.severity == "Critical") score += 2;
-            if (d < 1.0 && i.severity == "High") score += 1;
+            if (d < 5)
+            {
+                score += i.severity switch
+                {
+                    "Critical" => 10,
+                    "High"     => 5,
+                    "Medium"   => 2,
+                    _          => 1
+                };
+            }
         }
         return score;
     }
 
-    static double Haversine(double lat1, double lon1, double lat2, double lon2)
+    private static double Haversine(double lat1, double lon1, double lat2, double lon2)
     {
         const double R = 6371;
         var dLat = (lat2 - lat1) * Math.PI / 180;
         var dLon = (lon2 - lon1) * Math.PI / 180;
-        var a =
-            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-            Math.Cos(lat1 * Math.PI / 180) *
-            Math.Cos(lat2 * Math.PI / 180) *
-            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(lat1 * Math.PI / 180) *
+                Math.Cos(lat2 * Math.PI / 180) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
         return 2 * R * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
     }
 
-    public sealed class OsrmTableResult
+    // ---------------- OSRM ----------------
+
+    private static async Task<string> CallOsrmRouteRaw(
+        List<StopDto> pts,
+        IHttpClientFactory factory)
     {
-        public double?[][] Durations { get; init; } = default!;
-        public static OsrmTableResult FromJson(JsonElement root)
-        {
-            var d = root.GetProperty("durations");
-            var arr = new double?[d.GetArrayLength()][];
-            for (int i = 0; i < arr.Length; i++)
-                arr[i] = d[i].EnumerateArray().Select(x => (double?)x.GetDouble()).ToArray();
-            return new() { Durations = arr };
-        }
+        var coordStr = string.Join(";", pts.Select(p =>
+            $"{p.lng.ToString(CultureInfo.InvariantCulture)}," +
+            $"{p.lat.ToString(CultureInfo.InvariantCulture)}"));
+
+        var url = new Uri(
+            OsrmBase,
+            $"route/v1/driving/{coordStr}?overview=full&geometries=geojson&steps=true"
+        );
+
+        var client = factory.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(25);
+
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.UserAgent.ParseAdd("OnTrack-Navigation/1.0");
+
+        using var resp = await client.SendAsync(req);
+        var body = await resp.Content.ReadAsStringAsync();
+
+        if (!resp.IsSuccessStatusCode)
+            throw new HttpRequestException($"OSRM route failed ({resp.StatusCode})");
+
+        return body;
     }
 }
-
-
-

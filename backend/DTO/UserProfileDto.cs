@@ -22,4 +22,5 @@ public class UserProfileDto
     // Seller Specific
     public bool IsSeller { get; set; }
     public string? SellerType { get; set; }
+    public bool IsSharingLocation { get; set; }
 }

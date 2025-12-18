@@ -196,7 +196,8 @@ public static class AuthEndpoints
                 Country = address?.Country,
 
                 IsSeller = address?.IsSeller ?? false,
-                SellerType = address?.SellerType
+                SellerType = address?.SellerType,
+                IsSharingLocation = user.IsSharingLocation
             });
         }).RequireAuthorization();
     }

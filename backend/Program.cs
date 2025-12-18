@@ -81,10 +81,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
 
-            // 🔥 CRITICAL FIX
+            //  CRITICAL FIX
             RoleClaimType = ClaimTypes.Role
         };
-        // 🔥 CRITICAL: Add this for SignalR authentication
+        //  CRITICAL: Add this for SignalR authentication
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -112,7 +112,8 @@ builder.Services.AddScoped<WarehouseAssignmentService>();
 builder.Services.AddScoped<DriverRouteOptimizationService>();
 
 
-builder.Services.AddHttpClient<GeminiService>();
+builder.Services.AddScoped<GeminiService>();          // registered twice (duplicate)
+builder.Services.AddScoped<VerificationService>();    // same in both
 builder.Services.AddHttpClient<GeocodingService>();
 builder.Services.AddHttpClient<OpenRouteServiceClient>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -124,6 +125,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<GeminiOcrService>();
 
 builder.Services.AddScoped<GeofenceService>();
+builder.Services.AddHostedService<SimulationService>(); // 🚀 Simulation Service
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -159,6 +161,8 @@ app.MapWarehouseEndpoints();
 app.MapGeofenceEndpoints();
 app.MapRoadIssueEndpoints();
 app.MapRouteEndpoints();
+app.MapDiagnosticEndpoints();
+
 app.MapTrackingEndpoints();
 app.MapSellerAnalyticsEndpoints();
 

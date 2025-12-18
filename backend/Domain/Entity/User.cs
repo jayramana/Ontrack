@@ -19,6 +19,12 @@ public class User
     public double? CurrentLatitude { get; set; }
     public double? CurrentLongitude { get; set; }
     public bool IsAvailable { get; set; } = true;
+    
+    // Simulation & Privacy
+    public bool IsSharingLocation { get; set; } = true;
+    public bool IsSimulating { get; set; } = false;
+    public double? SimulationLat { get; set; }
+    public double? SimulationLon { get; set; }
 
     // Warehouse assignment for drivers and warehouse admins
     public int? AssignedWarehouseId { get; set; }

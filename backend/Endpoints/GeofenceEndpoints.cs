@@ -104,7 +104,7 @@ public static class GeofenceEndpoints
             bool changes = false;
             foreach(var g in list)
             {
-                if(g.IsActive && g.Order != null && g.Order.Status == "Delivered")
+                if(g.IsActive && g.Order != null && (g.Order.Status == "Delivered" || g.Order.Status == "DeliveryAttempted"))
                 {
                     g.IsActive = false;
                     changes = true;

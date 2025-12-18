@@ -384,6 +384,21 @@ public static class OrdersEndpoints
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_ADMIN });
 
+        group.MapGet("/my-status-counts", async (HttpContext http, AppDbContext context) =>
+        {
+            var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+            int userId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var statusCounts = await context.Orders
+                .Where(o => o.CustomerId == userId)
+                .GroupBy(o => o.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(g => g.Status ?? "Unknown", g => g.Count);
+
+            return Results.Ok(statusCounts);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_CUSTOMER });
+
         group.MapGet("/my-orders", async (HttpContext http, AppDbContext context) =>
         {
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);

@@ -5,7 +5,7 @@ namespace Backend.Endpoints
 {
     public static class TrackingEndpoints
     {
-        public static void MapTrackingEndpoints(this IEndpointRouteBuilder app)
+        public static void MapTrackingEndpoints(this WebApplication app)
         {
             var group = app.MapGroup("/api/track")
                            .WithTags("Tracking");
