@@ -1,0 +1,137 @@
+{
+  "name": "Aadhaar Verification Workflow (OCR.space)",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {
+        "path": "aadhaar/verify",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [420, 300],
+      "parameters": {
+        "functionCode": "const b = $json;\nif (!b.aadhaarNumber || !/^\\d{12}$/.test(b.aadhaarNumber)) {\n  return [{ json: { failed: true, reason: \"Invalid Aadhaar number\", failedStep: \"INPUT_VALIDATION\" }}];\n}\nif (!b.aadhaarFrontImage) {\n  return [{ json: { failed: true, reason: \"Aadhaar front image missing\", failedStep: \"INPUT_VALIDATION\" }}];\n}\nreturn [{ json: b }];"
+      }
+    },
+    {
+      "id": "3",
+      "name": "APYHub Aadhaar Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "url": "https://api.apyhub.com/validate/aadhaar",
+        "method": "POST",
+        "jsonParameters": true,
+        "headerParametersJson": "{\"apy-token\":\"APYHUB_API_KEY\"}",
+        "bodyParametersJson": "{\"aadhaar\":\"={{$json.aadhaarNumber}}\"}"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Aadhaar Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [880, 300],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.valid}}",
+              "operation": "isTrue"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "OCR.space Aadhaar OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1110, 150],
+      "parameters": {
+        "url": "https://api.ocr.space/parse/image",
+        "method": "POST",
+        "jsonParameters": true,
+        "headerParametersJson": "{\"apikey\":\"OCRSPACE_API_KEY\"}",
+        "bodyParametersJson": "{\n  \"base64Image\": \"data:image/jpeg;base64,{{$json.aadhaarFrontImage}}\",\n  \"language\": \"eng\",\n  \"isOverlayRequired\": false\n}"
+      }
+    },
+    {
+      "id": "6",
+      "name": "Parse OCR Text",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1330, 150],
+      "parameters": {
+        "functionCode": "const text = $json.ParsedResults?.[0]?.ParsedText || \"\";\nif (!text) {\n  return [{ json: { failed: true, reason: \"OCR failed\", failedStep: \"OCR\" }}];\n}\n\nconst aadhaarMatch = text.match(/\\b\\d{4}\\s?\\d{4}\\s?\\d{4}\\b/);\nconst dobMatch = text.match(/\\b(\\d{2}[\\/\\-]\\d{2}[\\/\\-]\\d{4})\\b/);\nconst yobMatch = text.match(/Year of Birth\\s*[:\\-]?\\s*(\\d{4})/i);\n\nconst aadhaarNumber = aadhaarMatch ? aadhaarMatch[0].replace(/\\s/g, \"\") : \"\";\n\nif (!/^\\d{12}$/.test(aadhaarNumber)) {\n  return [{ json: { failed: true, reason: \"Aadhaar number not found in OCR\", failedStep: \"OCR\" }}];\n}\n\nreturn [{\n  json: {\n    rawText: text,\n    aadhaarNumber,\n    dob: dobMatch ? dobMatch[1] : \"\",\n    yearOfBirth: yobMatch ? yobMatch[1] : \"\"\n  }\n}];"
+      }
+    },
+    {
+      "id": "7",
+      "name": "Aadhaar Match",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1550, 150],
+      "parameters": {
+        "functionCode": "const input = $node[\"Validate Input\"].json.aadhaarNumber;\nif (input !== $json.aadhaarNumber) {\n  return [{ json: { failed: true, reason: \"Aadhaar number does not match card\", failedStep: \"NUMBER_MATCH\" }}];\n}\nreturn [{ json: $json }];"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Age Check",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1760, 150],
+      "parameters": {
+        "functionCode": "const today = new Date(); let age=null;\nif ($json.dob) {\n const d=new Date($json.dob);\n age=today.getFullYear()-d.getFullYear();\n if (today < new Date(today.getFullYear(), d.getMonth(), d.getDate())) age--;\n} else if ($json.yearOfBirth) {\n age=today.getFullYear()-parseInt($json.yearOfBirth);\n}\nif (!age || age < 18) {\n return [{ json:{ failed:true, reason:\"User is under 18\", failedStep:\"AGE_CHECK\" }}];\n}\nreturn [{ json:{ ...$json, age }}];"
+      }
+    },
+    {
+      "id": "9",
+      "name": "Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1980, 150],
+      "parameters": {
+        "responseBody": "{ \"verified\": true, \"confidence\": 0.6, \"aadhaarData\": { \"aadhaarNumber\": \"={{$json.aadhaarNumber}}\", \"dob\": \"={{$json.dob}}\", \"age\": {{$json.age}} }, \"steps\": { \"aadhaarValid\": true, \"ocrSuccess\": true, \"numberMatched\": true, \"ageVerified\": true } }"
+      }
+    },
+    {
+      "id": "10",
+      "name": "Failure",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1110, 450],
+      "parameters": {
+        "responseBody": "{ \"verified\": false, \"confidence\": 0.0, \"reason\": \"={{$json.reason}}\", \"failedStep\": \"={{$json.failedStep}}\" }"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]] },
+    "Validate Input": { "main": [[{ "node": "APYHub Aadhaar Check", "type": "main", "index": 0 }]] },
+    "APYHub Aadhaar Check": { "main": [[{ "node": "Aadhaar Valid?", "type": "main", "index": 0 }]] },
+    "Aadhaar Valid?": {
+      "main": [
+        [{ "node": "OCR.space Aadhaar OCR", "type": "main", "index": 0 }],
+        [{ "node": "Failure", "type": "main", "index": 0 }]
+      ]
+    },
+    "OCR.space Aadhaar OCR": { "main": [[{ "node": "Parse OCR Text", "type": "main", "index": 0 }]] },
+    "Parse OCR Text": { "main": [[{ "node": "Aadhaar Match", "type": "main", "index": 0 }]] },
+    "Aadhaar Match": { "main": [[{ "node": "Age Check", "type": "main", "index": 0 }]] },
+    "Age Check": { "main": [[{ "node": "Success", "type": "main", "index": 0 }]] }
+  }
+}

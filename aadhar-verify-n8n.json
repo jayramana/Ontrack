@@ -1,0 +1,145 @@
+{
+  "name": "Aadhaar Verification Workflow",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {
+        "path": "aadhaar/verify",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [420, 300],
+      "parameters": {
+        "functionCode": "const b = $json;\nif (!b.aadhaarNumber || !/^\\d{12}$/.test(b.aadhaarNumber)) {\n  return [{ json: { failed: true, reason: \"Invalid Aadhaar number\", failedStep: \"INPUT_VALIDATION\" }}];\n}\nif (!b.aadhaarFrontImage) {\n  return [{ json: { failed: true, reason: \"Aadhaar front image missing\", failedStep: \"INPUT_VALIDATION\" }}];\n}\nreturn [{ json: b }];"
+      }
+    },
+    {
+      "id": "3",
+      "name": "APYHub Aadhaar Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "url": "https://api.apyhub.com/validate/aadhaar",
+        "method": "POST",
+        "jsonParameters": true,
+        "headerParametersJson": "{\"apy-token\":\"APYHUB_API_KEY\"}",
+        "bodyParametersJson": "{\"aadhaar\":\"={{$json.aadhaarNumber}}\"}"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Aadhaar Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [880, 300],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.valid}}",
+              "operation": "isTrue"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5",
+      "name": "Nanonets OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1110, 150],
+      "parameters": {
+        "url": "https://app.nanonets.com/api/v2/OCR/Model/NANONETS_MODEL_ID/LabelFile/",
+        "method": "POST",
+        "authentication": "basicAuth",
+        "jsonParameters": false,
+        "options": {},
+        "bodyContentType": "multipart-form-data",
+        "sendBinaryData": true
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "user": "NANONETS_API_KEY",
+          "password": ""
+        }
+      }
+    },
+    {
+      "id": "6",
+      "name": "Normalize OCR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1330, 150],
+      "parameters": {
+        "functionCode": "const preds = $json.result?.[0]?.prediction || [];\nconst f = l => preds.find(p => p.label === l)?.ocr_text || \"\";\nconst aadhaar = f(\"aadhaar_number\").replace(/\\s/g, \"\");\nif (!/^\\d{12}$/.test(aadhaar)) {\n  return [{ json: { failed: true, reason: \"OCR failed\", failedStep: \"OCR\" }}];\n}\nreturn [{ json: { name: f(\"name\"), aadhaarNumber: aadhaar, dob: f(\"date_of_birth\"), yearOfBirth: f(\"year_of_birth\"), gender: f(\"gender\"), address: f(\"address\") }}];"
+      }
+    },
+    {
+      "id": "7",
+      "name": "Match Aadhaar",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1550, 150],
+      "parameters": {
+        "functionCode": "const input = $node[\"Validate Input\"].json.aadhaarNumber;\nif (input !== $json.aadhaarNumber) {\n  return [{ json: { failed: true, reason: \"Aadhaar number does not match card\", failedStep: \"NUMBER_MATCH\" }}];\n}\nreturn [{ json: $json }];"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Age Check",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1760, 150],
+      "parameters": {
+        "functionCode": "const today = new Date(); let age=null;\nif ($json.dob) {\n const d=new Date($json.dob);\n age=today.getFullYear()-d.getFullYear();\n if (today < new Date(today.getFullYear(), d.getMonth(), d.getDate())) age--;\n} else if ($json.yearOfBirth) {\n age=today.getFullYear()-parseInt($json.yearOfBirth);\n}\nif (age<18) return [{ json:{ failed:true, reason:\"User is under 18\", failedStep:\"AGE_CHECK\" }}];\nreturn [{ json:{ ...$json, age }}];"
+      }
+    },
+    {
+      "id": "9",
+      "name": "Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1980, 150],
+      "parameters": {
+        "responseBody": "{ \"verified\": true, \"confidence\": 0.6, \"aadhaarData\": {{JSON.stringify($json)}} }"
+      }
+    },
+    {
+      "id": "10",
+      "name": "Failure",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1110, 450],
+      "parameters": {
+        "responseBody": "{ \"verified\": false, \"confidence\": 0.0, \"reason\": \"={{$json.reason}}\", \"failedStep\": \"={{$json.failedStep}}\" }"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]] },
+    "Validate Input": { "main": [[{ "node": "APYHub Aadhaar Check", "type": "main", "index": 0 }]] },
+    "APYHub Aadhaar Check": { "main": [[{ "node": "Aadhaar Valid?", "type": "main", "index": 0 }]] },
+    "Aadhaar Valid?": {
+      "main": [
+        [{ "node": "Nanonets OCR", "type": "main", "index": 0 }],
+        [{ "node": "Failure", "type": "main", "index": 0 }]
+      ]
+    },
+    "Nanonets OCR": { "main": [[{ "node": "Normalize OCR", "type": "main", "index": 0 }]] },
+    "Normalize OCR": { "main": [[{ "node": "Match Aadhaar", "type": "main", "index": 0 }]] },
+    "Match Aadhaar": { "main": [[{ "node": "Age Check", "type": "main", "index": 0 }]] },
+    "Age Check": { "main": [[{ "node": "Success", "type": "main", "index": 0 }]] }
+  }
+}

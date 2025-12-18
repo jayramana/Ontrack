@@ -457,6 +457,45 @@ public static class AdminEndpoints
             });
         });
 
+        // ============================================
+// 🆕 ADMIN – VIEW DRIVER LIVE ROUTE
+// ============================================
+
+admin.MapGet("/driver/{driverId}/route", async (
+    int driverId,
+    AppDbContext context
+) =>
+{
+    var routeStops = await context.Orders
+        .Where(o =>
+            o.DriverId == driverId &&
+            o.Status != "Delivered" &&
+            o.Status != "Cancelled" &&
+            o.DeliveryLatitude != 0 &&
+            o.DeliveryLongitude != 0
+        )
+        .OrderBy(o => o.EstimatedDeliveryDate ?? o.CreatedAt)
+        .Select(o => new
+        {
+            lat = o.DeliveryLatitude,
+            lng = o.DeliveryLongitude,
+            orderId = o.Id,
+            trackingId = o.TrackingId,
+            receiverName = o.ReceiverName,
+            receiverAddress = o.ReceiverAddress,
+            priority = o.AiPriority ?? o.Priority
+        })
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        driverId,
+        totalStops = routeStops.Count,
+        stops = routeStops
+    });
+});
+
+
 
 
 

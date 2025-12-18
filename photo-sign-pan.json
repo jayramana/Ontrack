@@ -1,0 +1,125 @@
+{
+  "name": "PAN OCR + Face Verification (Free Stack)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pan-verify",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "Webhook",
+      "name": "Upload PAN + Photo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://app.nanonets.com/api/v2/OCR/Model/0367d889-543d-41bd-9e09-d0b05b786b68/LabelFile/",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "nanonetsApi",
+        "sendBinaryData": true,
+        "binaryPropertyName": "panImage",
+        "options": {}
+      },
+      "id": "Nanonets OCR",
+      "name": "Nanonets OCR (PAN)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "credentials": {
+        "nanonetsApi": {
+          "id": "YOUR_CRED_ID",
+          "name": "Nanonets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const ocr = items[0].json.result || {};\nreturn [{ json: { ocrResult: ocr } }];"
+      },
+      "id": "Parse OCR",
+      "name": "Parse OCR Output",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8003/face/verify",
+        "method": "POST",
+        "sendBinaryData": true,
+        "binaryPropertyName": "panPhoto",
+        "options": {
+          "bodyContentType": "multipart-form-data"
+        }
+      },
+      "id": "Face Verify",
+      "name": "Face Verification (FaceNet)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.score}}",
+              "operation": "largerEqual",
+              "value2": 0.5
+            }
+          ]
+        }
+      },
+      "id": "IF",
+      "name": "Face Match?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "responseBody": "{ \"verified\": true, \"score\": {{$json.score}} }",
+        "responseCode": 200
+      },
+      "id": "Verified True",
+      "name": "Verified TRUE",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "responseBody": "{ \"verified\": false, \"score\": {{$json.score}} }",
+        "responseCode": 200
+      },
+      "id": "Verified False",
+      "name": "Verified FALSE",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Upload PAN + Photo": {
+      "main": [[{ "node": "Nanonets OCR (PAN)", "type": "main", "index": 0 }]]
+    },
+    "Nanonets OCR (PAN)": {
+      "main": [[{ "node": "Parse OCR Output", "type": "main", "index": 0 }]]
+    },
+    "Parse OCR Output": {
+      "main": [[{ "node": "Face Verification (FaceNet)", "type": "main", "index": 0 }]]
+    },
+    "Face Verification (FaceNet)": {
+      "main": [[{ "node": "Face Match?", "type": "main", "index": 0 }]]
+    },
+    "Face Match?": {
+      "main": [
+        [{ "node": "Verified TRUE", "type": "main", "index": 0 }],
+        [{ "node": "Verified FALSE", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

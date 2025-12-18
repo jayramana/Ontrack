@@ -1,0 +1,254 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Aadhaar Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            padding: 40px;
+        }
+
+        .card {
+            max-width: 520px;
+            margin: auto;
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 14px;
+        }
+
+        input,
+        button {
+            width: 100%;
+            margin-top: 6px;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            margin-top: 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        pre {
+            background: #111827;
+            color: #10b981;
+            padding: 14px;
+            border-radius: 6px;
+            margin-top: 20px;
+            max-height: 280px;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h2>Aadhaar Verification (n8n Test)</h2>
+
+        <label>Aadhaar Number</label>
+        <input type="text" id="aadhaarNumber" placeholder="123412341234" maxlength="12" />
+
+        <label>Aadhaar Front Image</label>
+        <input type="file" id="frontImage" accept="image/*" />
+
+        <label>Aadhaar Back Image (optional)</label>
+        <input type="file" id="backImage" accept="image/*" />
+
+        <button onclick="submitVerification()">Verify</button>
+
+        <pre id="output">Waiting for response...</pre>
+    </div>
+
+    <script>
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function submitVerification() {
+            const aadhaarNumber = document.getElementById("aadhaarNumber").value;
+            const frontFile = document.getElementById("frontImage").files[0];
+            const backFile = document.getElementById("backImage").files[0];
+            const output = document.getElementById("output");
+
+            if (!aadhaarNumber || !frontFile) {
+                alert("Aadhaar number and front image are required");
+                return;
+            }
+
+            output.textContent = "Processing...";
+
+            const frontBase64 = await fileToBase64(frontFile);
+            const backBase64 = backFile ? await fileToBase64(backFile) : null;
+
+            const payload = {
+                aadhaarNumber,
+                aadhaarFrontImage: frontBase64,
+                aadhaarBackImage: backBase64,
+                asrId: 101
+            };
+
+            try {
+                const response = await fetch(
+                    "http://localhost:5678/webhook-test/aadhaar/verify",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(payload)
+                    }
+                );
+
+                const result = await response.json();
+                output.textContent = JSON.stringify(result, null, 2);
+
+            } catch (err) {
+                output.textContent = "Error: " + err.message;
+            }
+        }
+    </script>
+
+</body>
+
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PAN Verification Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 30px;
+    }
+    .card {
+      max-width: 500px;
+      margin: auto;
+      background: #fff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+    input[type="file"] {
+      width: 100%;
+      margin-top: 6px;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #9ca3af;
+    }
+    pre {
+      background: #111827;
+      color: #e5e7eb;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>PAN Verification Test</h2>
+
+    <label>PAN Card Image</label>
+    <input type="file" id="panImage" accept="image/*" />
+
+    <label>Customer Photo</label>
+    <input type="file" id="customerPhoto" accept="image/*" />
+
+    <label>Signature Image (optional)</label>
+    <input type="file" id="signatureImage" accept="image/*" />
+
+    <button onclick="submitForm()">Verify PAN</button>
+
+    <pre id="result">Waiting for response...</pre>
+  </div>
+
+  <script>
+    async function submitForm() {
+      const pan = document.getElementById("panImage").files[0];
+      const customer = document.getElementById("customerPhoto").files[0];
+      const sign = document.getElementById("signatureImage").files[0];
+
+      if (!pan || !customer) {
+        alert("PAN image and customer photo are required");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("panImage", pan);
+      formData.append("customerPhoto", customer);
+      if (sign) formData.append("signatureImage", sign);
+
+      document.getElementById("result").textContent = "Processing...";
+
+      try {
+        const res = await fetch("http://localhost:5678/webhook-test/pan-verify", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+        document.getElementById("result").textContent =
+          JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById("result").textContent =
+          "Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

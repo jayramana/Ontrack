@@ -810,6 +810,11 @@ export default function AdminDashboard() {
     window.location.href = "/admin/asr";
   };
 
+  //Navigate to driver map
+  const navigateToDriverMap = () => {
+    window.location.href = "/admin/live-drivers-map";
+  };
+
   return (
     <div className="min-h-screen flex bg-[#f8f4ef]">
       <AdminSidebar active="dashboard" />
@@ -960,6 +965,14 @@ export default function AdminDashboard() {
               🔒 ASR Verifications ({stats.asrPendingVerification})
             </button>
           </div>
+
+          <button
+  onClick={navigateToDriverMap}
+  className="px-6 py-2 rounded-lg font-medium shadow bg-[#ffb500] text-[#351c15] hover:bg-[#ffd900]"
+>
+  🚦 Live Drivers
+</button>
+
 
           {/* ROAD ISSUES TAB */}
           {activeTab === "roadIssues" && (

@@ -38,6 +38,7 @@ import DeliveryInsights from "./pages/admin/DeliveryInsights";
 import LiveMap from "./pages/admin/LiveMap";
 import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
 import AdminASRPanel from "./pages/admin/AdminASRPanel";
+import AdminLiveDriversMap from "./pages/admin/AdminLiveDriversMap";
 //import TransportScheduler from "./pages/admin/TransportScheduler";
 //import CapacityDashboard from "./pages/admin/CapacityDashboard";
 
@@ -144,6 +145,15 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/live-drivers-map"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLiveDriversMap />
                 </ProtectedRoute>
               }
             />
