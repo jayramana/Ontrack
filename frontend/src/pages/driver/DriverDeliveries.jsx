@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
-import OrderDetailsModal from "./OrderDetailsModal";
 import DriverASRVerification from "./DriverASRVerification";
 
 export default function DriverDeliveries() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("today");
-
-  // Order modal
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
 
   // ASR modal
   const [showASRModal, setShowASRModal] = useState(false);
   const [selectedASROrderId, setSelectedASROrderId] = useState(null);
 
   const openOrderDetails = (id) => {
-    setSelectedOrderId(id);
-    setShowOrderModal(true);
+    navigate(`/driver/orders/${id}`);
   };
 
   const fetchTodaysOrders = async () => {
@@ -93,11 +89,13 @@ export default function DriverDeliveries() {
                   ? "bg-red-500/20 text-red-400"
                   : order.status === "Assigned"
                   ? "bg-blue-500/20 text-blue-400"
+                  : order.status === "Pending" && order.previousDriverId
+                  ? "bg-yellow-500/20 text-yellow-400"
                   : "bg-orange-500/20 text-orange-400"
               }
             `}
           >
-            {order.status}
+            {order.status === "Pending" && order.previousDriverId ? "Rescheduled" : order.status}
           </span>
         </div>
 
@@ -188,18 +186,32 @@ export default function DriverDeliveries() {
     </div>
   );
 
-  const getFilteredOrders = () => {
+    const getFilteredOrders = () => {
+    // Decode driver ID from token (simple parse)
+    const token = localStorage.getItem("token");
+    let currentDriverId = 0;
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            currentDriverId = parseInt(payload.id || payload.nameid || 0);
+        } catch (e) { console.error("Token parse error", e); }
+    }
+
     switch (activeTab) {
       case "pending":
-        // Orders waiting for acceptance
-        return orders.filter((o) => o.status === "Assigned");
+        // Active pending (must be assigned to ME)
+        return orders.filter((o) => o.status === "Assigned" && o.driverId === currentDriverId);
       case "completed":
-        // Past orders
-        return orders.filter((o) => ["Delivered", "Cancelled", "DeliveryAttempted"].includes(o.status));
+        // Past orders (Delivered, Cancelled) OR (status=Pending due to reschedule && I was previous)
+        return orders.filter((o) => 
+          ["Delivered", "Cancelled", "DeliveryAttempted"].includes(o.status) ||
+          (o.status === "Pending" && o.previousDriverId === currentDriverId) ||
+          (o.status === "Assigned" && o.driverId !== currentDriverId && o.previousDriverId === currentDriverId) // Re-assigned to someone else
+        );
       case "today":
       default:
-        // All active active tasks not in history
-        return orders.filter((o) => !["Delivered", "Cancelled"].includes(o.status));
+        // Active orders for TODAY (must be assigned to ME)
+        return orders.filter((o) => !["Delivered", "Cancelled"].includes(o.status) && o.driverId === currentDriverId);
     }
   };
 
@@ -252,12 +264,7 @@ export default function DriverDeliveries() {
         </div>
       </div>
 
-      {showOrderModal && (
-        <OrderDetailsModal
-          orderId={selectedOrderId}
-          onClose={() => setShowOrderModal(false)}
-        />
-      )}
+
 
       {showASRModal && (
         <DriverASRVerification
