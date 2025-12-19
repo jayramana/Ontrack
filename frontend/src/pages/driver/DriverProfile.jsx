@@ -28,7 +28,15 @@ export default function DriverProfile() {
     fetchProfile();
   }, []);
 
-  /* ================= LOCATION TRACKING (UNCHANGED LOGIC) ================= */
+  /* ================= LOCATION TRACKING ================= */
+  // Sync local state with backend profile when loaded
+  useEffect(() => {
+    if (profile) {
+      // If backend says sharing=true, we are tracking.
+      setIsTracking(profile.isSharingLocation);
+    }
+  }, [profile]);
+
   useEffect(() => {
     let intervalId;
 
@@ -66,7 +74,21 @@ export default function DriverProfile() {
     return () => intervalId && clearInterval(intervalId);
   }, [isTracking]);
 
-  const toggleTracking = () => setIsTracking((v) => !v);
+  const toggleTracking = async () => {
+    const newState = !isTracking;
+    
+    // Optimistic update
+    setIsTracking(newState);
+
+    try {
+      await api.post("/driver/tracking-status", { isSharing: newState });
+    } catch (error) {
+      console.error("Failed to update tracking status:", error);
+      // Revert on failure
+      setIsTracking(!newState);
+      alert("Failed to update tracking status. Please try again.");
+    }
+  };
 
   /* ================= LOADING / ERROR ================= */
   if (loading) {

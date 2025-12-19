@@ -93,7 +93,7 @@ const OrderDetails = () => {
 
   const handleReschedule = async (e) => {
     e.preventDefault();
-    await api.post(`/orders/${id}/reschedule`, rescheduleForm);
+    await api.post(`/customer/reschedule/${id}`, rescheduleForm);
     setShowRescheduleDialog(false);
     fetchOrderDetails();
   };
@@ -196,7 +196,7 @@ const OrderDetails = () => {
       whitespace-nowrap
     "
   >
-    {order.status}
+    {order.status === "Pending" && order.rescheduledAt ? "Rescheduled" : order.status}
   </span>
 </div>
 
