@@ -32,6 +32,7 @@ import DriverRoutePage from "./pages/driver/DriverRoutePage";
 import DriverDeliveries from "./pages/driver/DriverDeliveries";
 import CustomerProfile from "./pages/customer/CustomerProfile";
 import DriverProfile from "./pages/driver/DriverProfile";
+import DriverOrderDetails from "./pages/driver/OrderDetailsModal";
 
 // --- ADMIN PAGES ---
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -140,6 +141,8 @@ function App() {
             <Route path="/driver/issues" element={<ReportRoadIssue />} />
 
             <Route path="/driver/route" element={<DriverRoutePage />} />
+
+            <Route path="/driver/orders/:id" element={<DriverOrderDetails />} />
 
 
             <Route
