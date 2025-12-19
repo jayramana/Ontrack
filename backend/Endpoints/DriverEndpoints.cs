@@ -83,7 +83,7 @@ public static class DriverEndpoints
             int driverId = int.Parse(claim?.Value ?? "0");
 
             var orders = await context.Orders
-                .Where(o => o.DriverId == driverId)
+                .Where(o => o.DriverId == driverId || o.PreviousDriverId == driverId)
                  // No status filter: Returns Delivered, Cancelled, Pending for analytics
                 .Include(o => o.Sender)
                 .Include(o => o.OriginWarehouse)
@@ -93,6 +93,7 @@ public static class DriverEndpoints
                 .Select(o => new
                 {
                     o.Id,
+                    o.DriverId,
                     o.TrackingId,
                     o.Status,
                     ReceiverName = o.ReceiverName,
@@ -111,6 +112,7 @@ public static class DriverEndpoints
                     o.DeliveryNotes,
                     RescheduledAt = o.RescheduledAt,
                     RescheduleReason = o.RescheduleReason,
+                    PreviousDriverId = o.PreviousDriverId,
                     
                     isASR = o.IsASR,
                     asrStatus = o.ASRStatus,
@@ -143,7 +145,7 @@ public static class DriverEndpoints
             var driverId = int.Parse(userIdClaim?.Value ?? "0");
 
             var orders = await context.Orders
-                .Where(o => o.DriverId == driverId)
+                .Where(o => o.DriverId == driverId || o.PreviousDriverId == driverId)
                 .Include(o => o.Sender)
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.DestinationWarehouse)

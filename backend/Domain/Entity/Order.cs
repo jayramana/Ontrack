@@ -45,6 +45,8 @@ namespace Backend.Domain.Entity
 
         public int? DriverId { get; set; }
 
+        public int? PreviousDriverId { get; set; }
+
         [ForeignKey("DriverId")]
         [JsonIgnore]
         public User? Driver { get; set; }

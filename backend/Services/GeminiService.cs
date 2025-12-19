@@ -519,7 +519,9 @@ namespace Backend.Services
             int driverLoad,
             int orderAgeHours)
         {
-            var prompt = $@"
+            try
+            {
+                var prompt = $@"
 You are an AI logistics priority calculator. Analyze this delivery and assign a priority from 1 (low) to 5 (critical).
 
 DELIVERY INFO:
@@ -542,8 +544,15 @@ Return ONLY valid JSON:
   ""justification"": ""Standard delivery within normal timeframe""
 }}";
 
-            var response = await CallGeminiAsync(prompt);
-            return ParsePriorityResponse(response);
+                var response = await CallGeminiAsync(prompt);
+                return ParsePriorityResponse(response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Gemini API Failed: {ex.Message}");
+                // Fallback
+                return (3, "AI unavailable, defaulted to users preference.");
+            }
         }
 
         /// <summary>
