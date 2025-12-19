@@ -33,7 +33,6 @@ import DriverDeliveries from "./pages/driver/DriverDeliveries";
 import DriverOrderDetails from "./pages/driver/DriverOrderDetails"; // [NEW]
 import CustomerProfile from "./pages/customer/CustomerProfile";
 import DriverProfile from "./pages/driver/DriverProfile";
-import DriverOrderDetails from "./pages/driver/OrderDetailsModal";
 
 // --- ADMIN PAGES ---
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -154,7 +153,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             <Route
               path="/driver/dashboard"
               element={
@@ -296,8 +295,8 @@ function App() {
             {/* ---------------- FALLBACK ROUTE ---------------- */}
             <Route path="*" element={<FallbackRedirect />} />
             {/* // Test Routes */}
-            <Route path="/test" element={<SenderChart />}/>
-              
+            <Route path="/test" element={<SenderChart />} />
+
           </Routes>
         </GeofenceProvider>
       </AuthProvider>
@@ -306,8 +305,8 @@ function App() {
 }
 
 function FallbackRedirect() {
-    console.log("Fallback route hit. No matching route found. Redirecting to login...");
-    return <Navigate to="/login" replace />;
+  console.log("Fallback route hit. No matching route found. Redirecting to login...");
+  return <Navigate to="/login" replace />;
 }
 
 export default App;

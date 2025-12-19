@@ -131,7 +131,26 @@ public static class OrdersEndpoints
                 // Update counters
                 await warehouseService.AssignOrderToWarehousesAsync(order);
 
-                await emailService.SendOrderEmailsAsync(order);
+                await emailService.SendOrderPlacedEmailAsync(new OrderEmailDto
+                {
+                    OrderId = order.Id,
+                    TrackingId = order.TrackingId,
+
+                    SellerName = order.SenderName,
+                    SellerPhone = order.SenderPhone,
+                    SellerEmail = order.SenderEmail,
+
+                    CustomerName = order.ReceiverName,
+                    CustomerEmail = order.ReceiverEmail,
+                    CustomerPhone = order.ReceiverPhone,
+
+                    PickupAddress = order.PickupAddress,
+                    DeliveryAddress = order.ReceiverAddress,
+
+                    Price = order.Price,
+                    IsASR = order.IsASR
+                });
+
 
                 return Results.Ok(order);
             }
