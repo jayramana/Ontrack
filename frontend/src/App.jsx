@@ -30,6 +30,7 @@ import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
 import DriverRoutePage from "./pages/driver/DriverRoutePage";
 import DriverDeliveries from "./pages/driver/DriverDeliveries";
+import DriverOrderDetails from "./pages/driver/DriverOrderDetails"; // [NEW]
 import CustomerProfile from "./pages/customer/CustomerProfile";
 import DriverProfile from "./pages/driver/DriverProfile";
 import DriverOrderDetails from "./pages/driver/OrderDetailsModal";
@@ -168,6 +169,15 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="driver">
                   <DriverDeliveries />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/driver/orders/:id"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverOrderDetails />
                 </ProtectedRoute>
               }
             />

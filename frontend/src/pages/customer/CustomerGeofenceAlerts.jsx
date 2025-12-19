@@ -106,6 +106,9 @@ export default function CustomerGeofenceAlerts() {
               <h3 className="text-lg font-bold text-white">
                 Geofence - #{gf.geofenceId}
               </h3>
+              <p className="text-xs font-mono text-gray-400">
+                {gf.name}
+              </p>
             </div>
           </div>
 
@@ -115,18 +118,14 @@ export default function CustomerGeofenceAlerts() {
                 <span className="font-semibold text-gray-300">Order ID:</span>{" "}
                 {order?.id}
               </p>
-              {/* <p>
-                <span className="font-semibold text-gray-300">Radius:</span>{" "}
-                {gf.radiusMeters}m
-              </p>
               <p>
-                <span className="font-semibold text-gray-300">Driver:</span>{" "}
-                {status?.driverName || "Unknown"}
-              </p> */}
+                <span className="font-semibold text-gray-300">Radius:</span>{" "}
+                {(gf.radiusMeters / 1000).toFixed(2)} km
+              </p>
               <p>
                 <span className="font-semibold text-gray-300">Distance:</span>{" "}
                 {status?.distanceMeters
-                  ? `${Math.round(status.distanceMeters)/1000.00}Km`
+                  ? `${(status.distanceMeters / 1000).toFixed(2)} km`
                   : "Calculating..."}
               </p>
             </div>
@@ -134,11 +133,11 @@ export default function CustomerGeofenceAlerts() {
         </div>
 
         {/* RIGHT: Status Indicator */}
-        <div className="md:w-64 w-full flex flex-col items-center md:items-end border-t md:border-t-0 border-gray-100 pt-4 md:pt-0">
+        <div className="md:w-64 w-full flex flex-col items-center md:items-end border-t md:border-t-0 border-gray-100/10 pt-4 md:pt-0">
           {status ? (
             status.error ? (
               <div className="flex flex-col items-end">
-                <span className="text-red-600 font-bold bg-red-50 px-3 py-1 rounded text-sm mb-1">
+                <span className="text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded text-sm mb-1">
                   Check Failed
                 </span>
                 <span className="text-xs text-gray-400">{status.error}</span>
@@ -161,6 +160,9 @@ export default function CustomerGeofenceAlerts() {
                       <span className="w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_10px_rgba(250,204,21,0.5)]"></span>
                       OUTSIDE ZONE
                     </span>
+                    <p className="text-xs text-gray-400">
+                      Driver is en route.
+                    </p>
                   </>
                 )}
               </div>

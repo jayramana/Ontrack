@@ -563,8 +563,6 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function DriverDeliveries() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("today");
@@ -658,25 +656,24 @@ export default function DriverDeliveries() {
               {order.trackingId || `ORD-${order.id}`}
             </span>
 
-            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-500/20 text-blue-400">
-              {order.status === "Pending" && order.previousDriverId
-                ? "Rescheduled"
-                : order.status}
-            </span>
-          </div>
-
-          <h3 className="text-lg font-bold text-white">Order #{order.id}</h3>
-
-          <p className="text-slate-400 text-sm mt-1">
-            {order.receiverAddress}
-          </p>
-
-          <p className="text-xs text-slate-500 mt-2">
-            Scheduled:{" "}
-            {order.scheduledDate
-              ? new Date(order.scheduledDate).toLocaleDateString()
-              : "Not Scheduled"}
-          </p>
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-bold uppercase
+              ${
+                order.status === "Delivered"
+                  ? "bg-green-500/20 text-green-400"
+                  : order.status === "Cancelled" ||
+                    order.status === "DeliveryAttempted"
+                  ? "bg-red-500/20 text-red-400"
+                  : order.status === "Assigned"
+                  ? "bg-blue-500/20 text-blue-400"
+                  : order.status === "Pending" && order.previousDriverId
+                  ? "bg-yellow-500/20 text-yellow-400"
+                  : "bg-orange-500/20 text-orange-400"
+              }
+            `}
+          >
+            {order.status === "Pending" && order.previousDriverId ? "Rescheduled" : order.status}
+          </span>
         </div>
 
         {/* ACTIONS */}
@@ -759,6 +756,35 @@ export default function DriverDeliveries() {
     </div>
   );
 
+    const getFilteredOrders = () => {
+    // Decode driver ID from token (simple parse)
+    const token = localStorage.getItem("token");
+    let currentDriverId = 0;
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            currentDriverId = parseInt(payload.id || payload.nameid || 0);
+        } catch (e) { console.error("Token parse error", e); }
+    }
+
+    switch (activeTab) {
+      case "pending":
+        // Active pending (must be assigned to ME)
+        return orders.filter((o) => o.status === "Assigned" && o.driverId === currentDriverId);
+      case "completed":
+        // Past orders (Delivered, Cancelled) OR (status=Pending due to reschedule && I was previous)
+        return orders.filter((o) => 
+          ["Delivered", "Cancelled", "DeliveryAttempted"].includes(o.status) ||
+          (o.status === "Pending" && o.previousDriverId === currentDriverId) ||
+          (o.status === "Assigned" && o.driverId !== currentDriverId && o.previousDriverId === currentDriverId) // Re-assigned to someone else
+        );
+      case "today":
+      default:
+        // Active orders for TODAY (must be assigned to ME)
+        return orders.filter((o) => !["Delivered", "Cancelled"].includes(o.status) && o.driverId === currentDriverId);
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-[#0b0f14] text-white">
       <DriverSidebar active="deliveries" />
@@ -781,14 +807,6 @@ export default function DriverDeliveries() {
           ))}
         </div>
 
-        {loading ? (
-          <p className="text-slate-400">Loading...</p>
-        ) : getFilteredOrders().length === 0 ? (
-          <p className="text-slate-500">No orders found.</p>
-        ) : (
-          getFilteredOrders().map(renderOrder)
-        )}
-      </div>
 
       {showASRModal && (
         <DriverASRVerification
