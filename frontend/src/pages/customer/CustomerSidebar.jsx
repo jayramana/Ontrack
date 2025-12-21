@@ -8,7 +8,7 @@ export default function CustomerSidebar({ active }) {
   const menu = [
     { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/customer/dashboard" },
     { label: "My Orders", icon: <Package size={20} />, key: "orders", path: "/customer/orders" },
-    { label: "Track Package", icon: <MapPin size={20} />, key: "track", path: "/customer/tracking" },
+    { label: "Track Package", icon: <MapPin size={20} />, key: "track", path: "/tracking" },
     { label: "Geofence Alerts", icon: <Bell size={20} />, key: "alerts", path: "/customer/geofencealerts" },
     { label: "Availability", icon: <Clock size={20} />, key: "availability", path: "/customer/availability" },
     { label: "Profile", icon: <User size={20} />, key: "profile", path: "/customer/profile" },

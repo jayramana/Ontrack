@@ -46,6 +46,7 @@ const CustomerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currDriverLoc, setcurrDriverLoc] = useState({ lat: null, lon: null });
   const [useLiveDriverLoc, setUseLiveDriverLoc] = useState(false);
+  const [dateFilter, setDateFilter] = useState("1W");
 
   const [connection, setConnection] = useState(null);
 
@@ -282,23 +283,23 @@ const CustomerDashboard = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-6">
-                <label className="flex items-center gap-3 bg-[#1a1f29] px-4 py-2 rounded-full border border-[#2d3748] cursor-pointer hover:border-[#4a5568] transition-colors shadow-sm">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-[#2563eb] focus:ring-[#2563eb] rounded border-gray-600 bg-gray-700"
-                    checked={useLiveDriverLoc}
-                    onChange={(e) => setUseLiveDriverLoc(e.target.checked)}
-                  />
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
-                    Simulate Driver Loc
-                  </span>
-                </label>
-                
-                 <div className="h-8 w-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-sm ring-4 ring-[#1e293b]">
-                    {user?.first_name?.[0]}
-                </div>
+              {/* DATE FILTERS */}
+              <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5">
+                {["1W", "1M", "3M", "1Y"].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setDateFilter(filter)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                        dateFilter === filter
+                        ? "bg-[#2563eb] text-white shadow-lg"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
               </div>
+
             </div>
           </header>
           <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
@@ -375,20 +376,40 @@ const CustomerDashboard = () => {
             </div>
 
             {/* 2. ANALYTICS SECTION */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-0">
-              <div className="w-full">
-                <OrdersPieChart />
-              </div>
+            {(() => {
+                // Filter Logic
+                const now = new Date();
+                const past = new Date();
+                if (dateFilter === "1Y") past.setDate(past.getDate() - 365);
+                else if (dateFilter === "3M") past.setDate(past.getDate() - 90);
+                else if (dateFilter === "1M") past.setDate(past.getDate() - 30);
+                else past.setDate(past.getDate() - 7);
 
-              {/* CHART 2: DAILY VOLUME */}
-              <div className="w-full">
-                <OrdersBarChart />
-              </div>
-            </div>
-            {/* CHART 3: AREA HISTORY */}
-            <div className="w-full">
-              <OrdersAreaChart />
-            </div>
+                const filteredOrders = orders.filter(o => {
+                    if (!o.createdAt) return false;
+                    const d = new Date(o.createdAt);
+                    return d >= past && d <= now;
+                });
+
+                return (
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-0">
+                        <div className="w-full">
+                            <OrdersPieChart data={filteredOrders} />
+                        </div>
+
+                        {/* CHART 2: DAILY VOLUME */}
+                        <div className="w-full">
+                            <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
+                        </div>
+                        </div>
+                        {/* CHART 3: AREA HISTORY */}
+                        <div className="w-full">
+                            <OrdersAreaChart data={filteredOrders} filterType={dateFilter} />
+                        </div>
+                    </>
+                );
+            })()}
           </div>
         </main>
 

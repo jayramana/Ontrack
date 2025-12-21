@@ -38,7 +38,7 @@ public static class CustomerEndpoints
             return Results.Ok(orders);
         });
 
-        group.MapGet("/track/{identifier}", async (string identifier, AppDbContext context) =>
+        group.MapGet("/track/{identifier}", async (string identifier, AppDbContext context, IEtaservice etaService) =>
         {
             var isNumeric = int.TryParse(identifier, out int orderId);
             if (!isNumeric && identifier.StartsWith("ORD-", StringComparison.OrdinalIgnoreCase))
@@ -63,6 +63,7 @@ public static class CustomerEndpoints
                 return Results.NotFound(new { message = "Order not found. Please check your Order ID or Tracking Number." });
 
             DriverLocation? driverLocation = null;
+            string? eta = null;
 
             if (order.DriverId.HasValue)
             {
@@ -70,13 +71,23 @@ public static class CustomerEndpoints
                     .Where(dl => dl.DriverId == order.DriverId.Value)
                     .OrderByDescending(dl => dl.UpdatedAt)
                     .FirstOrDefaultAsync();
+
+                if (driverLocation != null)
+                {
+                     // Calculate ETA
+                     // Speed assumption: 60 km/h
+                     double distance = etaService.GetDistance(driverLocation.Latitude, driverLocation.Longitude, order.DeliveryLatitude, order.DeliveryLongitude);
+                     eta = etaService.GetETA(distance, 60); 
+                }
             }
 
             return Results.Ok(new
             {
                 order,
+                driver = order.Driver, // Explicitly return driver since it is [JsonIgnore] in Order entity
                 driverLocation,
-                estimatedDelivery = order.EstimatedDeliveryDate
+                estimatedDelivery = order.EstimatedDeliveryDate,
+                eta
             });
         });
 

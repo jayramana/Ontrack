@@ -26,44 +26,73 @@ const chartConfig = {
   },
 }
 
-export function OrdersAreaChart() {
+export function OrdersAreaChart({ data: orders = [], filterType = "1W" }) {
   const [chartData, setChartData] = useState([])
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await api.get("/orders/my-orders")
-        const orders = response.data
+    if (!orders) return;
+    
+    const getDays = () => {
+      if (filterType === "1Y") return 365;
+      if (filterType === "3M") return 90;
+      if (filterType === "1M") return 30;
+      return 7; // 1W
+    };
 
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - (6 - i))
-          return d
-        })
+    const days = getDays();
+    const isYearly = filterType === "1Y";
 
-        const data = last7Days.map((date) => {
-          const dateStr = date.toISOString().split("T")[0]
-          const count = orders.filter((o) => o.createdAt.startsWith(dateStr)).length
-          return {
-            date: date.toLocaleDateString("en-US", { weekday: "short" }),
-            orders: count,
-          }
-        })
+    let bucketData = [];
 
-        setChartData(data)
-      } catch (error) {
-        console.error("Error fetching orders:", error)
-      }
+    if (isYearly) {
+        // Last 12 Months
+        bucketData = Array.from({ length: 12 }, (_, i) => {
+            const d = new Date();
+            d.setMonth(d.getMonth() - (11 - i));
+            return {
+                label: d.toLocaleDateString("en-US", { month: "short" }),
+                key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+                orders: 0
+            };
+        });
+    } else {
+        // Last N Days
+        bucketData = Array.from({ length: days }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (days - 1 - i));
+            return {
+                label: d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }),
+                key: d.toISOString().split("T")[0],
+                orders: 0
+            };
+        });
     }
-    fetchOrders()
-  }, [])
+
+    orders.forEach(o => {
+        if (!o.createdAt) return;
+        const oDate = new Date(o.createdAt);
+        let key = "";
+         if (isYearly) {
+             key = `${oDate.getFullYear()}-${String(oDate.getMonth() + 1).padStart(2, '0')}`;
+        } else {
+             key = oDate.toISOString().split("T")[0];
+        }
+        
+        const bucket = bucketData.find(b => b.key === key);
+        if (bucket) bucket.orders++;
+    });
+
+    setChartData(bucketData)
+  }, [orders, filterType])
 
   return (
     <Card className="flex flex-col border-0 bg-linear-to-br from-[#1a1f29] to-[#0f141c]">
       <CardHeader>
         <CardTitle className="text-white">Order History</CardTitle>
         <CardDescription className="text-gray-400">
-          Showing total orders for the last 7 days
+            {filterType === "1Y" ? "Last 12 Months" : 
+             filterType === "3M" ? "Last 90 Days" : 
+             filterType === "1M" ? "Last 30 Days" : "Last 7 Days"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -106,7 +135,7 @@ export function OrdersAreaChart() {
               Trending up by 5.2% this week <TrendingUp className="h-4 w-4" />
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none text-gray-400">
-              Last 7 Days
+               {filterType === "1Y" ? "Last 12 Months" : "Recent activity"}
             </div>
           </div>
         </div>

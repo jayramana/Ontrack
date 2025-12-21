@@ -318,6 +318,37 @@ public static class OrdersEndpoints
             });
         });
 
+        group.MapGet("/admin/all", async (AppDbContext context) =>
+        {
+            var orders = await context.Orders
+                .Include(o => o.Driver)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .OrderByDescending(o => o.CreatedAt)
+                .Select(o => new
+                {
+                    o.Id,
+                    o.TrackingId,
+                    o.Status,
+                    o.SenderName,
+                    o.PickupAddress,
+                    o.ReceiverName,
+                    o.ReceiverAddress,
+                    o.CreatedAt,
+                    o.EstimatedDeliveryDate,
+                    o.AiPriority,
+                    o.IsASR,
+                    o.ASRStatus,
+                    driverId = o.DriverId,
+                    driverName = o.Driver != null ? o.Driver.UserFName + " " + o.Driver.UserLName : null
+                })
+                .ToListAsync();
+
+            return Results.Ok(orders);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_ADMIN });
+
         group.MapGet("/pending", async (AppDbContext context) =>
         {
             var orders = await context.Orders

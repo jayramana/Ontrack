@@ -38,7 +38,7 @@ const chartConfig = {
   },
   PendingAssignment: {
     label: "Pending",
-    color: "#fbbf24", // Amber 400
+    color: "#fbbf24", 
   },
   AtOriginWarehouse: {
     label: "At Origin",
@@ -70,35 +70,30 @@ const chartConfig = {
   },
 };
 
-export function OrdersPieChart() {
+export function OrdersPieChart({ data: orders = [] }) {
   const [chartData, setChartData] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await api.get("/orders/my-status-counts");
-        const counts = response.data; // { "Pending": 5, "Delivered": 2 }
+    if (!orders) return;
 
-        const data = Object.entries(counts).map(([status, count]) => {
-          // Fallback color if status is new/unknown
-          const colorVar = statusColorMap[status] || "var(--chart-5)";
-          return {
-            status: status,
-            count: count,
-            fill: colorVar,
-          };
-        });
+    // Calculate status counts from orders
+    const counts = orders.reduce((acc, order) => {
+        const status = order.status || "Unknown";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+    }, {});
 
-        // If no data, show empty state or placeholder? 
-        // For now, let's just set what we have.
-        setChartData(data);
-      } catch (error) {
-        console.error("Error fetching pie chart data:", error);
-      }
-    };
+    const data = Object.entries(counts).map(([status, count]) => {
+      const colorVar = statusColorMap[status] || "var(--chart-5)";
+      return {
+        status: status,
+        count: count,
+        fill: colorVar,
+      };
+    });
 
-    fetchData();
-  }, []);
+    setChartData(data);
+  }, [orders]);
 
   return (
     <Card className="flex flex-col border-0 bg-linear-to-br from-[#1a1f29] to-[#0f141c]">

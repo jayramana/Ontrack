@@ -46,7 +46,7 @@ export default function CustomerProfile() {
   }
 
   const fullName = `${profile.firstName} ${profile.lastName}`;
-  const displayRole = profile.role?.toUpperCase() || "CUSTOMER";
+  const displayRole = profile.role[0].toUpperCase() + profile.role.slice(1)  || "CUSTOMER";
 
   /* ---------------- UI HELPERS ---------------- */
   const InfoCard = ({ title, description, children }) => (
@@ -95,7 +95,7 @@ export default function CustomerProfile() {
           </div>
 
           {/* ================= IDENTITY CARD ================= */}
-          <section className="relative bg-gradient-to-br from-[#1a1f29] to-[#0f141c] rounded-3xl p-8 overflow-hidden">
+          <section className="relative bg-linear-to-br from-[#1a1f29] to-[#0f141c] rounded-3xl p-8 overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#ff8a3d22,transparent_60%)]" />
 
             <div className="relative flex flex-col sm:flex-row items-center gap-8">
@@ -111,7 +111,7 @@ export default function CustomerProfile() {
                 <p className="text-slate-400 mt-1">{displayRole}</p>
 
                 <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-sm font-semibold">
-                  ● Active Account
+                  ● Active
                 </div>
               </div>
             </div>

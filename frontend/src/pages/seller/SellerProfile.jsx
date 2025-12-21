@@ -115,7 +115,7 @@ export default function SellerProfile() {
                 </p>
 
                 <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-sm font-semibold">
-                  ● Active Seller Account
+                  ● Active
                 </div>
               </div>
             </div>

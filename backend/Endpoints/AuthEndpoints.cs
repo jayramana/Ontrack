@@ -18,6 +18,7 @@ public static class AuthEndpoints
         group.MapPost("/register", async (
             RegisterRequestDto request,
             AppDbContext db,
+            IConfiguration config,
             IPasswordHasher<User> hasher) =>
         {
             if (string.IsNullOrWhiteSpace(request.UserFName) ||
@@ -41,6 +42,13 @@ public static class AuthEndpoints
                     string.IsNullOrWhiteSpace(request.Country))
                 {
                     return Results.BadRequest(new { message = "Address fields are required for this role" });
+                }
+
+                if (role == "seller" && 
+                    (string.IsNullOrWhiteSpace(request.SellerType) || 
+                     !new[] { "individual", "company" }.Contains(request.SellerType.ToLower())))
+                {
+                    return Results.BadRequest(new { message = "Valid Seller Type ('individual' or 'company') is required for sellers" });
                 }
             }
 
@@ -84,18 +92,49 @@ public static class AuthEndpoints
 
                 await transaction.CommitAsync();
 
+                // Generate Token
+                var jwt = config.GetSection("JwtSettings");
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["SecretKey"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+                var claims = new[]
+                {
+                    new Claim("id", user.UserId.ToString()),
+                    new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                    new Claim(ClaimTypes.Email, user.UserEmail),
+                    new Claim(ClaimTypes.Role, user.UserRole.ToLower())
+                };
+
+                var token = new JwtSecurityToken(
+                    issuer: jwt["Issuer"],
+                    audience: jwt["Audience"],
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddMinutes(
+                        Convert.ToInt32(jwt["ExpiresInMinutes"])
+                    ),
+                    signingCredentials: creds
+                );
+
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
                 return Results.Ok(new
                 {
                     message = "Registration successful",
+                    token = tokenString,
                     user_id = user.UserId,
                     email = user.UserEmail,
-                    role = user.UserRole
+                    role = user.UserRole,
+                    first_name = user.UserFName,
+                    last_name = user.UserLName
                 });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return Results.BadRequest(new { message = "Registration failed: " + ex.Message });
+                var errorMessage = ex.InnerException != null 
+                    ? $"{ex.Message} Inner: {ex.InnerException.Message}" 
+                    : ex.Message;
+                return Results.BadRequest(new { message = "Registration failed: " + errorMessage });
             }
         });
 
