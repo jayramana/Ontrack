@@ -53,7 +53,7 @@ namespace Backend.Data
 
             builder.Entity<User>(entity =>
             {
-                entity.ToTable("user_details");
+                // entity.ToTable("user_details"); // Commented out to avoid conflict with "Users" table config later
 
                 entity.HasKey(u => u.UserId);
 

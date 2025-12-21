@@ -11,7 +11,6 @@ using Backend.Services;
 using Backend.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
-
 // Add services to the container
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -164,6 +163,7 @@ app.MapRouteEndpoints();
 app.MapDiagnosticEndpoints();
 
 app.MapTrackingEndpoints();
+app.MapPublicTrackingEndpoints();
 app.MapSellerAnalyticsEndpoints();
 
 
