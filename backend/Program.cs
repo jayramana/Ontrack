@@ -110,12 +110,12 @@ builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<WarehouseAssignmentService>();
 builder.Services.AddScoped<DriverRouteOptimizationService>();
 
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddScoped<GeminiService>();          // registered twice (duplicate)
 builder.Services.AddScoped<VerificationService>();    // same in both
 builder.Services.AddHttpClient<GeocodingService>();
 builder.Services.AddHttpClient<OpenRouteServiceClient>();
-builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
