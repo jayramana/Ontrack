@@ -27,37 +27,39 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
+    const handleAuthSuccess = (response) => {
+        // Store token and user data
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify({
+            userId: response.user_id,
+            first_name: response.first_name,
+            last_name: response.last_name,
+            email: response.email, // backend response uses email (lowercase)
+            role: response.role,
+        }));
+
+        setUser({
+            userId: response.user_id,
+            first_name: response.first_name,
+            last_name: response.last_name,
+            role: response.role,
+        });
+
+        // Redirect based on role
+        const roleRoutes = {
+            customer: '/customer/dashboard',
+            driver: '/driver/dashboard',
+            admin: '/admin/dashboard',
+            seller: '/seller/dashboard',
+        };
+
+        navigate(roleRoutes[response.role] || '/');
+    };
+
     const login = async (email, password, role) => {
         try {
             const response = await authAPI.login(email, password, role);
-
-            // Store token and user data
-            localStorage.setItem('token', response.token);
-            localStorage.setItem('user', JSON.stringify({
-                userId: response.user_id,
-                first_name: response.first_name,
-                last_name: response.last_name,
-                email : response.email,
-                role: response.role,
-            }));
-
-            setUser({
-                userId: response.user_id,
-                first_name: response.first_name,
-                last_name: response.last_name,
-                role: response.role,
-            });
-
-            // Redirect based on role
-            const roleRoutes = {
-                customer: '/customer/dashboard',
-                driver: '/driver/dashboard',
-                admin: '/admin/dashboard',
-                seller: '/seller/dashboard',
-            };
-
-            navigate(roleRoutes[response.role] || '/');
-
+            handleAuthSuccess(response);
             return { success: true, message: response.message };
         } catch (error) {
             return { success: false, message: error };
@@ -88,6 +90,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated,
         hasRole,
         loading,
+        handleAuthSuccess,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

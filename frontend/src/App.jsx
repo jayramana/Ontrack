@@ -70,25 +70,9 @@ function App() {
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
 
-
-
-            <Route
-              path="/customer/tracking"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <Tracking />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customer/track/:id"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <Tracking />
-                </ProtectedRoute>
-              }
-            />
-
+            <Route path="/tracking" element={<Tracking />} />
+            <Route path="/tracking/:id" element={<Tracking />} />
+            <Route path="/customer/track/:id" element={<Tracking />} />
 
             <Route
               path="/customer/availability"
@@ -142,7 +126,6 @@ function App() {
 
             <Route path="/driver/route" element={<DriverRoutePage />} />
 
-
             <Route
               path="/customer/profile"
               element={
@@ -151,7 +134,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             <Route
               path="/driver/dashboard"
               element={
@@ -293,8 +276,7 @@ function App() {
             {/* ---------------- FALLBACK ROUTE ---------------- */}
             <Route path="*" element={<FallbackRedirect />} />
             {/* // Test Routes */}
-            <Route path="/test" element={<SenderChart />}/>
-              
+            <Route path="/test" element={<SenderChart />} />
           </Routes>
         </GeofenceProvider>
       </AuthProvider>
@@ -303,8 +285,10 @@ function App() {
 }
 
 function FallbackRedirect() {
-    console.log("Fallback route hit. No matching route found. Redirecting to login...");
-    return <Navigate to="/login" replace />;
+  console.log(
+    "Fallback route hit. No matching route found. Redirecting to login..."
+  );
+  return <Navigate to="/login" replace />;
 }
 
 export default App;

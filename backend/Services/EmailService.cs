@@ -1,67 +1,70 @@
-using Backend.Domain.Entity;
-using System.Net.Http.Json;
+using Backend.DTOs;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 
 namespace Backend.Services
 {
-    public class EmailService : IEmailService
+    public class EmailService : IEmailService   // ✅ THIS LINE FIXES THE ERROR
     {
-        private readonly HttpClient _client;
-        private readonly string _apiKey = "re_r9NRDQrr_9VzwBsCCmHQbSg9JXmj3QL2q";
+        private readonly IConfiguration _config;
 
-        public EmailService(IHttpClientFactory httpClientFactory)
+        public EmailService(IConfiguration config)
         {
-            _client = httpClientFactory.CreateClient();
-            _client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            _config = config;
         }
 
-        public async Task SendOrderEmailsAsync(Order order)
+        public async Task SendOrderPlacedEmailAsync(OrderEmailDto dto)
         {
-            string trackingLink = $"http://localhost:5173/track/{order.TrackingId}";
+            if (string.IsNullOrWhiteSpace(dto.CustomerEmail))
+                return;
 
-            string senderHtml = $@"
-                <h2>Order Created Successfully</h2>
-                <p>Hello {order.SenderName},</p>
-                <p>Your order has been placed.</p>
-                <p><b>Tracking ID:</b> {order.TrackingId}</p>
-                <p><a href=""{trackingLink}"">Click here to track your order</a></p>
-            ";
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(
+                "OnTrack Logistics",
+                _config["EmailSettings:SenderEmail"]
+            ));
 
-            string receiverHtml = $@"
-                <h2>Your Parcel is On the Way</h2>
-                <p>Hello {order.ReceiverName},</p>
-                <p>Your parcel has been shipped.</p>
-                <p><b>Tracking ID:</b> {order.TrackingId}</p>
-                <p><a href=""{trackingLink}"">Track your parcel here</a></p>
-            ";
+            message.To.Add(MailboxAddress.Parse(dto.CustomerEmail));
+            message.Subject = $"📦 Order Confirmed | Tracking ID: {dto.TrackingId}";
 
-            var senderPayload = new
+            message.Body = new TextPart("html")
             {
-                from = "ArriveNow <noreply@arrivenow.com>",
-                to = order.SenderEmail,
-                subject = $"Order Created — Tracking ID {order.TrackingId}",
-                html = senderHtml
+                Text = $@"
+                    <h2>Hello {dto.CustomerName},</h2>
+                    <p>Your order has been placed successfully.</p>
+
+                    <p><b>Order ID:</b> {dto.OrderId}</p>
+                    <p><b>Tracking ID:</b> {dto.TrackingId}</p>
+
+                    <h3>Seller</h3>
+                    <p>{dto.SellerName}<br/>
+                       {dto.SellerPhone}<br/>
+                       {dto.SellerEmail}</p>
+
+                    <p><b>Pickup:</b> {dto.PickupAddress}</p>
+                    <p><b>Delivery:</b> {dto.DeliveryAddress}</p>
+
+                    <p><b>Total Price:</b> ₹{dto.Price}</p>
+                    <p><b>ASR Required:</b> {(dto.IsASR ? "Yes" : "No")}</p>
+
+                    <hr/>
+                    <p>OnTrack Logistics 🚚</p>
+                "
             };
 
-            var senderRes = await _client.PostAsJsonAsync("https://api.resend.com/emails", senderPayload);
-
-            if (!senderRes.IsSuccessStatusCode)
-                Console.WriteLine("Sender email error: " + await senderRes.Content.ReadAsStringAsync());
-
-            if (!string.IsNullOrWhiteSpace(order.ReceiverEmail))
-            {
-                var receiverPayload = new
-                {
-                    from = "ArriveNow <noreply@arrivenow.com>",
-                    to = order.ReceiverEmail,
-                    subject = $"Parcel Incoming — Tracking ID {order.TrackingId}",
-                    html = receiverHtml
-                };
-
-                var receiverRes = await _client.PostAsJsonAsync("https://api.resend.com/emails", receiverPayload);
-
-                if (!receiverRes.IsSuccessStatusCode)
-                    Console.WriteLine("Receiver email error: " + await receiverRes.Content.ReadAsStringAsync());
-            }
+            using var smtp = new SmtpClient();
+            await smtp.ConnectAsync(
+                _config["EmailSettings:SmtpServer"],
+                int.Parse(_config["EmailSettings:Port"]),
+                SecureSocketOptions.StartTls
+            );
+            await smtp.AuthenticateAsync(
+                _config["EmailSettings:Username"],
+                _config["EmailSettings:Password"]
+            );
+            await smtp.SendAsync(message);
+            await smtp.DisconnectAsync(true);
         }
     }
 }

@@ -3,6 +3,22 @@ import { useNavigate, Link } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+// Extracted to prevent focus loss, but keeping exact original layout styling
+const InputField = ({ label, name, type = "text", required = false, value, onChange }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            className="w-full px-4 py-2 border border-[#2d3748] rounded-lg bg-[#0b0f14] text-white
+                       focus:ring-2 focus:ring-[#ff8a3d] outline-none"
+            required={required}
+        />
+    </div>
+);
+
 const Signup = () => {
     const [formData, setFormData] = useState({
         userFName: '',
@@ -125,17 +141,16 @@ const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center 
-                        bg-gradient-to-br from-[#351c15] to-[#4e2a1f] p-4">
-            <div className="bg-[#f8f4ef] rounded-2xl shadow-xl w-full max-w-md p-8 border border-[#e6d8c9]">
+        <div className="min-h-screen flex items-center justify-center bg-[#0b0f14] p-4">
+            <div className="bg-gradient-to-br from-[#1a1f29] to-[#0f141c] rounded-2xl shadow-xl w-full max-w-md p-8 border border-[#1f2937]">
 
                 <div className="text-center mb-6">
-                    <h1 className="text-3xl font-bold text-[#351c15] mb-2 tracking-wide">OnTrack</h1>
-                    <p className="text-[#6b4f3a]">Create your OnTrack account</p>
+                    <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">OnTrack</h1>
+                    <p className="text-gray-400">Create your OnTrack account</p>
                 </div>
 
                 {error && (
-                    <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 text-sm text-center border border-red-200">
+                    <div className="bg-red-500/10 text-red-500 p-3 rounded-lg mb-6 text-sm text-center border border-red-500/20">
                         {error}
                     </div>
                 )}
@@ -145,104 +160,22 @@ const Signup = () => {
                     {/* Step 1: User Details */}
                     {currentStep === 1 && (
                         <>
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">First Name</label>
-                                <input
-                                    type="text"
-                                    name="userFName"
-                                    value={formData.userFName}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
+                            <InputField label="First Name" name="userFName" value={formData.userFName} onChange={handleChange} required />
+                            <InputField label="Last Name" name="userLName" value={formData.userLName} onChange={handleChange} required />
+                            <InputField label="Email" name="email" value={formData.email} onChange={handleChange} type="email" required />
+                            <InputField label="Primary Phone" name="phonePrimary" value={formData.phonePrimary} onChange={handleChange} type="tel" required />
+                            <InputField label="Secondary Phone" name="phoneSecondary" value={formData.phoneSecondary} onChange={handleChange} type="tel" />
+                            <InputField label="Password" name="password" value={formData.password} onChange={handleChange} type="password" required />
+                            <InputField label="Confirm Password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} type="password" required />
 
                             <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Last Name</label>
-                                <input
-                                    type="text"
-                                    name="userLName"
-                                    value={formData.userLName}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Email</label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Primary Phone</label>
-                                <input
-                                    type="tel"
-                                    name="phonePrimary"
-                                    value={formData.phonePrimary}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Secondary Phone</label>
-                                <input
-                                    type="tel"
-                                    name="phoneSecondary"
-                                    value={formData.phoneSecondary}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Password</label>
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Confirm Password</label>
-                                <input
-                                    type="password"
-                                    name="confirmPassword"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Role</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
                                 <select
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
+                                    className="w-full px-4 py-2 border border-[#2d3748] rounded-lg bg-[#0b0f14] text-white
+                                               focus:ring-2 focus:ring-[#ff8a3d] outline-none"
                                 >
                                     <option value="customer">Customer</option>
                                     <option value="driver">Driver</option>
@@ -255,10 +188,10 @@ const Signup = () => {
                                 onClick={nextStep}
                                 type="button"
                                 disabled={loading}
-                                className={`w-full py-3 rounded-lg text-[#351c15] font-semibold shadow-md 
+                                className={`w-full py-3 rounded-lg text-white font-semibold shadow-md 
                                     ${loading
-                                        ? 'bg-[#d6b36d] cursor-not-allowed'
-                                        : 'bg-[#ffb500] hover:bg-[#e6a300] transform hover:-translate-y-0.5'
+                                        ? 'bg-[#ff8a3d]/50 cursor-not-allowed'
+                                        : 'bg-[#ff8a3d] hover:bg-[#e67a35] transform hover:-translate-y-0.5'
                                     }`}
                             >
                                 {loading 
@@ -273,95 +206,29 @@ const Signup = () => {
                     {/* Step 2: Address Details */}
                     {currentStep === 2 && (
                         <>
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Address Line 1</label>
-                                <input
-                                    type="text"
-                                    name="addressLine1"
-                                    value={formData.addressLine1}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                    required
-                                />
-                            </div>
+                            <InputField label="Address Line 1" name="addressLine1" value={formData.addressLine1} onChange={handleChange} required />
+                            <InputField label="Address Line 2 (Optional)" name="addressLine2" value={formData.addressLine2} onChange={handleChange} />
 
-                            <div>
-                                <label className="block text-sm font-medium text-[#4b382e] mb-1">Address Line 2 (Optional)</label>
-                                <input
-                                    type="text"
-                                    name="addressLine2"
-                                    value={formData.addressLine2}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                               focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputField label="City" name="city" value={formData.city} onChange={handleChange} required />
+                                <InputField label="State" name="state" value={formData.state} onChange={handleChange} required />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-[#4b382e] mb-1">City</label>
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        value={formData.city}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                                   focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-[#4b382e] mb-1">State</label>
-                                    <input
-                                        type="text"
-                                        name="state"
-                                        value={formData.state}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                                   focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-[#4b382e] mb-1">Postal Code</label>
-                                    <input
-                                        type="text"
-                                        name="postalCode"
-                                        value={formData.postalCode}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                                   focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-[#4b382e] mb-1">Country</label>
-                                    <input
-                                        type="text"
-                                        name="country"
-                                        value={formData.country}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                                   focus:ring-2 focus:ring-[#ffb500] outline-none"
-                                        required
-                                    />
-                                </div>
+                                <InputField label="Postal Code" name="postalCode" value={formData.postalCode} onChange={handleChange} required />
+                                <InputField label="Country" name="country" value={formData.country} onChange={handleChange} required />
                             </div>
 
                             {/* Seller Specific Field */}
                             {formData.role === 'seller' && (
                                 <div>
-                                    <label className="block text-sm font-medium text-[#4b382e] mb-1">Seller Type</label>
+                                    <label className="block text-sm font-medium text-gray-300 mb-1">Seller Type</label>
                                     <select
                                         name="sellerType"
                                         value={formData.sellerType}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-[#d4c7b9] rounded-lg bg-white
-                                                   focus:ring-2 focus:ring-[#ffb500] outline-none"
+                                        className="w-full px-4 py-2 border border-[#2d3748] rounded-lg bg-[#0b0f14] text-white
+                                                   focus:ring-2 focus:ring-[#ff8a3d] outline-none"
                                     >
                                         <option value="">Select Type</option>
                                         <option value="individual">Individual</option>
@@ -374,7 +241,7 @@ const Signup = () => {
                                 <button
                                     onClick={prevStep}
                                     type="button"
-                                    className="w-1/3 py-3 rounded-lg text-[#351c15] font-semibold border border-[#d4c7b9] bg-white hover:bg-gray-50"
+                                    className="w-1/3 py-3 rounded-lg text-gray-300 font-semibold border border-[#2d3748] bg-[#0b0f14] hover:bg-gray-800 transition-colors"
                                 >
                                     Back
                                 </button>
@@ -382,10 +249,10 @@ const Signup = () => {
                                     onClick={handleSubmit} // Explicitly call submit here for Step 2
                                     type="button"
                                     disabled={loading}
-                                    className={`w-2/3 py-3 rounded-lg text-[#351c15] font-semibold shadow-md 
+                                    className={`w-2/3 py-3 rounded-lg text-white font-semibold shadow-md 
                                         ${loading
-                                            ? 'bg-[#d6b36d] cursor-not-allowed'
-                                            : 'bg-[#ffb500] hover:bg-[#e6a300] transform hover:-translate-y-0.5'
+                                            ? 'bg-[#ff8a3d]/50 cursor-not-allowed'
+                                            : 'bg-[#ff8a3d] hover:bg-[#e67a35] transform hover:-translate-y-0.5'
                                         }`}
                                 >
                                     {loading ? 'Creating Account...' : 'Create Account'}
@@ -395,9 +262,9 @@ const Signup = () => {
                     )}
                 </form>
 
-                <div className="mt-6 text-center text-sm text-[#6b4f3a]">
+                <div className="mt-6 text-center text-sm text-gray-400">
                     Already have an account?{' '}
-                    <Link to="/login" className="text-[#ffb500] hover:text-[#e6a300] font-medium">
+                    <Link to="/login" className="text-[#ff8a3d] hover:text-[#e67a35] font-medium transition-colors">
                         Sign in
                     </Link>
                 </div>

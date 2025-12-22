@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
+import { Copy, Check } from "lucide-react";
 
 const OrderDetails = () => {
   const { id } = useParams();
@@ -14,6 +15,16 @@ const OrderDetails = () => {
   const [connection, setConnection] = useState(null);
 
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (order?.trackingId) {
+      navigator.clipboard.writeText(order.trackingId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const [rescheduleForm, setRescheduleForm] = useState({
     newDate: "",
     reason: "",
@@ -112,11 +123,14 @@ const OrderDetails = () => {
   /* ---------------- TIMELINE ---------------- */
   const statusRank = {
     PendingAssignment: 0,
+    Pending: 0,               
+    Assigned: 10,            
     Picked: 20,
     AtOriginWarehouse: 30,
     InTransit: 40,
     AtDestinationWarehouse: 50,
     OutForDelivery: 60,
+    DeliveryAttempted: 60,    
     Delivered: 70,
   };
 
@@ -124,7 +138,7 @@ const OrderDetails = () => {
 
   const steps = [
     { title: "Order Placed", sub: "Order created", rank: 0 },
-    { title: "Order Confirmed", sub: "Seller confirmed", rank: 10 },
+    { title: "Order Confirmed", sub: "Driver assigned", rank: 10 },
     { title: "Picked Up", sub: "Courier picked package", rank: 20 },
     { title: "In Transit", sub: "Package on the move", rank: 40 },
     { title: "Out for Delivery", sub: "Driver en route", rank: 60 },
@@ -146,7 +160,10 @@ const OrderDetails = () => {
             >
               ← Back
             </button>
-            <h1 className="text-2xl font-black">Order Details</h1>
+            <h1 className="text-2xl font-black">
+              Order Details
+              {/* {order.trackingId && <span className="ml-3 text-lg text-slate-400 font-medium">#{order.trackingId}</span>} */}
+            </h1>
           </div>
 
   <div className="flex flex-col items-end">
@@ -166,6 +183,66 @@ const OrderDetails = () => {
 
         {/* MAIN CARD */}
         <div className="max-w-4xl bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
+
+          {/* ORDER DETAILS */}
+          <div className="p-8 space-y-6">
+            <h2 className="text-xl font-bold">Order Details</h2>
+            <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+               <div>
+                  <h4 className="font-bold text-slate-400 text-lg tracking-wider">Order Name</h4>
+                  <p className="text-white font-medium text-base">Order-{order.id}</p>
+               </div>
+               
+               <div>
+                  <h4 className="font-bold text-slate-400 text-lg tracking-wider">Tracking ID</h4>
+                  <div className="flex items-center gap-2">
+                    <p className="text-white font-medium text-base">#{order.trackingId}</p>
+                    <button 
+                      onClick={handleCopy}
+                      className="p-1 hover:bg-white/10 rounded-md transition-colors text-slate-400 hover:text-white"
+                      title="Copy Tracking ID"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+               </div>
+
+               <div>
+                  <h4 className="font-bold text-slate-400 text-lg tracking-wider">Weight</h4>
+                  <p className="text-white font-medium text-base">{order.weight} kg</p>
+               </div>
+
+               <div>
+                  <h4 className="font-bold text-slate-400 text-lg tracking-wider">Price</h4>
+                  <p className="text-white font-medium text-base">₹{order.price}</p>
+               </div>
+
+               <div>
+                  <h4 className="font-bold text-slate-400 text-lg tracking-wider">Type</h4>
+                  <div className="mt-1">
+                    {order.deliveryType === 'Express' ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold uppercase tracking-wide shadow-lg shadow-amber-500/20">
+                         <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse"/>
+                         Express
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold uppercase tracking-wide border border-slate-700">
+                        Normal
+                      </span>
+                    )}
+                  </div>
+               </div>
+
+               <div>
+                  <h4 className="font-bold text-slate-400 text-lg tracking-wider">ASR Required</h4>
+                  <p className={`font-medium text-base ${order.isASR ? 'text-[#ff8a3d]' : 'text-slate-500'}`}>
+                    {order.isASR ? 'Yes' : 'No'}
+                  </p>
+               </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10" />
 
           {/* SHIPMENT INFO */}
           <div className="p-8 space-y-6">

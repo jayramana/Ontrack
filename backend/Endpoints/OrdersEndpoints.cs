@@ -131,7 +131,26 @@ public static class OrdersEndpoints
                 // Update counters
                 await warehouseService.AssignOrderToWarehousesAsync(order);
 
-                await emailService.SendOrderEmailsAsync(order);
+                await emailService.SendOrderPlacedEmailAsync(new OrderEmailDto
+                {
+                    OrderId = order.Id,
+                    TrackingId = order.TrackingId,
+
+                    SellerName = order.SenderName,
+                    SellerPhone = order.SenderPhone,
+                    SellerEmail = order.SenderEmail,
+
+                    CustomerName = order.ReceiverName,
+                    CustomerEmail = order.ReceiverEmail,
+                    CustomerPhone = order.ReceiverPhone,
+
+                    PickupAddress = order.PickupAddress,
+                    DeliveryAddress = order.ReceiverAddress,
+
+                    Price = order.Price,
+                    IsASR = order.IsASR
+                });
+
 
                 return Results.Ok(order);
             }
@@ -317,6 +336,37 @@ public static class OrdersEndpoints
                 } : null
             });
         });
+
+        group.MapGet("/admin/all", async (AppDbContext context) =>
+        {
+            var orders = await context.Orders
+                .Include(o => o.Driver)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .OrderByDescending(o => o.CreatedAt)
+                .Select(o => new
+                {
+                    o.Id,
+                    o.TrackingId,
+                    o.Status,
+                    o.SenderName,
+                    o.PickupAddress,
+                    o.ReceiverName,
+                    o.ReceiverAddress,
+                    o.CreatedAt,
+                    o.EstimatedDeliveryDate,
+                    o.AiPriority,
+                    o.IsASR,
+                    o.ASRStatus,
+                    driverId = o.DriverId,
+                    driverName = o.Driver != null ? o.Driver.UserFName + " " + o.Driver.UserLName : null
+                })
+                .ToListAsync();
+
+            return Results.Ok(orders);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_ADMIN });
 
         group.MapGet("/pending", async (AppDbContext context) =>
         {
