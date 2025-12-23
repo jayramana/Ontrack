@@ -69,7 +69,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
     const setupSignalR = async () => {
       try {
         const conn = new signalR.HubConnectionBuilder()
-          .withUrl("http://localhost:5066/hubs/logistics", {
+          .withUrl(`${import.meta.env.VITE_API_URL}/hubs/logistics`, {
             accessTokenFactory: () => localStorage.getItem("token") || "",
           })
           .withAutomaticReconnect()
