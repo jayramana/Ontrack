@@ -218,7 +218,9 @@ namespace Backend.Domain.Entity
         
         public string ReceiverEmail { get; set; } = string.Empty;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        // ✅ ADD THESE
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
 
         public DateTime? ScheduledDate { get; set; }
         public string? ScheduledTimeSlot { get; set; }

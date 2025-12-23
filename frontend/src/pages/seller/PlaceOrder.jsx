@@ -84,50 +84,111 @@ function PlaceOrder() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const payload = {
-        senderName: formData.senderName,
-        senderPhone: formData.senderPhone,
-        senderEmail: formData.senderEmail,
-        pickupAddress: formData.pickupAddress,
-        pickupPincode: formData.pickupPincode,
-        pickupLatitude: formData.pickupLatitude,
-        pickupLongitude: formData.pickupLongitude,
-        receiverName: formData.receiverName,
-        receiverPhone: formData.receiverPhone,
-        receiverEmail: formData.receiverEmail,
-        receiverAddress: formData.receiverAddress,
-        receiverPincode: formData.receiverPincode,
-        deliveryLatitude: formData.deliveryLatitude,
-        deliveryLongitude: formData.deliveryLongitude,
-        deliveryPincode: formData.deliveryPincode,
-        deliveryType: formData.deliveryType,
-        parcelSize: formData.parcelSize,
-        weight: parseFloat(formData.weight),
-        deliveryNotes: formData.deliveryNotes,
-        scheduledDate: formData.scheduledDate || null,
-        scheduledTimeSlot: formData.scheduledTimeSlot || null,
-        price: formData.price,
-        isASR: formData.isASR,
-      };
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setSubmitting(true);
+  //   try {
+  //     const payload = {
+  //       senderName: formData.senderName,
+  //       senderPhone: formData.senderPhone,
+  //       senderEmail: formData.senderEmail,
+  //       pickupAddress: formData.pickupAddress,
+  //       pickupPincode: formData.pickupPincode,
+  //       pickupLatitude: formData.pickupLatitude,
+  //       pickupLongitude: formData.pickupLongitude,
+  //       receiverName: formData.receiverName,
+  //       receiverPhone: formData.receiverPhone,
+  //       receiverEmail: formData.receiverEmail,
+  //       receiverAddress: formData.receiverAddress,
+  //       receiverPincode: formData.receiverPincode,
+  //       deliveryLatitude: formData.deliveryLatitude,
+  //       deliveryLongitude: formData.deliveryLongitude,
+  //       deliveryPincode: formData.deliveryPincode,
+  //       deliveryType: formData.deliveryType,
+  //       parcelSize: formData.parcelSize,
+  //       weight: parseFloat(formData.weight),
+  //       deliveryNotes: formData.deliveryNotes,
+  //       scheduledDate: formData.scheduledDate || null,
+  //       scheduledTimeSlot: formData.scheduledTimeSlot || null,
+  //       price: formData.price,
+  //       isASR: formData.isASR,
+  //     };
 
-      await api.post("/orders", payload);
-      window.location.href = "/seller/dashboard";
-    } catch (error) {
-      console.error("Error placing order:", error);
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.innerException ||
-        error.message ||
-        "Failed to place order.";
-      alert(`Error: ${errorMessage}`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  //     await api.post("/orders", payload);
+  //     window.location.href = "/seller/dashboard";
+  //   } catch (error) {
+  //     console.error("Error placing order:", error);
+  //     const errorMessage =
+  //       error.response?.data?.message ||
+  //       error.response?.data?.innerException ||
+  //       error.message ||
+  //       "Failed to place order.";
+  //     alert(`Error: ${errorMessage}`);
+  //   } finally {
+  //     setSubmitting(false);
+  //   }
+  // };
+
+
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  setSubmitting(true);
+
+  try {
+    const payload = {
+      senderName: formData.senderName,
+      senderPhone: formData.senderPhone,
+      senderEmail: formData.senderEmail,
+
+      pickupAddress: formData.pickupAddress,
+      pickupPincode: formData.pickupPincode,
+      pickupLatitude: formData.pickupLatitude,
+      pickupLongitude: formData.pickupLongitude,
+
+      receiverName: formData.receiverName,
+      receiverPhone: formData.receiverPhone,
+      receiverEmail: formData.receiverEmail,
+      receiverAddress: formData.receiverAddress,
+
+      deliveryPincode: formData.deliveryPincode || formData.receiverPincode,
+      deliveryLatitude: formData.deliveryLatitude,
+      deliveryLongitude: formData.deliveryLongitude,
+
+      deliveryType: formData.deliveryType,
+      parcelSize: formData.parcelSize,
+
+      weight: formData.weight ? parseFloat(formData.weight) : 0,
+
+      deliveryNotes: formData.deliveryNotes,
+
+      scheduledDate: formData.scheduledDate
+        ? new Date(formData.scheduledDate).toISOString()
+        : null,
+
+      scheduledTimeSlot: formData.scheduledTimeSlot || null,
+
+      price: Number(formData.price) || 0,
+      isASR: Boolean(formData.isASR),
+    };
+
+    console.log("ORDER PAYLOAD:", payload); // 🔥 DEBUG LINE
+
+    await api.post("/orders", payload);
+    window.location.href = "/seller/dashboard";
+  } catch (error) {
+    console.error("Error placing order:", error);
+
+    const backendError =
+      error.response?.data?.errors ||
+      error.response?.data?.message ||
+      JSON.stringify(error.response?.data);
+
+    alert(`Order failed:\n${backendError}`);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   const inputClass = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#ff8a3d] focus:ring-1 focus:ring-[#ff8a3d] transition";
   const labelClass = "block mb-1 text-sm font-semibold text-slate-400 uppercase tracking-wider";
