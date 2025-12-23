@@ -93,12 +93,12 @@ namespace Backend.Data
 
                 entity.Property(u => u.CreatedAt)
                     .HasColumnName("created_at")
-                    .HasColumnType("timestamp")
+                    .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()");
 
                 entity.Property(u => u.UpdatedAt)
                     .HasColumnName("updated_at")
-                    .HasColumnType("timestamp")
+                    .HasColumnType("timestamp with time zone")
                     .HasDefaultValueSql("NOW()");
 
                 entity.Property(u => u.IsAvailable)
@@ -150,7 +150,7 @@ namespace Backend.Data
 
             builder.Entity<DriverLocation>(entity =>
             {
-                entity.ToTable("DriverLocations");
+                entity.ToTable("driver_locations");
 
                 entity.HasKey(dl => dl.Id);
 
@@ -187,7 +187,7 @@ namespace Backend.Data
 
             builder.Entity<Warehouse>(entity =>
             {
-                entity.ToTable("Warehouses");
+                entity.ToTable("warehouses");
 
                 entity.HasKey(w => w.Id);
 
@@ -211,7 +211,7 @@ namespace Backend.Data
 
             builder.Entity<Order>(entity =>
             {
-                entity.ToTable("Orders");
+                entity.ToTable("orders");
 
                 entity.Property(o => o.Priority)
                     .HasDefaultValue(2);
@@ -225,23 +225,23 @@ namespace Backend.Data
                     .WithMany(w => w.OriginOrders)
                     .HasForeignKey(o => o.OriginWarehouseId)
                     .OnDelete(DeleteBehavior.SetNull)
-                    .HasConstraintName("FK_Orders_OriginWarehouse");
+                    .HasConstraintName("fk_orders_origin_warehouse");
 
                 entity.HasOne(o => o.DestinationWarehouse)
                     .WithMany(w => w.DestinationOrders)
                     .HasForeignKey(o => o.DestinationWarehouseId)
                     .OnDelete(DeleteBehavior.SetNull)
-                    .HasConstraintName("FK_Orders_DestinationWarehouse");
+                    .HasConstraintName("fk_orders_destination_warehouse");
 
                 entity.HasOne(o => o.CurrentWarehouse)
                     .WithMany(w => w.CurrentOrders)
                     .HasForeignKey(o => o.CurrentWarehouseId)
                     .OnDelete(DeleteBehavior.SetNull)
-                    .HasConstraintName("FK_Orders_CurrentWarehouse");
+                    .HasConstraintName("fk_orders_current_warehouse");
             });
 
             builder.Entity<Address>()
-            .ToTable("Address", t =>
+            .ToTable("addresses", t =>
             {
                 t.HasCheckConstraint(
                     "chk_seller_type",
@@ -260,15 +260,55 @@ namespace Backend.Data
 
             builder.Entity<User>(entity =>
             {
-                entity.ToTable("Users");
+                entity.ToTable("users");
 
                 entity.HasOne(u => u.AssignedWarehouse)
                     .WithMany(w => w.AssignedUsers)
                     .HasForeignKey(u => u.AssignedWarehouseId)
                     .OnDelete(DeleteBehavior.SetNull)
-                    .HasConstraintName("FK_Users_Warehouse");
+                    .HasConstraintName("fk_users_warehouse");
             });
 
+
+            foreach (var entity in builder.Model.GetEntityTypes())
+            {
+                entity.SetTableName(ToSnakeCase(entity.GetTableName()));
+
+                foreach (var property in entity.GetProperties())
+                {
+                    property.SetColumnName(ToSnakeCase(property.GetColumnName()));
+
+                    if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                    {
+                        property.SetColumnType("timestamp with time zone");
+                    }
+                }
+            }
+        }
+
+        private string ToSnakeCase(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append(char.ToLowerInvariant(text[0]));
+            for (int i = 1; i < text.Length; ++i)
+            {
+                char c = text[i];
+                if (char.IsUpper(c))
+                {
+                    sb.Append('_');
+                    sb.Append(char.ToLowerInvariant(c));
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString();
         }
     }
 }

@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174","http://ontrack-frontend.s3-website.ap-south-1.amazonaws.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -139,6 +139,9 @@ if (app.Environment.IsDevelopment())
 app.MapASREndpoints();
 
 app.MapGeocodingEndpoints();
+
+// Simple Health Check for AWS Elastic Beanstalk
+app.MapGet("/", () => "Ontrack Backend is Running! 🚀");
 
 app.MapVerificationEndpoints();
 
