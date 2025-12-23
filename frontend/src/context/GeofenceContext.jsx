@@ -68,7 +68,7 @@ export const GeofenceProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    const HUB_URL = "http://localhost:5066/geofencehub"; 
+    const HUB_URL = `${import.meta.env.VITE_API_URL}/geofencehub`; 
 
     const connection = new HubConnectionBuilder()
       .withUrl(HUB_URL)

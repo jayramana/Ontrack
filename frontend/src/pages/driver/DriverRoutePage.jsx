@@ -44,7 +44,7 @@ const STORAGE_KEY = "driver_route_mode";
 /* ===========================
    API BASE - Replace with your backend
 =========================== */
-const API_BASE = "http://localhost:5066/api";
+const API_BASE = `${import.meta.env.VITE_API_URL}/api`;
 
 /* ===========================
    HELPERS
@@ -444,38 +444,7 @@ export default function DriverRoutePage() {
     }
   }, [rawStops]);
 
-  /* OPTIMIZE WHEN DATA CHANGES */
-  useEffect(() => {
-    if (rawStops.length >= 1 && driverLocation) {
-      optimizeStops();
-    }
-  }, [rawStops, roadIssues, mode, driverLocation]);
-
-  const optimizeStops = async () => {
-    if (!driverLocation) return;
-
-    setRouting(true);
-
-    const optimizedStops = optimizeRouteLocally(
-      rawStops,
-      driverLocation.lat,
-      driverLocation.lng,
-      roadIssues,
-      mode
-    );
-
-    setStops(optimizedStops);
-    setRouteChanged(true);
-    setTimeout(() => setRouteChanged(false), 3000);
-
-    if (optimizedStops.length >= 1) {
-      await calculateRoute(optimizedStops);
-    }
-
-    setRouting(false);
-  };
-
-  const calculateRoute = async (orderedStops) => {
+    const calculateRoute = async (orderedStops) => {
     if (!driverLocation) return;
 
     abortRef.current?.abort?.();
@@ -506,6 +475,39 @@ export default function DriverRoutePage() {
       }
     }
   };
+  
+    const optimizeStops = async () => {
+      if (!driverLocation) return;
+  
+      setRouting(true);
+  
+      const optimizedStops = optimizeRouteLocally(
+        rawStops,
+        driverLocation.lat,
+        driverLocation.lng,
+        roadIssues,
+        mode
+      );
+  
+      setStops(optimizedStops);
+      setRouteChanged(true);
+      setTimeout(() => setRouteChanged(false), 3000);
+  
+      if (optimizedStops.length >= 1) {
+        await calculateRoute(optimizedStops);
+      }
+  
+      setRouting(false);
+    };
+
+  /* OPTIMIZE WHEN DATA CHANGES */
+  useEffect(() => {
+    if (rawStops.length >= 1 && driverLocation) {
+      optimizeStops();
+    }
+  }, [rawStops, roadIssues, mode, driverLocation]);
+
+
 
   /* NAVIGATION TRACKING */
   useEffect(() => {
