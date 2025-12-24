@@ -78,10 +78,10 @@ export const GeofenceProvider = ({ children }) => {
     connection
       .start()
       .then(() => {
-        console.log("Connected to GeofenceHub");
+        
         
         connection.on("GeofenceTriggered", (payload) => {
-          console.log("[SignalR] Geofence Alert Received:", payload);
+          
           
           const alertId = `backend-gf-${payload.geofenceId}-${payload.event}`;
           
@@ -116,7 +116,7 @@ export const GeofenceProvider = ({ children }) => {
       const meRes = await api.get(`/auth/${user.userId}`);
       const myLoc = meRes.data;
       if (!myLoc || !myLoc.currentLatitude) {
-          console.log("No driver location found.");
+          
           return;
       }
 
@@ -129,7 +129,7 @@ export const GeofenceProvider = ({ children }) => {
 
       const gfRes = await api.get("/geofence/list");
       const allGeofences = gfRes.data;
-      console.log(`Found ${allGeofences.length} total geofences.`);
+      
 
       for (const order of myOrders) {
         const gf = allGeofences.find(
@@ -144,7 +144,7 @@ export const GeofenceProvider = ({ children }) => {
           gf.centerLon
         );
         
-        console.log(`Order ${order.id}: Distance ${Math.round(dist)}m (Radius: ${gf.radiusMeters}m)`);
+        
 
         const alertId = `driver-gf-${gf.geofenceId}`;
 

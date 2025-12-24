@@ -30,7 +30,7 @@ export default function DeliveryConfirm() {
   };
 
   const handleVerifyOtp = () => {
-    console.log("OTP Entered:", otp.join(""));
+    
   };
 
   const handleClearSignature = () => {
@@ -44,7 +44,7 @@ export default function DeliveryConfirm() {
     }
 
     const signatureImage = signaturePadRef.current.toDataURL();
-    console.log("Signature submitted:", signatureImage);
+    
   };
 
   return (

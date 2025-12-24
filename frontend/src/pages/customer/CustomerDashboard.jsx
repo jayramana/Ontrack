@@ -126,7 +126,7 @@ const CustomerDashboard = () => {
       const order = data.order || data;
       const latestDriverLocation = data.latestDriverLocation;
 
-      console.log("ETA Debug - API Response:", data);
+      
 
       let driverLat;
       let driverLon;
@@ -175,7 +175,7 @@ const CustomerDashboard = () => {
           driverProfile.currentLatitude &&
           driverProfile.currentLongitude
         ) {
-          console.log("ETA: Using FRESH Profile Location");
+          
           driverLat = driverProfile.currentLatitude;
           driverLon = driverProfile.currentLongitude;
         } else if (
@@ -183,7 +183,7 @@ const CustomerDashboard = () => {
           driverHistory.latitude &&
           driverHistory.longitude
         ) {
-          console.log("ETA: Profile stale or empty. Using HISTORY Location.");
+          
           driverLat = driverHistory.latitude;
           driverLon = driverHistory.longitude;
         } else if (
