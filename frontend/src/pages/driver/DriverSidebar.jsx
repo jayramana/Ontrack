@@ -13,7 +13,7 @@ export default function DriverSidebar({ active }) {
     { label: "Route Planner", icon: <Map size={20} />, key: "route", path: "/driver/route" },
     { label: "Geofence Alerts", icon: <Bell size={20} />, key: "geofence", path: "/driver/geofencealerts" },
     { label: "Report Issue", icon: <AlertTriangle size={20} />, key: "issues", path: "/driver/report-issue" },
-    { label: "Confirm Delivery", icon: <CheckCircle size={20} />, key: "confirm", path: "/driver/confirm" },
+    // { label: "Confirm Delivery", icon: <CheckCircle size={20} />, key: "confirm", path: "/driver/confirm" },
     { label: "Profile", icon: <User size={20} />, key: "profile", path: "/driver/profile" },
   ];
 
