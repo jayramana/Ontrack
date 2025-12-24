@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { useAuth } from "./AuthContext";
+import { HUB_BASE_URL } from "../config";
 import api from "../services/api";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 
@@ -27,14 +28,14 @@ export const GeofenceProvider = ({ children }) => {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
-    const sendBrowserNotification = (title, body, tag) => {
+  const sendBrowserNotification = (title, body, tag) => {
     if (!("Notification" in window) || Notification.permission !== "granted")
       return;
 
@@ -57,7 +58,7 @@ export const GeofenceProvider = ({ children }) => {
       Notification.requestPermission();
     }
   }, []);
-    const addAlert = (id, message, type = "info") => {
+  const addAlert = (id, message, type = "info") => {
     setAlerts((prev) => {
       if (prev.find((a) => a.id === id)) return prev;
       return [...prev, { id, message, type, time: new Date() }];
@@ -68,7 +69,7 @@ export const GeofenceProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
 
-    const HUB_URL = `${import.meta.env.VITE_API_URL}/geofencehub`; 
+    const HUB_URL = `${HUB_BASE_URL}/geofencehub`;
 
     const connection = new HubConnectionBuilder()
       .withUrl(HUB_URL)
@@ -79,19 +80,19 @@ export const GeofenceProvider = ({ children }) => {
       .start()
       .then(() => {
         console.log("Connected to GeofenceHub");
-        
+
         connection.on("GeofenceTriggered", (payload) => {
           console.log("[SignalR] Geofence Alert Received:", payload);
-          
+
           const alertId = `backend-gf-${payload.geofenceId}-${payload.event}`;
-          
+
           if (payload.event === "ENTER") {
             const msg = `Geofence Alert: Entered ${payload.name} (${payload.distanceMeters}m)`;
             sendBrowserNotification("Geofence Entry", msg, alertId);
             addAlert(alertId, msg, "success");
           } else if (payload.event === "EXIT") {
-             const msg = `Geofence Update: Exited ${payload.name}`;
-             addAlert(alertId, msg, "info"); // Show as info
+            const msg = `Geofence Update: Exited ${payload.name}`;
+            addAlert(alertId, msg, "info"); // Show as info
           }
         });
 
@@ -116,8 +117,8 @@ export const GeofenceProvider = ({ children }) => {
       const meRes = await api.get(`/auth/${user.userId}`);
       const myLoc = meRes.data;
       if (!myLoc || !myLoc.currentLatitude) {
-          console.log("No driver location found.");
-          return;
+        console.log("No driver location found.");
+        return;
       }
 
       const ordersRes = await api.get("/driver/orders/all");
@@ -143,7 +144,7 @@ export const GeofenceProvider = ({ children }) => {
           gf.centerLat,
           gf.centerLon
         );
-        
+
         console.log(`Order ${order.id}: Distance ${Math.round(dist)}m (Radius: ${gf.radiusMeters}m)`);
 
         const alertId = `driver-gf-${gf.geofenceId}`;
@@ -153,9 +154,8 @@ export const GeofenceProvider = ({ children }) => {
           const lastTime = lastAlertTimes.current[alertId];
 
           if (!lastTime || now - lastTime > 30000) {
-            const msg = `You are inside the delivery zone for Order #${
-              order.id
-            } (${Math.round(dist)}m)`;
+            const msg = `You are inside the delivery zone for Order #${order.id
+              } (${Math.round(dist)}m)`;
 
             sendBrowserNotification("Geofence Alert", msg, alertId);
             addAlert(alertId, msg, "success");
@@ -180,7 +180,7 @@ export const GeofenceProvider = ({ children }) => {
           o.status === "OutForDelivery" ||
           o.status === "Assigned"
       );
-      
+
 
       for (const order of activeOrders) {
         if (!order.driverId) continue;
@@ -192,11 +192,11 @@ export const GeofenceProvider = ({ children }) => {
         let lat, lon;
 
         if (driverProfile && driverProfile.currentLatitude && driverProfile.currentLongitude) {
-             lat = driverProfile.currentLatitude;
-             lon = driverProfile.currentLongitude;
+          lat = driverProfile.currentLatitude;
+          lon = driverProfile.currentLongitude;
         } else if (driverHistory && driverHistory.latitude) {
-             lat = driverHistory.latitude;
-             lon = driverHistory.longitude;
+          lat = driverHistory.latitude;
+          lon = driverHistory.longitude;
         }
 
         if (lat && lon) {
@@ -206,7 +206,7 @@ export const GeofenceProvider = ({ children }) => {
             order.deliveryLatitude,
             order.deliveryLongitude
           );
-          
+
           const alertId = `cust-order-${order.id}`;
 
           if (dist <= 1000) {

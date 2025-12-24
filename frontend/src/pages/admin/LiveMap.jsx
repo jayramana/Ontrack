@@ -173,6 +173,7 @@ import api from "../../services/api";
 import MapComponent from "../../components/MapComponent";
 import * as signalR from "@microsoft/signalr";
 import AdminSidebar from "./AdminSidebar";
+import { HUB_BASE_URL } from "../../config";
 
 /* ===========================
    DRIVER COLORS
@@ -241,9 +242,13 @@ export default function LiveMap() {
      SIGNALR
   =========================== */
   const setupSignalR = async () => {
+
+
+    // ...
+
     try {
       const conn = new signalR.HubConnectionBuilder()
-        .withUrl(`${import.meta.env.VITE_API_URL}/hubs/logistics`)
+        .withUrl(`${HUB_BASE_URL}/hubs/logistics`)
         .withAutomaticReconnect()
         .build();
 
@@ -336,11 +341,10 @@ export default function LiveMap() {
                 </div>
 
                 <span
-                  className={`px-3 py-1 text-xs rounded-full ${
-                    d.isAvailable
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}
+                  className={`px-3 py-1 text-xs rounded-full ${d.isAvailable
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-red-500/20 text-red-400"
+                    }`}
                 >
                   {d.isAvailable ? "Available" : "Busy"}
                 </span>

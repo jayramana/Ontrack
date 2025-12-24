@@ -129,27 +129,36 @@ public static class OrdersEndpoints
                 await context.SaveChangesAsync();
 
                 // Update counters
-                await warehouseService.AssignOrderToWarehousesAsync(order);
-
-                await emailService.SendOrderPlacedEmailAsync(new OrderEmailDto
+                // Update counters
+                try
                 {
-                    OrderId = order.Id,
-                    TrackingId = order.TrackingId,
+                    await warehouseService.AssignOrderToWarehousesAsync(order);
 
-                    SellerName = order.SenderName,
-                    SellerPhone = order.SenderPhone,
-                    SellerEmail = order.SenderEmail,
+                    await emailService.SendOrderPlacedEmailAsync(new OrderEmailDto
+                    {
+                        OrderId = order.Id,
+                        TrackingId = order.TrackingId,
 
-                    CustomerName = order.ReceiverName,
-                    CustomerEmail = order.ReceiverEmail,
-                    CustomerPhone = order.ReceiverPhone,
+                        SellerName = order.SenderName,
+                        SellerPhone = order.SenderPhone,
+                        SellerEmail = order.SenderEmail,
 
-                    PickupAddress = order.PickupAddress,
-                    DeliveryAddress = order.ReceiverAddress,
+                        CustomerName = order.ReceiverName,
+                        CustomerEmail = order.ReceiverEmail,
+                        CustomerPhone = order.ReceiverPhone,
 
-                    Price = order.Price,
-                    IsASR = order.IsASR
-                });
+                        PickupAddress = order.PickupAddress,
+                        DeliveryAddress = order.ReceiverAddress,
+
+                        Price = order.Price,
+                        IsASR = order.IsASR
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARNING] Post-order action failed: {ex.Message}");
+                    // Do not fail the request, as the order is already saved
+                }
 
 
                 return Results.Ok(order);
