@@ -35,7 +35,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5174","http://ontrack-frontend.s3-website.ap-south-1.amazonaws.com")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:5174","http://ontrack-frontend.s3-website.ap-south-1.amazonaws.com", "https://ontrackvdevs.vercel.app")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
