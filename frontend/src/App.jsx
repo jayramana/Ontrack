@@ -285,9 +285,7 @@ function App() {
 }
 
 function FallbackRedirect() {
-  console.log(
-    "Fallback route hit. No matching route found. Redirecting to login..."
-  );
+
   return <Navigate to="/login" replace />;
 }
 

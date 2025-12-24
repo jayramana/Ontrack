@@ -535,7 +535,7 @@ export default function DriverRoutePage() {
           );
 
           if (deviation > ROUTE_DEVIATION_THRESHOLD) {
-            console.log("Route deviation detected, recalculating...");
+            
             optimizeStops();
           }
         }

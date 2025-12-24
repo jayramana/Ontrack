@@ -536,7 +536,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
       } catch (err) {
         // ASR doesn't exist yet - this is fine
         if (err.response?.status === 404) {
-          console.log("ASR not initiated yet");
+          
           setAsrStatus(null);
         } else {
           throw err;
@@ -708,7 +708,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
   };
 
   const handleCompleteDelivery = async () => {
-    console.log("completing delivery");
+    
     if (!canCompleteDelivery) {
       alert("Cannot complete delivery - ASR verification not successful");
       return;

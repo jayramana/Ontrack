@@ -14,12 +14,12 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     }
 
     if (!isAuthenticated()) {
-        console.log("ProtectedRoute: User not authenticated. Redirecting to login.");
+        
         return <Navigate to="/" replace />;
     }
 
     if (requiredRole && !hasRole(requiredRole)) {
-        console.log(`ProtectedRoute: Role mismatch. Required: ${requiredRole}, User Role: ${user?.role}`);
+        
         return <Navigate to="/" replace />;
     }
 
