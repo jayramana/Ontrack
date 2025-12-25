@@ -9,18 +9,19 @@ export default function HomePage() {
             OnTrack
           </h1>
 
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
+            <Link 
+              to="/tracking"
+              className="underline text-[#ff8a3d] transition hover:text-[#ff8a3d]/80 font-medium"
+            >
+              Track a Package
+            </Link>
+
             <Link
               to="/login"
-              className="px-4 py-2 rounded-lg text-slate-300 hover:bg-white/10 transition"
+              className="px-3 py-2 bg-[#ff8a3d] text-black rounded-lg font-bold hover:opacity-90 transition hover:text-white"
             >
-              Login
-            </Link>
-            <Link
-              to="/signup"
-              className="px-4 py-2 bg-[#ff8a3d] text-black rounded-lg font-bold hover:opacity-90 transition"
-            >
-              Sign Up
+              Get Started
             </Link>
           </div>
         </div>
@@ -178,11 +179,7 @@ export default function HomePage() {
             </ul>
           </div>
         </div>
-        <div className="flex items-center justify-center mt-12 relative z-10">
-          <span className="underline text-orange-400">
-            <Link to="/tracking">Track Your Package</Link>
-          </span>
-        </div>
+
       </section>
     </div>
   );

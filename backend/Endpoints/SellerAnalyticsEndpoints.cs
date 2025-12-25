@@ -10,7 +10,7 @@ public static class SellerAnalyticsEndpoints
     {
         var group = app.MapGroup("/api/seller/analytics").WithTags("Seller Analytics");
 
-        group.MapGet("/", async (HttpContext http, AppDbContext context) =>
+        group.MapGet("/", async (HttpContext http, AppDbContext context, int days = 7) =>
         {
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
@@ -30,9 +30,13 @@ public static class SellerAnalyticsEndpoints
             var pendingCount = orders.Count(o => o.Status != "Delivered" && o.Status != "Cancelled");
             var cancelledCount = orders.Count(o => o.Status == "Cancelled");
 
-            var sevenDaysAgo = DateTime.UtcNow.Date.AddDays(-6);
+            // --- FILTERED DATA (Based on 'days' param) ---
+            var startDate = DateTime.UtcNow.Date.AddDays(-days + 1); // e.g., if days=7, include today + previous 6 days
+            var today = DateTime.UtcNow.Date;
+
+            // 1. Revenue Chart
             var revenueChart = orders
-                .Where(o => o.CreatedAt >= sevenDaysAgo)
+                .Where(o => o.CreatedAt.Date >= startDate && o.CreatedAt.Date <= today)
                 .GroupBy(o => o.CreatedAt.Date)
                 .Select(g => new 
                 { 
@@ -41,12 +45,11 @@ public static class SellerAnalyticsEndpoints
                 })
                 .OrderBy(x => x.Date)
                 .ToList();
-var today = DateTime.UtcNow.Date;
-var sevenDaysStart = today.AddDays(-6);
+
             var fullRevenueChart = new List<object>();
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < days; i++)
             {
-                var date = sevenDaysAgo.AddDays(i).ToString("yyyy-MM-dd");
+                var date = startDate.AddDays(i).ToString("yyyy-MM-dd");
                 var existing = revenueChart.FirstOrDefault(r => r.Date == date);
                 fullRevenueChart.Add(new 
                 { 
@@ -55,60 +58,58 @@ var sevenDaysStart = today.AddDays(-6);
                 });
             }
 
+            // 2. Status Distribution (Filtered)
             var statusDistribution = orders
-                .Where(o => o.CreatedAt.Date >= sevenDaysStart && o.CreatedAt.Date <= today)
+                .Where(o => o.CreatedAt.Date >= startDate && o.CreatedAt.Date <= today)
                 .GroupBy(o => o.Status)
                 .Select(g => new { Status = g.Key, Count = g.Count() })
                 .ToList();
 
-            // 4. Delivered vs Attempted (Bar Chart - Last 7 Days)
-            // 4. Delivered vs Attempted (Bar Chart - Last 7 Days)
-// 4. Delivered vs Not Delivered (Last 7 Days)
+            // 3. Delivered vs Not Delivered (Daily Breakdown - Filtered)
+            var deliveryStatsRaw = orders
+                .Where(o => o.CreatedAt.Date >= startDate && o.CreatedAt.Date <= today)
+                .GroupBy(o => o.CreatedAt.Date)
+                .Select(g => new
+                {
+                    Date = g.Key,
+                    Delivered = g.Count(x =>
+                        x.Status.Trim().Equals("Delivered", StringComparison.OrdinalIgnoreCase)
+                    ),
+                    NotDelivered = g.Count(x =>
+                        !x.Status.Trim().Equals("Delivered", StringComparison.OrdinalIgnoreCase) &&
+                        !x.Status.Trim().Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
+                    )
+                })
+                .ToList();
 
+            var deliveryVsNotDeliveredChart = new List<object>();
 
+            for (int i = 0; i < days; i++)
+            {
+                var targetDate = startDate.AddDays(i);
+                var existing = deliveryStatsRaw.FirstOrDefault(x => x.Date == targetDate);
 
-var deliveryStatsRaw = orders
-    .Where(o => o.CreatedAt.Date >= sevenDaysStart && o.CreatedAt.Date <= today)
-    .GroupBy(o => o.CreatedAt.Date)
-    .Select(g => new
-    {
-        Date = g.Key,
-        Delivered = g.Count(x =>
-            x.Status.Trim().Equals("Delivered", StringComparison.OrdinalIgnoreCase)
-        ),
-        NotDelivered = g.Count(x =>
-            !x.Status.Trim().Equals("Delivered", StringComparison.OrdinalIgnoreCase) &&
-            !x.Status.Trim().Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
-        )
-    })
-    .ToList();
+                deliveryVsNotDeliveredChart.Add(new
+                {
+                    day = targetDate.ToString("MM/dd"), // e.g. 12/25
+                    delivered = existing?.Delivered ?? 0,
+                    notDelivered = existing?.NotDelivered ?? 0
+                });
+            }
 
-var deliveryVsNotDeliveredChart = new List<object>();
-
-for (int i = 0; i < 7; i++)
-{
-    var targetDate = sevenDaysStart.AddDays(i);
-    var existing = deliveryStatsRaw.FirstOrDefault(x => x.Date == targetDate);
-
-    deliveryVsNotDeliveredChart.Add(new
-    {
-        day = targetDate.ToString("ddd"), // Mon, Tue, Wed
-        delivered = existing?.Delivered ?? 0,
-        notDelivered = existing?.NotDelivered ?? 0
-    });
-}
-
-return Results.Ok(new
-{
-    totalOrders,
-    totalRevenue,
-    pendingOrders = pendingCount,
-    deliveredOrders = deliveredCount,
-    cancelledOrders = cancelledCount,
-    revenueChart = fullRevenueChart,
-    statusDistribution,
-    deliveryVsAttemptedChart = deliveryVsNotDeliveredChart
-});
+            return Results.Ok(new
+            {
+                totalOrders, // Global stats (all time)
+                totalRevenue,
+                pendingOrders = pendingCount,
+                deliveredOrders = deliveredCount,
+                cancelledOrders = cancelledCount,
+                
+                // Charts (Filtered)
+                revenueChart = fullRevenueChart,
+                statusDistribution,
+                deliveryVsAttemptedChart = deliveryVsNotDeliveredChart
+            });
 
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "seller" });

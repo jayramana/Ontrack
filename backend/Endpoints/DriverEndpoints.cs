@@ -958,6 +958,9 @@ public static class DriverEndpoints
                 order.Priority,
                 order.AiPriority,
                 order.AiPriorityJustification,
+                order.Weight,
+                order.Price,
+                order.DeliveryType,
                 order.IsASR,
                 order.ASRStatus,
                 originWarehouse = order.OriginWarehouse != null ? new

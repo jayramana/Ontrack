@@ -22,12 +22,15 @@ import CustomerOrders from "./pages/customer/CustomerOrders"; // [NEW]
 import OrderDetails from "./pages/customer/OrderDetails"; // [NEW]
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
+import GeofenceDetails from "./pages/customer/GeofenceDetails"; // [NEW]
+
 import Availability from "./pages/customer/Availability";
 
 // --- DRIVER PAGES ---
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
+import DriverGeofenceDetails from "./pages/driver/DriverGeofenceDetails";
 import DriverRoutePage from "./pages/driver/DriverRoutePage";
 import DriverDeliveries from "./pages/driver/DriverDeliveries";
 import DriverOrderDetails from "./pages/driver/DriverOrderDetails"; // [NEW]
@@ -119,6 +122,16 @@ function App() {
               }
             />
 
+            <Route
+              path="/customer/geofence-details/:geofenceId"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <GeofenceDetails />
+                </ProtectedRoute>
+              }
+            />
+
+
             {/* ---------------- DRIVER ROUTES ---------------- */}
 
             <Route path="/driver/report-issue" element={<ReportRoadIssue />} />
@@ -165,6 +178,11 @@ function App() {
             <Route
               path="/driver/geofencealerts"
               element={<DriverGeofenceAlerts />}
+            />
+
+            <Route
+              path="/driver/geofence-details/:geofenceId"
+              element={<DriverGeofenceDetails />}
             />
 
             <Route

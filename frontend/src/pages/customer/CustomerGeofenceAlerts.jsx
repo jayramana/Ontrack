@@ -3,7 +3,9 @@ import api from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import CustomerSidebar from "./CustomerSidebar";
 import { MdMyLocation } from "react-icons/md";
-import { Radio, Flag } from "lucide-react";
+import { Radio, Flag, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 
 export default function CustomerGeofenceAlerts() {
   const { user } = useAuth();
@@ -12,6 +14,8 @@ export default function CustomerGeofenceAlerts() {
   const [driverStatuses, setDriverStatuses] = useState({});
   const [loading, setLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     if (!user) return;
@@ -103,78 +107,58 @@ export default function CustomerGeofenceAlerts() {
               <Radio className="h-6 w-6 text-[#ea580c]" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">
-                Geofence - #{gf.geofenceId}
-              </h3>
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-bold text-white">
+                  Geofence - #{gf.geofenceId}
+                </h3>
+                {status && !status.error && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                      inside
+                        ? "bg-green-500/10 text-green-400 border-green-500/20 animate-pulse"
+                        : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] ${
+                        inside ? "bg-green-400" : "bg-yellow-400"
+                      }`}
+                    ></span>
+                    {inside ? "INSIDE" : "OUTSIDE"}
+                  </span>
+                )}
+              </div>
               <p className="text-xs font-mono text-gray-400">
                 {gf.name}
               </p>
             </div>
+
+
           </div>
 
           <div className="pl-0 md:pl-14">
             <div className="flex flex-col gap-2 text-sm text-gray-400">
-              <p>
-                <span className="font-semibold text-gray-300">Order ID:</span>{" "}
-                {order?.id}
-              </p>
-              <p>
-                <span className="font-semibold text-gray-300">Radius:</span>{" "}
-                {(gf.radiusMeters / 1000).toFixed(2)} km
-              </p>
-              <p>
-                <span className="font-semibold text-gray-300">Distance:</span>{" "}
-                {status?.distanceMeters
-                  ? `${(status.distanceMeters / 1000).toFixed(2)} km`
-                  : "Calculating..."}
-              </p>
+
+              {/* Distance Removed */}
+
             </div>
           </div>
         </div>
 
-        {/* RIGHT: Status Indicator */}
-        <div className="md:w-64 w-full flex flex-col items-center md:items-end border-t md:border-t-0 border-gray-100/10 pt-4 md:pt-0">
-          {status ? (
-            status.error ? (
-              <div className="flex flex-col items-end">
-                <span className="text-red-400 font-bold bg-red-500/10 px-3 py-1 rounded text-sm mb-1">
-                  Check Failed
-                </span>
-                <span className="text-xs text-gray-400">{status.error}</span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center md:items-end text-center md:text-right">
-                {inside ? (
-                  <>
-                    <span className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-1.5 rounded-full font-bold text-sm flex items-center gap-2 mb-2 animate-pulse">
-                      <span className="w-2 h-2 bg-green-400 rounded-full shadow-[0_0_10px_rgba(74,222,128,0.5)]"></span>
-                      INSIDE ZONE
-                    </span>
-                    <p className="text-xs text-gray-400">
-                      Driver is expected to arrive soon.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <span className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-4 py-1.5 rounded-full font-bold text-sm flex items-center gap-2 mb-2">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full shadow-[0_0_10px_rgba(250,204,21,0.5)]"></span>
-                      OUTSIDE ZONE
-                    </span>
-                    <p className="text-xs text-gray-400">
-                      Driver is en route.
-                    </p>
-                  </>
-                )}
-              </div>
-            )
-          ) : (
-            <div className="flex items-center gap-2 text-gray-400 italic text-sm">
-              <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></div>
-              Locating driver...
-            </div>
-          )}
+        
+        
+        {/* VIEW DETAILS BUTTON */}
+        <div className="md:ml-6 mt-4 md:mt-0 flex-shrink-0">
+             <button 
+                onClick={() => navigate(`/customer/geofence-details/${gf.geofenceId}`)}
+                className="flex items-center gap-2 bg-[#2a303c] hover:bg-[#374151] text-white px-4 py-2 rounded-lg transition-colors border border-gray-700 text-sm font-medium"
+             >
+                View Details
+                <ArrowRight className="w-4 h-4" />
+             </button>
         </div>
       </div>
+
     );
   };
 

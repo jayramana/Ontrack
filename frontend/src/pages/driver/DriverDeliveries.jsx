@@ -827,6 +827,7 @@ import { useNavigate } from "react-router-dom";
 import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
 import DriverASRVerification from "./DriverASRVerification";
+import { ArrowRight } from "lucide-react";
 
 export default function DriverDeliveries() {
   const navigate = useNavigate();
@@ -898,9 +899,7 @@ export default function DriverDeliveries() {
       {/* LEFT */}
       <div className="flex-1">
         <div className="flex items-center gap-3 mb-3">
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#ff8a3d]/20 text-[#ff8a3d]">
-            {order.trackingId || `ORD-${order.id}`}
-          </span>
+
 
           <span
             className={`px-3 py-1 rounded-full text-xs font-bold uppercase
@@ -961,48 +960,18 @@ export default function DriverDeliveries() {
           </>
         )}
 
-        {(order.status === "OutForDelivery" ||
-          order.status === "Out for delivery") && (
-          <>
-            {order.isASR ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedASROrderId(order.id);
-                  setShowASRModal(true);
-                }}
-                className="px-5 py-2 rounded-lg border border-[#ff8a3d]/40 text-[#ff8a3d] hover:bg-[#ff8a3d]/10"
-              >
-                Verify ASR
-              </button>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  markDelivered(order.id);
-                }}
-                className="px-5 py-2 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10"
-              >
-                Delivered
-              </button>
-            )}
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                markAttempted(order.id);
-              }}
-              className="px-5 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10"
-            >
-              Attempted
-            </button>
-          </>
-        )}
 
-        {(order.status === "Delivered" ||
-          order.status === "Cancelled") && (
-          <button className="px-5 py-2 rounded-lg border border-white/20 text-slate-400">
+        {order.status !== "Assigned" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openOrderDetails(order.id);
+            }}
+            className="flex items-center gap-2 bg-[#2a303c] hover:bg-[#374151] text-white px-4 py-2 rounded-lg transition-colors border border-gray-700 text-sm font-medium"
+          >
             View Details
+            <ArrowRight className="w-4 h-4" />
           </button>
         )}
       </div>

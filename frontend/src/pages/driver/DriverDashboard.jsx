@@ -279,6 +279,7 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [warehouse, setWarehouse] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [dateFilter, setDateFilter] = useState("1W");
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -337,11 +338,35 @@ export default function DriverDashboard() {
     fetchAnalytics();
   }, []);
 
-  // Prepare data for Recharts Pie (DriverChart) - USING WEEKLY STATS
+  const [filteredOrders, setFilteredOrders] = useState([]);
+
+  useEffect(() => {
+    const now = new Date();
+    const past = new Date();
+    
+    if (dateFilter === "1Y") past.setDate(past.getDate() - 365);
+    else if (dateFilter === "3M") past.setDate(past.getDate() - 90);
+    else if (dateFilter === "1M") past.setDate(past.getDate() - 30);
+    else past.setDate(past.getDate() - 7);
+
+    const filtered = orders.filter(o => {
+        if (!o.scheduledDate) return false;
+        const d = new Date(o.scheduledDate);
+        return d >= past && d <= now;
+    });
+    setFilteredOrders(filtered);
+
+  }, [orders, dateFilter]);
+
+  // USING FILTERED ORDERS FOR CHARTS
+  const chartDelivered = filteredOrders.filter((o) => o.status === "Delivered").length;
+  const chartPending = filteredOrders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
+  const chartExceptions = filteredOrders.filter((o) => o.status === "DeliveryAttempted" || o.status === "Cancelled").length;
+
   const pieData = [
-      { status: "Delivered", count: weeklyStats.delivered },
-      { status: "Pending", count: weeklyStats.pending },
-      { status: "Exceptions", count: weeklyStats.exceptions }
+      { status: "Delivered", count: chartDelivered },
+      { status: "Pending", count: chartPending },
+      { status: "Exceptions", count: chartExceptions }
   ];
   
   return (
@@ -439,6 +464,32 @@ export default function DriverDashboard() {
                 </div>
             </div>
 
+            {/* FILTERS & CHARTS HEADER */}
+            <div className="flex justify-between items-end mb-6">
+                <div>
+                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <BsCheckCircleFill className="text-[#ff8a3d]" size={20} /> Performance Analytics
+                     </h2>
+                </div>
+
+                {/* DATE FILTERS */}
+                <div className="bg-white/5 p-1 rounded-xl flex gap-1 border border-white/10 backdrop-blur-sm">
+                    {["1W", "1M", "3M", "1Y"].map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setDateFilter(filter)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            dateFilter === filter
+                            ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 backdrop-blur-md shadow-lg shadow-orange-500/10"
+                            : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                </div>
+            </div>
+
             {/* CHARTS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
                 
@@ -449,7 +500,8 @@ export default function DriverDashboard() {
 
                 {/* STATUS HISTORY CHART - BAR */}
                 <div className="bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937]">
-                    <DriverBarChart data={orders} />
+                    {/* Pass filtered orders to bar chart */}
+                    <DriverBarChart data={filteredOrders} /> 
                 </div>
 
             </div>

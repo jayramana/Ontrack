@@ -208,7 +208,9 @@ const CustomerDashboard = () => {
         speedKmph: 40,
       });
 
-      alert(`ETA: ${etaRes.data.eta}\nDistance: ${etaRes.data.distance_km} km`);
+      const etaVal = etaRes.data.eta;
+      const displayEta = typeof etaVal === 'object' ? etaVal.average : etaVal; 
+      alert(`ETA: ${displayEta}\nDistance: ${etaRes.data.distance_km} km`);
     } catch (error) {
       console.error("ETA error:", error);
       alert(error.message || "Failed to calculate ETA");
@@ -282,25 +284,9 @@ const CustomerDashboard = () => {
                   Welcome back, {user?.first_name}
                 </p>
               </div>
-
-              {/* DATE FILTERS */}
-              <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5">
-                {["1W", "1M", "3M", "1Y"].map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setDateFilter(filter)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                        dateFilter === filter
-                        ? "bg-[#2563eb] text-white shadow-lg"
-                        : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}
-                  >
-                    {filter}
-                  </button>
-                ))}
-              </div>
-
             </div>
+
+
           </header>
           <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
             {/* 1. METRICS ROW */}
@@ -376,6 +362,32 @@ const CustomerDashboard = () => {
             </div>
 
             {/* 2. ANALYTICS SECTION */}
+            <div className="flex justify-between items-end">
+                 <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <GoPackage className="text-[#2563eb]" size={20} /> Analytics Overview
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">Track your order history and status</p>
+                </div>
+                
+                 {/* DATE FILTERS */}
+                <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5">
+                    {["1W", "1M", "3M", "1Y"].map((filter) => (
+                    <button
+                        key={filter}
+                        onClick={() => setDateFilter(filter)}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                            dateFilter === filter
+                            ? "bg-[#2563eb] text-white shadow-lg"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                        }`}
+                    >
+                        {filter}
+                    </button>
+                    ))}
+                </div>
+            </div>
+
             {(() => {
                 // Filter Logic
                 const now = new Date();

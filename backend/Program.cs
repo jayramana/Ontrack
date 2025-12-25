@@ -3,69 +3,42 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Backend.Data;
-using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
-
 using Backend.Domain.Entity;
 using Backend.Services;
 using Backend.Endpoints;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
-// Add services to the container
+
+// -------------------- SERVICES --------------------
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
-// Add ASR Service
-builder.Services.AddScoped<ASRService>();
-
-// Update Gemini Service (ensure API key is configured)
-// builder.Services.AddScoped<GeminiService>();
-
-
-
-
-// Configure Entity Framework with PostgreSQL
+// Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configure CORS to allow frontend
+// CORS (FIXED)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5174","http://ontrack-frontend.s3-website.ap-south-1.amazonaws.com")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy
+            .WithOrigins(
+                "https://d5p1wvesrltks.cloudfront.net",
+                "http://localhost:5173"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
-
-// Configure Python service URL
-builder.Services.Configure<Dictionary<string, string>>(options =>
-{
-    options["PythonVerificationService:Url"] = "http://localhost:5001";
-});
-
-// Configure JWT Authentication
+System.Console.WriteLine("Test-1");
+// JWT Auth
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] ?? "YourSuperSecretKeyForJwtTokenGeneration12345";
-
-// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//     .AddJwtBearer(options =>
-//     {
-//         options.TokenValidationParameters = new TokenValidationParameters
-//         {
-//             ValidateIssuer = true,
-//             ValidateAudience = true,
-//             ValidateLifetime = true,
-//             ValidateIssuerSigningKey = true,
-//             ValidIssuer = jwtSettings["Issuer"] ?? "OntrackAPI",
-//             ValidAudience = jwtSettings["Audience"] ?? "OntrackClient",
-//             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
-//         };
-//     });
+var secretKey = jwtSettings["SecretKey"] ?? "SuperSecretKey123!";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -78,102 +51,82 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-
-            //  CRITICAL FIX
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(secretKey)
+            ),
             RoleClaimType = ClaimTypes.Role
         };
-        //  CRITICAL: Add this for SignalR authentication
+
+        // Needed for SignalR auth
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    path.StartsWithSegments("/hubs"))
                 {
                     context.Token = accessToken;
                 }
-                
+
                 return Task.CompletedTask;
             }
         };
     });
 
+// Services
+builder.Services.AddScoped<ASRService>();
 builder.Services.AddScoped<VerificationService>();
-
-builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IEtaservice, LocationService>();
-// builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<WarehouseAssignmentService>();
-builder.Services.AddScoped<DriverRouteOptimizationService>();
-
 builder.Services.AddScoped<IEmailService, EmailService>();
-
-builder.Services.AddScoped<GeminiService>();          // registered twice (duplicate)
-builder.Services.AddScoped<VerificationService>();    // same in both
-builder.Services.AddHttpClient<GeocodingService>();
-builder.Services.AddHttpClient<OpenRouteServiceClient>();
-
-builder.Services.AddAuthorization();
-builder.Services.AddSignalR();
-builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<GeminiOcrService>();
-
+builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<GeofenceService>();
-builder.Services.AddHostedService<SimulationService>(); // 🚀 Simulation Service
+builder.Services.AddScoped<GeminiOcrService>();
+builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.AddSignalR();
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
+// -------------------- MIDDLEWARE ORDER (IMPORTANT) --------------------
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.MapOpenApi();
 }
 
-// Map ASR endpoints
-app.MapASREndpoints();
-
-app.MapGeocodingEndpoints();
-
-// Simple Health Check for AWS Elastic Beanstalk
-app.MapGet("/", () => "Ontrack Backend is Running! 🚀");
-
-app.MapVerificationEndpoints();
-
-// Use CORS
-app.UseCors("AllowFrontend");
+app.UseCors("AllowFrontend");     // MUST be before auth
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-app.MapCustomerEndpoints();
+// -------------------- ENDPOINTS --------------------
 
+app.MapControllers();
+
+app.MapASREndpoints();
 app.MapAuthEndpoints();
-app.MapLocationEndpoints();
-app.MapAdminEndpoints();
+app.MapCustomerEndpoints();
 app.MapDriverEndpoints();
 app.MapOrdersEndpoints();
 app.MapWarehouseEndpoints();
 app.MapGeofenceEndpoints();
-app.MapRoadIssueEndpoints();
 app.MapRouteEndpoints();
-app.MapDiagnosticEndpoints();
-
 app.MapTrackingEndpoints();
 app.MapPublicTrackingEndpoints();
 app.MapSellerAnalyticsEndpoints();
-
+app.MapAdminEndpoints();
 
 app.MapHub<GeofenceHub>("/geofencehub");
 app.MapHub<EtaHub>("/etahub");
 app.MapHub<Backend.Hubs.LogisticsHub>("/hubs/logistics");
 
+app.MapGet("/", () => "Ontrack Backend Running ");
 
 app.Run();
-

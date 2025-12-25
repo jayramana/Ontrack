@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ShieldCheck } from "lucide-react";
+import CustomerASRUpload from "./CustomerASRUpload";
 
 const OrderDetails = () => {
   const { id } = useParams();
@@ -29,6 +30,8 @@ const OrderDetails = () => {
     newDate: "",
     reason: "",
   });
+
+  const [showASRModal, setShowASRModal] = useState(false);
 
   const [eta, setEta] = useState(null);
 
@@ -78,7 +81,10 @@ const OrderDetails = () => {
   const fetchOrderDetails = async () => {
     try {
       const res = await api.get(`/customer/track/${id}`);
-      setOrder(res.data.order);
+      setOrder({
+        ...res.data.order,
+        scheduledDate: res.data.scheduledDate || res.data.order.scheduledDate
+      });
       setDriverLocation(res.data.driverLocation);
       calculateEta(res.data.order, res.data.driverLocation);
     } finally {
@@ -144,6 +150,8 @@ const OrderDetails = () => {
     { title: "Out for Delivery", sub: "Driver en route", rank: 60 },
     { title: "Delivered", sub: "Package delivered", rank: 70 },
   ];
+  
+  const showASRButton = order.isASR && ["NotStarted", "Pending"].includes(order.asrStatus);
 
   return (
     <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
@@ -165,19 +173,6 @@ const OrderDetails = () => {
               {/* {order.trackingId && <span className="ml-3 text-lg text-slate-400 font-medium">#{order.trackingId}</span>} */}
             </h1>
           </div>
-
-  <div className="flex flex-col items-end">
-
-
-  <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/10 min-w-[120px]">
-    <svg className="w-4 h-4 text-[#ff8a3d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <span className="text-sm text-slate-300 font-medium">ETA:</span>
-    <span className="text-sm font-bold text-[#ff8a3d]">{eta}</span>
-  </div>
-</div>
-
 
         </header>
 
@@ -239,8 +234,101 @@ const OrderDetails = () => {
                     {order.isASR ? 'Yes' : 'No'}
                   </p>
                </div>
+
+               {eta && (
+                 <div className="col-span-2 mt-2">
+                    <h4 className="font-bold text-slate-400 text-lg tracking-wider mb-2">Estimated Arrival</h4>
+                    <div className="bg-white/5 rounded-xl border border-white/10 p-4 grid grid-cols-3 gap-4 text-center">
+                        <div>
+                             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Fastest</p>
+                             <p className="text-green-400 font-bold text-lg">{eta.earliest || eta}</p>
+                        </div>
+                        <div className="border-x border-white/10">
+                             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Expected</p>
+                             <p className="text-[#ff8a3d] font-bold text-lg">{eta.average || eta}</p>
+                        </div>
+                        <div>
+                             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Latest</p>
+                             <p className="text-red-400 font-bold text-lg">{eta.latest || eta}</p>
+                        </div>
+                    </div>
+                 </div>
+               )}
             </div>
           </div>
+
+          {/* ASR VERIFICATION SECTION */}
+          {order.isASR && (
+            <div className={`mx-8 mb-8 rounded-2xl border backdrop-blur-md overflow-hidden transition-all ${
+                order.asrStatus === 'Success' 
+                ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)]' 
+                : 'bg-orange-500/5 border-orange-500/20 shadow-[0_0_30px_rgba(255,138,61,0.1)]'
+            }`}>
+              <div className="p-6 md:p-8">
+                
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl flex items-center justify-center shrink-0 ${
+                            order.asrStatus === 'Success' ? 'bg-green-500/10 text-green-400' : 'bg-[#ff8a3d]/10 text-[#ff8a3d]'
+                        }`}>
+                            <ShieldCheck size={28} strokeWidth={1.5} />
+                        </div>
+                        <div>
+                             <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                ASR Verification Required
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide border ${
+                                    order.asrStatus === 'Success' 
+                                    ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                                    : (order.asrStatus === 'Failed' 
+                                        ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20')
+                                }`}>
+                                    {order.asrStatus || 'Pending'}
+                                </span>
+                            </h2>
+                        </div>
+                    </div>
+
+                    {showASRButton && (
+                        <button
+                          onClick={() => setShowASRModal(true)}
+                          className="hidden md:flex whitespace-nowrap px-6 py-2.5 rounded-xl bg-[#ff8a3d] text-black font-bold text-sm hover:bg-[#ff9f63] hover:shadow-[0_0_20px_rgba(255,138,61,0.3)] transition-all items-center gap-2 group"
+                        >
+                          <ShieldCheck size={16} className="group-hover:scale-110 transition-transform"/>
+                          Upload ID Proof
+                        </button>
+                   )}
+                </div>
+
+                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    This order contains age-restricted items. An adult signature and valid government-issued ID proof are required upon delivery to ensure compliance with local regulations.
+                </p>
+
+                 {/* Mobile Button */}
+                 {showASRButton && (
+                    <button
+                      onClick={() => setShowASRModal(true)}
+                      className="md:hidden w-full mb-6 py-3 rounded-xl bg-[#ff8a3d] text-black font-bold text-sm hover:bg-[#ff9f63] shadow-[0_0_10px_rgba(255,138,61,0.2)] flex justify-center items-center gap-2"
+                    >
+                      <ShieldCheck size={16} />
+                      Upload ID Proof
+                    </button>
+                   )}
+                
+                {/* Status Messages */}
+                {order.asrStatus === 'Success' && (
+                    <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm font-bold">
+                        <Check size={16} /> Verification Successful. You're all set!
+                    </div>
+                )}
+                 {order.asrStatus === 'Failed' && (
+                    <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm font-bold">
+                        <span className="text-lg">!</span> Verification Failed. Please try uploading clearer documents.
+                    </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-white/10" />
 
@@ -259,46 +347,22 @@ const OrderDetails = () => {
               <p className="text-slate-400">{order.receiverName}</p>
               <p className="text-slate-500 text-sm">{order.receiverAddress}</p>
             </div>
-<div className="flex items-center gap-3 font-semibold">
-  <span>Status</span>
-
-  <span
-    className="
-      inline-flex items-center
-      px-3 py-1
-      rounded-full
-      text-xs font-bold uppercase tracking-wide
-      bg-[#ff8a3d]/20
-      text-[#ff8a3d]
-      whitespace-nowrap
-    "
-  >
-    {order.status === "Pending" && order.rescheduledAt ? "Rescheduled" : order.status}
-  </span>
-</div>
-
-
-
-            <div>
+            {/* <div>
               <h4 className="font-semibold">
                 {order.status === "Delivered"
                   ? "Delivered On"
-                  : "Estimated Delivery"}
+                  : "Scheduled Delivery"}
               </h4>
               <p className="text-slate-400">
                 {order.status === "Delivered"
                   ? new Date(order.deliveredAt || order.createdAt).toLocaleDateString()
-                  : order.deliveryDate
-                  ? new Date(order.deliveryDate).toLocaleDateString()
+                  : order.scheduledDate
+                  ? new Date(order.scheduledDate).toLocaleDateString()
                   : "Pending"}
               </p>
-            </div>
+            </div> */}
 
-            {eta && (
-              <div className="inline-flex px-4 py-1 rounded-full bg-white/10 text-[#ff8a3d] text-sm font-bold">
-                ETA: {eta}
-              </div>
-            )}
+
           </div>
 
           <div className="border-t border-white/10" />
@@ -348,22 +412,22 @@ const OrderDetails = () => {
             </div>
           </div>
 
-          <div className="border-t border-white/10" />
 
-          {/* ACTIONS */}
-          <div className="p-8 flex gap-4">
-            {order.status !== "Delivered" && (
-              <button
-                onClick={() => setShowRescheduleDialog(true)}
-                className="px-6 py-3 rounded-xl bg-[#ff8a3d] text-black font-bold"
-              >
-                Reschedule Delivery
-              </button>
-            )}
-            <button className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20">
-              Report Issue
+        </div>
+        
+        {/* ACTIONS */}
+        <div className="max-w-4xl mt-6 flex gap-4">
+          {order.status !== "Delivered" && (
+            <button
+              onClick={() => setShowRescheduleDialog(true)}
+              className="px-6 py-3 rounded-xl bg-[#ff8a3d] text-black font-bold"
+            >
+              Reschedule Delivery
             </button>
-          </div>
+          )}
+          <button className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300">
+            Report Issue
+          </button>
         </div>
       </div>
 
@@ -408,6 +472,16 @@ const OrderDetails = () => {
             </div>
           </form>
         </div>
+      )}
+    {/* ASR MODAL */}
+      {showASRModal && (
+        <CustomerASRUpload
+          orderId={order.id}
+          onClose={() => {
+            setShowASRModal(false);
+            fetchOrderDetails();
+          }}
+        />
       )}
     </div>
   );
