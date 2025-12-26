@@ -5,12 +5,14 @@ public static class GeocodingEndpoints
 {
     public static void MapGeocodingEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/geocode/reverse", async (
+        var group = app.MapGroup("/api/geocode").WithTags("Geocode");
+
+        group.MapGet("/reverse", async (
             double lat,
-            double lon
+            double lon,
+            HttpClient client
         ) =>
         {
-            var client = new HttpClient();
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OnTrackLogistics/1.0 (contact@ontrack.com)");
 
             var url =
@@ -23,6 +25,29 @@ public static class GeocodingEndpoints
             var response = await client.GetAsync(url);
             if (!response.IsSuccessStatusCode)
                 return Results.Problem("Failed to reverse geocode");
+
+            var json = await response.Content.ReadAsStringAsync();
+            return Results.Content(json, "application/json");
+        });
+
+        group.MapGet("/search", async (
+            string q,
+            HttpClient client
+        ) =>
+        {
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("OnTrackLogistics/1.0 (contact@ontrack.com)");
+
+            var url =
+                $"https://nominatim.openstreetmap.org/search" +
+                $"?format=json" +
+                $"&q={Uri.EscapeDataString(q)}" +
+                $"&addressdetails=1" +
+                $"&limit=10" +
+                $"&countrycodes=in"; // Prioritize results in India
+
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                return Results.Problem("Failed to search geocode");
 
             var json = await response.Content.ReadAsStringAsync();
             return Results.Content(json, "application/json");

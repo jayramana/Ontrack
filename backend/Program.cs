@@ -27,8 +27,8 @@ builder.Services.AddCors(options =>
     {
         policy
             .WithOrigins(
-                "https://d5p1wvesrltks.cloudfront.net",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "https://d5p1wvesrltks.cloudfront.net"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -84,10 +84,14 @@ builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<WarehouseAssignmentService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<GeminiService>();
+builder.Services.AddScoped<DriverRouteOptimizationService>();
 builder.Services.AddScoped<GeofenceService>();
 builder.Services.AddScoped<GeminiOcrService>();
+builder.Services.AddHttpClient<GeocodingService>();
+builder.Services.AddHttpClient<OpenRouteServiceClient>();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
+builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<User>, Microsoft.AspNetCore.Identity.PasswordHasher<User>>();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 
@@ -112,6 +116,7 @@ app.MapControllers();
 
 app.MapASREndpoints();
 app.MapAuthEndpoints();
+app.MapGeocodingEndpoints();
 app.MapCustomerEndpoints();
 app.MapDriverEndpoints();
 app.MapOrdersEndpoints();
@@ -122,6 +127,10 @@ app.MapTrackingEndpoints();
 app.MapPublicTrackingEndpoints();
 app.MapSellerAnalyticsEndpoints();
 app.MapAdminEndpoints();
+app.MapRoadIssueEndpoints();
+app.MapLocationEndpoints();
+app.MapVerificationEndpoints();
+app.MapDiagnosticEndpoints();
 
 app.MapHub<GeofenceHub>("/geofencehub");
 app.MapHub<EtaHub>("/etahub");

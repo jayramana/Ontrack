@@ -124,7 +124,7 @@ export default function AdminDashboard() {
 
     const init = async () => {
       connection = new signalR.HubConnectionBuilder()
-        .withUrl(`${import.meta.env.VITE_API_URL}/hubs/logistics`)
+        .withUrl(`http://localhost:5066/hubs/logistics`)
         .withAutomaticReconnect()
         .build();
 
