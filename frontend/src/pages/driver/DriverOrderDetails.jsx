@@ -4,6 +4,7 @@ import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
 import DriverASRVerification from "./DriverASRVerification";
 import { Copy, Check, ShieldCheck } from "lucide-react";
+import { formatStatus } from "@/lib/utils";
 
 const DriverOrderDetails = () => {
   const { id } = useParams();
@@ -11,6 +12,7 @@ const DriverOrderDetails = () => {
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [btnLoading, setBtnLoading] = useState(false); // For accept button
   const [showASRModal, setShowASRModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("Delivered");
@@ -59,6 +61,34 @@ const DriverOrderDetails = () => {
     if (!reason) return;
     await api.post(`/driver/mark-attempted/${id}`, { reason });
     fetchOrder();
+  };
+
+  const handleAcceptAssignment = async () => {
+     try {
+        setBtnLoading(true);
+        await api.post(`/driver/accept/${id}`);
+        fetchOrder(); 
+     } catch(err) {
+        console.error(err);
+        alert("Failed to accept order");
+     } finally {
+        setBtnLoading(false);
+     }
+  };
+
+  const handlePickup = async () => {
+     if(!window.confirm(`Confirm you have picked up the order from ${order.currentWarehouse?.name || 'the warehouse'}?`)) return;
+
+     try {
+        setBtnLoading(true);
+        await api.post(`/driver/pickup/${id}`);
+        fetchOrder();
+     } catch(err) {
+        console.error(err);
+        alert("Failed to update status");
+     } finally {
+        setBtnLoading(false);
+     }
   };
 
   if (loading) {
@@ -186,12 +216,12 @@ const DriverOrderDetails = () => {
                 <h4 className="font-bold text-slate-400 text-lg tracking-wider">Type</h4>
                 <div className="mt-1">
                   {order.deliveryType === 'Express' ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold uppercase tracking-wide shadow-lg shadow-amber-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold tracking-wide shadow-lg shadow-amber-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
                       Express
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold uppercase tracking-wide border border-slate-700">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold tracking-wide border border-slate-700">
                       Normal
                     </span>
                   )}
@@ -202,7 +232,7 @@ const DriverOrderDetails = () => {
                 <h4 className="font-bold text-slate-400 text-lg tracking-wider">Priority</h4>
                  <div className="mt-1">
                     {order.aiPriority ? (
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getPriorityBadgeColor(order.aiPriority)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${getPriorityBadgeColor(order.aiPriority)}`}>
                             AI Priority: {order.aiPriority}/5
                         </span>
                     ) : <span className="text-slate-500 text-sm">Normal</span>}
@@ -255,14 +285,14 @@ const DriverOrderDetails = () => {
                         <div>
                              <h2 className="text-xl font-bold text-white flex items-center gap-3">
                                 ASR Verification Required
-                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide border ${
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold tracking-wide border ${
                                     order.asrStatus === 'Success' 
                                     ? 'bg-green-500/10 text-green-400 border-green-500/20' 
                                     : (order.asrStatus === 'Failed' 
                                         ? 'bg-red-500/10 text-red-400 border-red-500/20' 
                                         : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20')
                                 }`}>
-                                    {order.asrStatus || 'Pending'}
+                                    {formatStatus(order.asrStatus || 'Pending')}
                                 </span>
                             </h2>
                         </div>
@@ -325,35 +355,83 @@ const DriverOrderDetails = () => {
           {/* TIMELINE */}
           <div className="p-8">
             <h3 className="text-sm uppercase tracking-widest text-slate-400 mb-6">
-              Tracking Timeline
+              Tracking Status
             </h3>
 
-            <div className="relative space-y-10">
-              {steps.map((s, i) => {
-                const active = currentRank >= s.rank;
-                const current = active && (steps[i + 1]?.rank ?? 999) > currentRank;
+            <div className="relative pl-4">
+               {/* Step 1: Assigned */}
+               <TimelineStep 
+                  title="Order Assigned"
+                  sub="You have been assigned this order"
+                  active={currentRank >= 10}
+                  completed={currentRank >= 60}
+                  isFirst={true}
+                  color="orange"
+                  isCurrent={currentRank >= 10 && currentRank < 60}
+               >
+                   {/* ACTION BUTTON: Accept Assignment */}
+                   {order.status === 'Assigned' && (
+                        <div className="mt-4">
+                            <button 
+                                onClick={handleAcceptAssignment}
+                                disabled={btnLoading}
+                                className="px-4 py-2 rounded-lg bg-[#ff8a3d] text-black text-sm font-bold hover:bg-[#ff9a55] transition shadow-lg shadow-orange-500/20 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {btnLoading ? "Accepting..." : "Accept Order"}
+                            </button>
+                            <p className="text-xs text-slate-500 mt-2">
+                                Accept this assignment to proceed.
+                            </p>
+                        </div>
+                   )}
+               </TimelineStep>
 
-                return (
-                  <div key={i} className="flex gap-6 relative">
-                    {i !== steps.length - 1 && (
-                      <div className="absolute left-[7px] top-4 bottom-[-40px] w-[2px] bg-white/30" />
-                    )}
+               {/* Step 2: At Destination Warehouse */}
+               <TimelineStep 
+                  title="At Destination Warehouse"
+                  sub="Order needs to be picked up"
+                  active={currentRank >= 50}
+                  completed={currentRank >= 60}
+                  color="orange"
+                  isCurrent={currentRank >= 50 && currentRank < 60}
+               >
+                   {/* ACTION BUTTON: Picked from Warehouse */}
+                   {order.status === 'AtDestinationWarehouse' && (
+                        <div className="mt-4">
+                            <button 
+                                onClick={handlePickup}
+                                disabled={btnLoading}
+                                className="px-4 py-2 rounded-lg bg-[#ff8a3d] text-black text-sm font-bold hover:bg-[#ff9a55] transition shadow-lg shadow-orange-500/20 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {btnLoading ? "Updating..." : "Picked from Warehouse?"}
+                            </button>
+                            <p className="text-xs text-slate-500 mt-2">
+                                Click confirming you have collected the package.
+                            </p>
+                        </div>
+                   )}
+               </TimelineStep>
 
-                    <div className={`relative z-10 w-4 h-4 mt-1.5 rounded-full ${current ? "bg-[#ff8a3d]" : active ? "bg-white/70" : "bg-white/20"}`}>
-                      {current && (
-                        <span className="absolute -inset-2 rounded-full border border-[#ff8a3d] animate-ping" />
-                      )}
-                    </div>
+               {/* Step 2: Out For Delivery */}
+               <TimelineStep 
+                  title="Out For Delivery"
+                  sub="You are on the way to the customer"
+                  active={currentRank >= 60}
+                  completed={currentRank >= 70} // Delivered is 70
+                  color="orange"
+                  isCurrent={currentRank >= 60 && currentRank < 65}
+               />
 
-                    <div>
-                      <h4 className={`font-bold ${active ? "" : "text-slate-500"}`}>
-                        {s.title}
-                      </h4>
-                      <p className="text-sm text-slate-400">{s.sub}</p>
-                    </div>
-                  </div>
-                );
-              })}
+               {/* Step 3: Delivered / Attempted */}
+               <TimelineStep 
+                  title={order.status === "DeliveryAttempted" ? "Delivery Attempted" : "Delivered"}
+                  sub={order.status === "DeliveryAttempted" ? "Delivery was attempted but failed" : "Package delivered successfully"}
+                  active={currentRank >= 65}
+                  completed={currentRank >= 70}
+                  isLast={true}
+                  color={order.status === "DeliveryAttempted" ? "red" : "green"}
+                  isCurrent={currentRank >= 65}
+               />
             </div>
           </div>
 
@@ -447,3 +525,84 @@ const DriverOrderDetails = () => {
 };
 
 export default DriverOrderDetails;
+
+/* ---------------- HELPERS ---------------- */
+
+function TimelineStep({ title, sub, active, completed, isFirst, isLast, color="green", hasExpand, expanded, onToggle, date, isCurrent, children }) {
+    
+    // Status Colors
+    const getColors = () => {
+        if (!active) return "bg-[#0b0f14] border-slate-600";
+        if (color === "red") return "bg-red-500 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+        if (color === "orange") return "bg-[#ff8a3d] border-[#ff8a3d] shadow-[0_0_10px_rgba(255,138,61,0.5)]";
+        return "bg-green-500 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+    };
+
+    const getLineColor = () => {
+         if (!completed) return "bg-white/10";
+         if (color === "red") return "bg-red-500";
+         if (color === "orange") return "bg-[#ff8a3d]"; 
+         return "bg-green-500";
+    }
+
+    const getTextColor = () => {
+        if (!active) return "text-slate-500";
+        if (color === "red") return "text-red-400";
+        if (color === "orange") return "text-[#ff8a3d]";
+        return "text-white"; 
+    }
+
+    return (
+        <div className="relative flex gap-6 z-10 min-h-[80px]"> 
+            {/* Status Dot Column */}
+            <div className="flex flex-col items-center">
+                <div className="relative flex items-center justify-center">
+                    {/* Pulsing Effect for Current Step */}
+                    {isCurrent && active && (
+                        <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 ${
+                             color === "red" ? "bg-red-500" : (color === "orange" ? "bg-[#ff8a3d]" : "bg-green-500")
+                        }`} />
+                    )}
+                    
+                    <div
+                        className={`w-4 h-4 rounded-full border-2 z-20 flex-shrink-0 transition-all duration-500 ${getColors()}`}
+                        onClick={hasExpand ? onToggle : undefined}
+                    />
+                </div>
+                
+                {/* Connecting Line (Colored Segment) below */}
+                    {!isLast && (
+                    <div className={`w-[2px] flex-1 -my-1 transition-colors duration-500 ${getLineColor()}`} />
+                    )}
+            </div>
+
+            {/* Content Column */}
+            <div className={`-mt-1.5 flex-1 ${isLast ? '' : 'pb-10'}`}>
+                <div 
+                    className={`flex items-center gap-2 ${hasExpand ? "cursor-pointer group" : ""}`}
+                    onClick={hasExpand ? onToggle : undefined}
+                >
+                    <h4 className={`font-bold text-lg transition-colors duration-300 ${getTextColor()} ${hasExpand ? "group-hover:text-white" : ""}`}>
+                        {title}
+                    </h4>
+                    {hasExpand && (
+                        <span className={`text-slate-500 transition-transform duration-300 ${expanded ? "rotate-90" : ""}`}>
+                            ▶
+                        </span>
+                    )}
+                </div>
+                 {date && (
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {new Date(date).toLocaleString()}
+                    </p>
+                )}
+                <p className={`text-sm mt-1 ${active ? "text-slate-300" : "text-slate-600"}`}>
+                    {sub}
+                </p>
+
+                {/* Render Nested Children here so layout stretches and line continues */}
+                {children && <div className="mt-4">{children}</div>}
+            </div>
+        </div>
+    );
+};

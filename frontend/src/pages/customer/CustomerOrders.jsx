@@ -78,7 +78,7 @@
 //           styles[status] || "bg-slate-500/20 text-slate-300"
 //         }`}
 //       >
-//         {status}
+//         {formatStatus(status)}
 //       </span>
 //     );
 //   };
@@ -100,7 +100,7 @@
 //           colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
 //         }`}
 //       >
-//         🔒 ASR: {order.asrStatus || "Required"}
+//         🔒 ASR: {formatStatus(order.asrStatus) || "Required"}
 //       </span>
 //     );
 //   };
@@ -248,6 +248,7 @@ import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "../../context/AuthContext";
+import { formatStatus } from "@/lib/utils";
 
 
 export default function CustomerOrders() {
@@ -313,7 +314,7 @@ export default function CustomerOrders() {
           styles[status] || "bg-slate-500/20 text-slate-300"
         }`}
       >
-        {status}
+        {formatStatus(status)}
       </span>
     );
   };
@@ -335,7 +336,7 @@ export default function CustomerOrders() {
           colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
         }`}
       >
-        🔒 ASR: {order.asrStatus || "Required"}
+        🔒 ASR: {formatStatus(order.asrStatus) || "Required"}
       </span>
     );
   };
@@ -347,7 +348,7 @@ export default function CustomerOrders() {
     if (isExpress) {
       return (
         <span className="px-3 py-1 rounded-full text-xs font-black tracking-wide bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-orange-400 border border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)] flex items-center gap-1">
-          EXPRESS
+          Express
         </span>
       );
     }
@@ -355,7 +356,7 @@ export default function CustomerOrders() {
     // Normal / Standard
     return (
       <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-slate-500/10 text-slate-400 border border-slate-500/20">
-        NORMAL
+        Normal
       </span>
     );
   };

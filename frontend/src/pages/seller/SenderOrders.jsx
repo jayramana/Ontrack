@@ -227,6 +227,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import SellerSidebar from "./SellerSidebar";
+import { formatStatus } from "@/lib/utils";
 
 export default function SenderOrders() {
   const [orders, setOrders] = useState([]);
@@ -278,7 +279,7 @@ export default function SenderOrders() {
           map[status] || "bg-white/10 text-slate-300"
         }`}
       >
-        {status}
+        {formatStatus(status)}
       </span>
     );
   };

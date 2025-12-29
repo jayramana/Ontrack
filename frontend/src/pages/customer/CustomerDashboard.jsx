@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
+import { formatStatus } from "@/lib/utils";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -21,7 +22,7 @@ import { Doughnut } from "react-chartjs-2";
 import CustomerSidebar from "./CustomerSidebar";
 import { OrdersBarChart } from "../../components/charts/OrdersBarChart";
 import { OrdersPieChart } from "../../components/charts/OrdersPieChart";
-import { OrdersAreaChart } from "../../components/charts/OrdersAreaChart";
+import { OrdersSpendingChart } from "../../components/charts/OrdersSpendingChart";
 
 ChartJS.register(
   ArcElement,
@@ -415,9 +416,9 @@ const CustomerDashboard = () => {
                             <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
                         </div>
                         </div>
-                        {/* CHART 3: AREA HISTORY */}
+                        {/* CHART 3: SPENDING HISTORY */}
                         <div className="w-full">
-                            <OrdersAreaChart data={filteredOrders} filterType={dateFilter} />
+                            <OrdersSpendingChart data={filteredOrders} filterType={dateFilter} />
                         </div>
                     </>
                 );
@@ -455,7 +456,7 @@ const CustomerDashboard = () => {
                       Current Status
                     </p>
                     <p className="text-2xl font-black text-[#0f172a]">
-                      {trackingData.order.status}
+                      {formatStatus(trackingData.order.status)}
                     </p>
                   </div>
                 </div>
