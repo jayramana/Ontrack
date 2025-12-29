@@ -20,7 +20,8 @@ public static class RoadIssueEndpoints
             ReportIssueDto dto,
             AppDbContext context,
             IHubContext<LogisticsHub> hubContext,
-            DriverRouteOptimizationService routeService
+            DriverRouteOptimizationService routeService,
+            IEtaservice etaService
         ) =>
         {
             try
@@ -63,7 +64,7 @@ public static class RoadIssueEndpoints
                     });
 
                 // Identify affected drivers within 10 km
-                var affected = await GetDriversNearIssue(context, dto.Latitude, dto.Longitude, 10.0);
+                var affected = await GetDriversNearIssue(context, dto.Latitude, dto.Longitude, 10.0, etaService);
 
                 foreach (var affectedDriverId in affected)
                 {
@@ -171,7 +172,8 @@ public static class RoadIssueEndpoints
             AppDbContext context,
             double lat,
             double lng,
-            double radiusKm)
+            double radiusKm,
+            IEtaservice etaService)
         {
             var activeDrivers = await context.Orders
                 .Where(o => o.DriverId.HasValue &&
@@ -191,7 +193,7 @@ public static class RoadIssueEndpoints
                     !driver.CurrentLongitude.HasValue)
                     continue;
 
-                double dist = Haversine(
+                double dist = etaService.GetDistance(
                     lat, lng,
                     driver.CurrentLatitude.Value,
                     driver.CurrentLongitude.Value
@@ -204,23 +206,6 @@ public static class RoadIssueEndpoints
             return nearby;
         }
 
-        static double Haversine(double lat1, double lon1, double lat2, double lon2)
-        {
-            const double R = 6371;
-            var dLat = Degrees((lat2 - lat1));
-            var dLon = Degrees((lon2 - lon1));
 
-            var a =
-                Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(Deg(lat1)) * Math.Cos(Deg(lat2)) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-            return R * c;
-
-            static double Degrees(double deg) => deg * Math.PI / 180.0;
-            static double Deg(double deg) => deg * Math.PI / 180.0;
-        }
     }
 }

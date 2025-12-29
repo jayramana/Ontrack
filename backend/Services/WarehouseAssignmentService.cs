@@ -8,11 +8,13 @@ namespace Backend.Services
     {
         private readonly AppDbContext _context;
         private readonly GeocodingService _geocodingService;
+        private readonly IEtaservice _etaService;
 
-        public WarehouseAssignmentService(AppDbContext context, GeocodingService geocodingService)
+        public WarehouseAssignmentService(AppDbContext context, GeocodingService geocodingService, IEtaservice etaService)
         {
             _context = context;
             _geocodingService = geocodingService;
+            _etaService = etaService;
         }
 
         /// <summary>
@@ -43,7 +45,7 @@ namespace Backend.Services
                             .Select(w => new
                             {
                                 Warehouse = w,
-                                Distance = CalculateDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
+                                Distance = _etaService.GetDistance(lat, lng, w.Latitude!.Value, w.Longitude!.Value)
                             })
                             .OrderBy(x => x.Distance)
                             .FirstOrDefault();
@@ -207,19 +209,6 @@ public async Task GeocodeWarehousesAsync()
 }
 
 
-        // Haversine formula
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            const double R = 6371; // km
-            var dLat = DegreesToRadians(lat2 - lat1);
-            var dLon = DegreesToRadians(lon2 - lon1);
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
-                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return R * c;
-        }
 
-        private double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
     }
 }

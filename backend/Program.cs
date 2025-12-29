@@ -7,6 +7,8 @@ using Backend.Domain.Entity;
 using Backend.Services;
 using Backend.Endpoints;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
+using AWSSDK;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -86,10 +88,24 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<GeofenceService>();
 builder.Services.AddScoped<GeminiOcrService>();
+builder.Services.AddScoped<DriverRouteOptimizationService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<SimulationService>();
+// builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
+var awsOptions = builder.Configuration.GetSection("AWS");
+var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsOptions["AccessKey"], awsOptions["SecretKey"]);
+var awsConfig = new Amazon.S3.AmazonS3Config { RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsOptions["Region"]) };
+builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, awsConfig));
+
+
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
+builder.Services.AddHttpClient<OpenRouteServiceClient>();
+builder.Services.AddHttpClient<GeocodingService>();
+
 
 var app = builder.Build();
 
@@ -122,6 +138,10 @@ app.MapTrackingEndpoints();
 app.MapPublicTrackingEndpoints();
 app.MapSellerAnalyticsEndpoints();
 app.MapAdminEndpoints();
+app.MapAWSEndpoints();
+app.MapRoadIssueEndpoints();
+app.MapLocationEndpoints();
+app.MapGeocodingEndpoints();
 
 app.MapHub<GeofenceHub>("/geofencehub");
 app.MapHub<EtaHub>("/etahub");

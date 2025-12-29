@@ -539,6 +539,7 @@ using WebPush;
 using Backend.Domain.Entity;
 using Backend.Data;
 using Microsoft.EntityFrameworkCore;
+using Backend.Services;
 
 public class GeofenceService
 {
@@ -547,6 +548,7 @@ public class GeofenceService
     private readonly IMemoryCache _cache;
     private readonly WebPushClient _webPushClient;
     private readonly VapidDetails _vapidDetails;
+    private readonly IEtaservice _etaService;
 
     private readonly TimeSpan _repeatCooldown = TimeSpan.FromSeconds(5);
 
@@ -554,11 +556,13 @@ public class GeofenceService
         AppDbContext db,
         IHubContext<GeofenceHub> hub,
         IMemoryCache cache,
-        IConfiguration config)
+        IConfiguration config,
+        IEtaservice etaService)
     {
         _db = db;
         _hub = hub;
         _cache = cache;
+        _etaService = etaService;
         _webPushClient = new WebPushClient();
 
         var publicKey = config["Vapid:PublicKey"] ?? throw new ArgumentNullException("Vapid:PublicKey");
@@ -607,8 +611,7 @@ public class GeofenceService
 
         foreach (var g in geofences)
         {
-            var distanceMeters = HaversineDistanceMeters(
-                driverLat, driverLon, g.CenterLat, g.CenterLon);
+            var distanceMeters = _etaService.GetDistance(driverLat, driverLon, g.CenterLat, g.CenterLon) * 1000;
 
             bool isInside = distanceMeters <= g.RadiusMeters;
             string stateKey = $"geofence_state:{g.GeofenceId}:driver:{driverId}";
@@ -762,20 +765,5 @@ public class GeofenceService
         public DateTime LastEventAt { get; set; }
     }
 
-    private double HaversineDistanceMeters(
-        double lat1, double lon1, double lat2, double lon2)
-    {
-        const double R = 6371000;
-        double dLat = ToRad(lat2 - lat1);
-        double dLon = ToRad(lon2 - lon1);
 
-        double a =
-            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-            Math.Cos(ToRad(lat1)) * Math.Cos(ToRad(lat2)) *
-            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-        return R * (2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a)));
-    }
-
-    private double ToRad(double d) => d * Math.PI / 180.0;
 }

@@ -27,5 +27,19 @@ public static class GeocodingEndpoints
             var json = await response.Content.ReadAsStringAsync();
             return Results.Content(json, "application/json");
         });
+        app.MapGet("/api/geocode/search", async (string q) =>
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("OnTrackLogistics/1.0 (contact@ontrack.com)");
+
+            var url = $"https://nominatim.openstreetmap.org/search?format=json&q={Uri.EscapeDataString(q)}&addressdetails=1";
+
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                return Results.Problem("Failed to search location");
+
+            var json = await response.Content.ReadAsStringAsync();
+            return Results.Content(json, "application/json");
+        });
     }
 }
