@@ -7,7 +7,7 @@ public static class LocationEndpoints
 {
     // This endpoint calculates ETA given driver & customer coordinates in request body.
     // Use this when you want an immediate ETA response without relying on global state.
-    public static void MapLocationEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapLocationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/loc").WithTags("Location");
 
@@ -50,6 +50,7 @@ public static class LocationEndpoints
             return Results.Ok(new { message = "Customer location accepted" });
         })
         .RequireAuthorization();
+        return group;
     }
 }
 

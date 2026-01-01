@@ -24,6 +24,7 @@ import {
   Search,
   User,
 } from "lucide-react";
+import { formatStatus } from "@/lib/utils";
 
 /*  HELPERS  */
 const normalizeStatus = (status) => {
@@ -345,7 +346,7 @@ export default function AdminDashboard() {
                                             <Calendar size={12} /> {new Date(o.createdAt).toLocaleDateString()}
                                         </p>
                                     </div>
-                                    <span className="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded font-bold uppercase tracking-wider">{o.status}</span>
+                                    <span className="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded font-bold tracking-wide">{formatStatus(o.status)}</span>
                                 </div>
 
                                 <div className="flex gap-2 mt-4">
@@ -423,7 +424,7 @@ export default function AdminDashboard() {
                                     <span className={`text-xs px-2 py-1 rounded font-bold border ${
                                         o.status === "Delivered" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
                                     }`}>
-                                        {o.status}
+                                        {formatStatus(o.status)}
                                     </span>
                                 </div>
 

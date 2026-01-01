@@ -194,12 +194,18 @@ export default function DriverASRVerification({ orderId, onClose }) {
     try {
       setUploading(true);
       
-      // Convert photo to base64
-      const photoBase64 = await fileToBase64(customerPhoto);
+      // 1. Upload Customer Photo to S3
+      const photoKey = await uploadToS3(customerPhoto);
+
+      // 2. Convert Signature to Blob and Upload to S3
+      const signatureBlob = dataURLtoBlob(signatureData);
+      const signatureFile = new File([signatureBlob], "signature.png", { type: "image/png" });
+      const signatureKey = await uploadToS3(signatureFile);
       
+      // 3. Submit Keys to ASR Service
       const response = await api.post(`/asr/driver/upload-captures/${asrStatus.asrId}`, {
-        customerPhotoUrl: photoBase64,
-        signatureUrl: signatureData
+        customerPhotoUrl: photoKey,
+        signatureUrl: signatureKey
       });
 
       alert("Captures uploaded! Waiting for AI verification...");
@@ -212,13 +218,26 @@ export default function DriverASRVerification({ orderId, onClose }) {
     }
   };
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
+  const uploadToS3 = async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await api.post("/aws/files", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+      });
+      return res.data.key;
+  };
+
+  const dataURLtoBlob = (dataURL) => {
+      const arr = dataURL.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while(n--){
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], {type:mime});
   };
 
   const handleCompleteDelivery = async () => {

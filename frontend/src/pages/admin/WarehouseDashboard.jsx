@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
 import AdminSidebar from "./AdminSidebar";
+import { formatStatus } from "@/lib/utils";
 
 const WarehouseDashboard = () => {
   const [warehouses, setWarehouses] = useState([]);
@@ -198,8 +199,8 @@ const WarehouseDashboard = () => {
                       </p>
                     </div>
 
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-[#ff8a3d]/20 text-[#ff8a3d]">
-                      {order.status}
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#ff8a3d]/20 text-[#ff8a3d]">
+                      {formatStatus(order.status)}
                     </span>
                   </div>
 

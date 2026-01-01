@@ -4,6 +4,7 @@ import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
 import { Copy, Check, ShieldCheck } from "lucide-react";
+import { formatStatus } from "@/lib/utils";
 import CustomerASRUpload from "./CustomerASRUpload";
 
 const OrderDetails = () => {
@@ -34,6 +35,29 @@ const OrderDetails = () => {
   const [showASRModal, setShowASRModal] = useState(false);
 
   const [eta, setEta] = useState(null);
+
+  /* ---------------- TIMELINE ---------------- */
+   const statusRank = {
+    PendingAssignment: 0,
+    Pending: 0,
+    Assigned: 10,
+    Picked: 20,
+    AtOriginWarehouse: 30,
+    InTransit: 40,
+    AtDestinationWarehouse: 50,
+    OutForDelivery: 60,
+    DeliveryAttempted: 65,
+    Delivered: 70,
+  };
+
+  const [expandedAssigned, setExpandedAssigned] = useState(false);
+
+  // Auto-expand if current status is within the nested group
+  useEffect(() => {
+     if (order && ["AtOriginWarehouse", "InTransit", "AtDestinationWarehouse", "Picked"].includes(order.status)) {
+        setExpandedAssigned(true);
+     }
+  }, [order?.status]);
 
   /* ---------------- ETA ---------------- */
   const calculateEta = async (currentOrder, locHistory) => {
@@ -127,30 +151,8 @@ const OrderDetails = () => {
   if (!order) return null;
 
   /* ---------------- TIMELINE ---------------- */
-  const statusRank = {
-    PendingAssignment: 0,
-    Pending: 0,               
-    Assigned: 10,            
-    Picked: 20,
-    AtOriginWarehouse: 30,
-    InTransit: 40,
-    AtDestinationWarehouse: 50,
-    OutForDelivery: 60,
-    DeliveryAttempted: 60,    
-    Delivered: 70,
-  };
-
   const currentRank = statusRank[order.status] ?? 0;
 
-  const steps = [
-    { title: "Order Placed", sub: "Order created", rank: 0 },
-    { title: "Order Confirmed", sub: "Driver assigned", rank: 10 },
-    { title: "Picked Up", sub: "Courier picked package", rank: 20 },
-    { title: "In Transit", sub: "Package on the move", rank: 40 },
-    { title: "Out for Delivery", sub: "Driver en route", rank: 60 },
-    { title: "Delivered", sub: "Package delivered", rank: 70 },
-  ];
-  
   const showASRButton = order.isASR && ["NotStarted", "Pending"].includes(order.asrStatus);
 
   return (
@@ -170,7 +172,6 @@ const OrderDetails = () => {
             </button>
             <h1 className="text-2xl font-black">
               Order Details
-              {/* {order.trackingId && <span className="ml-3 text-lg text-slate-400 font-medium">#{order.trackingId}</span>} */}
             </h1>
           </div>
 
@@ -216,12 +217,12 @@ const OrderDetails = () => {
                   <h4 className="font-bold text-slate-400 text-lg tracking-wider">Type</h4>
                   <div className="mt-1">
                     {order.deliveryType === 'Express' ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold uppercase tracking-wide shadow-lg shadow-amber-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold tracking-wide shadow-lg shadow-amber-500/20">
                          <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse"/>
                          Express
                       </span>
                     ) : (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold uppercase tracking-wide border border-slate-700">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold tracking-wide border border-slate-700">
                         Normal
                       </span>
                     )}
@@ -235,21 +236,21 @@ const OrderDetails = () => {
                   </p>
                </div>
 
-               {eta && (
+               {eta && !["Delivered", "DeliveryAttempted"].includes(order.status) && (
                  <div className="col-span-2 mt-2">
                     <h4 className="font-bold text-slate-400 text-lg tracking-wider mb-2">Estimated Arrival</h4>
                     <div className="bg-white/5 rounded-xl border border-white/10 p-4 grid grid-cols-3 gap-4 text-center">
                         <div>
                              <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Fastest</p>
-                             <p className="text-green-400 font-bold text-lg">{eta.earliest || eta}</p>
+                             <p className="text-green-400 font-bold text-lg">{eta?.earliest || (typeof eta === 'string' ? eta : '--')}</p>
                         </div>
                         <div className="border-x border-white/10">
                              <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Expected</p>
-                             <p className="text-[#ff8a3d] font-bold text-lg">{eta.average || eta}</p>
+                             <p className="text-[#ff8a3d] font-bold text-lg">{eta?.average || (typeof eta === 'string' ? eta : '--')}</p>
                         </div>
                         <div>
                              <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Latest</p>
-                             <p className="text-red-400 font-bold text-lg">{eta.latest || eta}</p>
+                             <p className="text-red-400 font-bold text-lg">{eta?.latest || (typeof eta === 'string' ? eta : '--')}</p>
                         </div>
                     </div>
                  </div>
@@ -276,14 +277,14 @@ const OrderDetails = () => {
                         <div>
                              <h2 className="text-xl font-bold text-white flex items-center gap-3">
                                 ASR Verification Required
-                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide border ${
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold tracking-wide border ${
                                     order.asrStatus === 'Success' 
                                     ? 'bg-green-500/10 text-green-400 border-green-500/20' 
                                     : (order.asrStatus === 'Failed' 
                                         ? 'bg-red-500/10 text-red-400 border-red-500/20' 
                                         : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20')
                                 }`}>
-                                    {order.asrStatus || 'Pending'}
+                                    {formatStatus(order.asrStatus || 'Pending')}
                                 </span>
                             </h2>
                         </div>
@@ -347,22 +348,6 @@ const OrderDetails = () => {
               <p className="text-slate-400">{order.receiverName}</p>
               <p className="text-slate-500 text-sm">{order.receiverAddress}</p>
             </div>
-            {/* <div>
-              <h4 className="font-semibold">
-                {order.status === "Delivered"
-                  ? "Delivered On"
-                  : "Scheduled Delivery"}
-              </h4>
-              <p className="text-slate-400">
-                {order.status === "Delivered"
-                  ? new Date(order.deliveredAt || order.createdAt).toLocaleDateString()
-                  : order.scheduledDate
-                  ? new Date(order.scheduledDate).toLocaleDateString()
-                  : "Pending"}
-              </p>
-            </div> */}
-
-
           </div>
 
           <div className="border-t border-white/10" />
@@ -370,45 +355,82 @@ const OrderDetails = () => {
           {/* TIMELINE */}
           <div className="p-8">
             <h3 className="text-sm uppercase tracking-widest text-slate-400 mb-6">
-              Tracking Timeline
+              Tracking Status
             </h3>
 
-            <div className="relative space-y-10">
-              {steps.map((s, i) => {
-                const active = currentRank >= s.rank;
-                const current =
-                  active && (steps[i + 1]?.rank ?? 999) > currentRank;
+            <div className="relative pl-4">
+              {/* Step 1: Pending Assignment */}
+              <TimelineStep 
+                  title="Pending Assignment"
+                  sub="Waiting for driver"
+                  active={true} // Always active as start
+                  completed={currentRank >= 10}
+                  isFirst={true}
+                  color="orange"
+                  isCurrent={currentRank < 10}
+              />
 
-                return (
-                  <div key={i} className="flex gap-6 relative">
+              {/* Step 2: Assigned + Nested */}
+              <div className="relative z-10">
+                  <TimelineStep 
+                      title="Assigned"
+                      sub="Driver has accepted the order"
+                      active={currentRank >= 10}
+                      completed={currentRank >= 60} // Completed when Out For Delivery
+                      hasExpand={true}
+                      expanded={expandedAssigned}
+                      onToggle={() => setExpandedAssigned(!expandedAssigned)}
+                      color="orange"
+                      isCurrent={currentRank >= 10 && currentRank < 60}
+                  >
+                        {/* Nested Steps */}
+                        {expandedAssigned && (
+                            <div className="space-y-6 border-l-2 border-dashed border-white/10 pl-6">
+                                <NestedTimelineStep 
+                                    title="At Origin Warehouse"
+                                    active={currentRank >= 30}
+                                    completed={currentRank > 30}
+                                    isCurrent={currentRank === 30}
+                                />
+                                <NestedTimelineStep 
+                                    title="In Transit"
+                                    active={currentRank >= 40}
+                                    completed={currentRank > 40}
+                                    isCurrent={currentRank === 40}
+                                />
+                                <NestedTimelineStep 
+                                    title="At Destination Warehouse"
+                                    active={currentRank >= 50}
+                                    completed={currentRank > 50}
+                                    isCurrent={currentRank === 50}
+                                />
+                            </div>
+                        )}
+                  </TimelineStep>
+              </div>
 
-                    {i !== steps.length - 1 && (
-                      <div className="absolute left-[7px] top-4 bottom-[-40px] w-[2px] bg-white/30" />
-                    )}
+              {/* Step 3: Out For Delivery */}
+               <TimelineStep 
+                  title="Out For Delivery"
+                  sub="Order is on the way"
+                  active={currentRank >= 60}
+                  completed={currentRank >= 70} // Delivered is 70
+                  color="orange"
+                  isCurrent={currentRank >= 60 && currentRank < 65}
+              />
 
-                    <div
-                      className={`relative z-10 w-4 h-4 mt-1.5 rounded-full ${
-                        current
-                          ? "bg-[#ff8a3d]"
-                          : active
-                          ? "bg-white/70"
-                          : "bg-white/20"
-                      }`}
-                    >
-                      {current && (
-                        <span className="absolute -inset-2 rounded-full border border-[#ff8a3d] animate-ping" />
-                      )}
-                    </div>
+              {/* Step 4: Delivered / Delivery Attempted */}
+              <TimelineStep 
+                  title={order.status === "DeliveryAttempted" ? "Delivery Attempted" : "Delivered"}
+                  sub={order.status === "DeliveryAttempted" ? "Delivery was attempted but failed" : "Package delivered successfully"}
+                  active={currentRank >= 65} // DeliveryAttempted (65) or Delivered (70)
+                  completed={currentRank >= 70}
+                  isLast={true}
+                  color={order.status === "DeliveryAttempted" ? "red" : "green"} // Keep green/red for final state
+                  date={order.deliveredAt}
+                  isCurrent={currentRank >= 65}
+              />
 
-                    <div>
-                      <h4 className={`font-bold ${active ? "" : "text-slate-500"}`}>
-                        {s.title}
-                      </h4>
-                      <p className="text-sm text-slate-400">{s.sub}</p>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </div>
 
@@ -488,3 +510,103 @@ const OrderDetails = () => {
 };
 
 export default OrderDetails;
+
+/* ---------------- HELPERS ---------------- */
+
+function TimelineStep({ title, sub, active, completed, isFirst, isLast, color="green", hasExpand, expanded, onToggle, date, isCurrent, children }) {
+    
+    // Status Colors
+    const getColors = () => {
+        if (!active) return "bg-[#0b0f14] border-slate-600";
+        if (color === "red") return "bg-red-500 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+        if (color === "orange") return "bg-[#ff8a3d] border-[#ff8a3d] shadow-[0_0_10px_rgba(255,138,61,0.5)]";
+        return "bg-green-500 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+    };
+
+    const getLineColor = () => {
+         if (!completed) return "bg-white/10";
+         if (color === "red") return "bg-red-500";
+         if (color === "orange") return "bg-[#ff8a3d]"; 
+         return "bg-green-500";
+    }
+
+    const getTextColor = () => {
+        if (!active) return "text-slate-500";
+        if (color === "red") return "text-red-400";
+        if (color === "orange") return "text-[#ff8a3d]";
+        return "text-white"; 
+    }
+
+    return (
+        <div className="relative flex gap-6 z-10 min-h-[80px]"> 
+            {/* Status Dot Column */}
+            <div className="flex flex-col items-center">
+                <div className="relative flex items-center justify-center">
+                    {/* Pulsing Effect for Current Step */}
+                    {isCurrent && active && (
+                        <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 ${
+                             color === "red" ? "bg-red-500" : (color === "orange" ? "bg-[#ff8a3d]" : "bg-green-500")
+                        }`} />
+                    )}
+                    
+                    <div
+                        className={`w-4 h-4 rounded-full border-2 z-20 flex-shrink-0 transition-all duration-500 ${getColors()}`}
+                        onClick={hasExpand ? onToggle : undefined}
+                    />
+                </div>
+                
+                {/* Connecting Line (Colored Segment) below */}
+                    {!isLast && (
+                    <div className={`w-[2px] flex-1 -my-1 transition-colors duration-500 ${getLineColor()}`} />
+                    )}
+            </div>
+
+            {/* Content Column */}
+            <div className={`-mt-1.5 flex-1 ${isLast ? '' : 'pb-10'}`}>
+                <div 
+                    className={`flex items-center gap-2 ${hasExpand ? "cursor-pointer group" : ""}`}
+                    onClick={hasExpand ? onToggle : undefined}
+                >
+                    <h4 className={`font-bold text-lg transition-colors duration-300 ${getTextColor()} ${hasExpand ? "group-hover:text-white" : ""}`}>
+                        {title}
+                    </h4>
+                    {hasExpand && (
+                        <span className={`text-slate-500 transition-transform duration-300 ${expanded ? "rotate-90" : ""}`}>
+                            ▶
+                        </span>
+                    )}
+                </div>
+                 {date && (
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {new Date(date).toLocaleString()}
+                    </p>
+                )}
+                <p className={`text-sm mt-1 ${active ? "text-slate-300" : "text-slate-600"}`}>
+                    {sub}
+                </p>
+
+                {/* Render Nested Children here so layout stretches and line continues */}
+                {children && <div className="mt-4">{children}</div>}
+            </div>
+        </div>
+    );
+};
+
+function NestedTimelineStep({ title, active, completed, isCurrent }) {
+    return (
+        <div className="relative flex gap-4 items-center">
+             <div className="relative flex items-center justify-center">
+                {isCurrent && active && (
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff8a3d] opacity-75 animate-ping"></span>
+                )}
+                <div className={`w-2.5 h-2.5 rounded-full border z-10 ${
+                    active ? "bg-[#ff8a3d] border-[#ff8a3d]" : "bg-transparent border-slate-600"
+                }`} />
+            </div>
+
+            <h5 className={`font-semibold text-sm ${active ? "text-white" : "text-slate-500"}`}>
+                {title}
+            </h5>
+        </div>
+    );
+}

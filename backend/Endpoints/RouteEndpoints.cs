@@ -210,6 +210,7 @@
 
 using Microsoft.Extensions.Caching.Memory;
 using System.Globalization;
+using Backend.Services;
 
 namespace Backend.Endpoints;
 
@@ -223,12 +224,15 @@ public static class RouteEndpoints
     private static readonly Uri OsrmBase = new("http://router.project-osrm.org/");
     private static readonly SemaphoreSlim osrmGate = new(8, 8);
 
-    public static void MapRouteEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapRouteEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/route/optimize", async (
+        var group = app.MapGroup("/api/route");
+
+        group.MapPost("/optimize", async (
             OptimizeRouteRequest req,
             IHttpClientFactory httpFactory,
-            IMemoryCache cache
+            IMemoryCache cache,
+            IEtaservice etaService
         ) =>
         {
             if (req.stops == null || req.stops.Count < 2)
@@ -252,11 +256,11 @@ public static class RouteEndpoints
             // Optimize stops based on mode
             var orderedStops = req.optimizationMode switch
             {
-                "PriorityFirst" => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? []),
-                "TimeWindow"    => OptimizeTimeWindow(req.stops, start),
-                "AvoidIssues"   => OptimizeAvoidIssues(req.stops, start, req.roadIssues ?? []),
-                "AIOptimized"   => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? []),
-                _               => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? [])
+                "PriorityFirst" => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? [], etaService),
+                "TimeWindow"    => OptimizeTimeWindow(req.stops, start, etaService),
+                "AvoidIssues"   => OptimizeAvoidIssues(req.stops, start, req.roadIssues ?? [], etaService),
+                "AIOptimized"   => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? [], etaService),
+                _               => OptimizeWithPriorityAndDistance(req.stops, start, req.roadIssues ?? [], etaService)
             };
 
             // Build route points (driver location + stops)
@@ -266,8 +270,9 @@ public static class RouteEndpoints
             // Get route with turn-by-turn instructions
             var routeJson = await CallOsrmRouteWithSteps(routePoints, httpFactory);
             return Results.Content(routeJson, "application/json");
-        })
-        .WithTags("Route Optimization");
+        });
+
+        return group;
     }
 
     // ---------------- OPTIMIZATION LOGIC ----------------
@@ -275,7 +280,8 @@ public static class RouteEndpoints
     private static List<StopDto> OptimizeWithPriorityAndDistance(
         List<StopDto> stops,
         StopDto start,
-        List<RoadIssueDto> issues)
+        List<RoadIssueDto> issues,
+        IEtaservice etaService)
     {
         var high = stops.Where(s => s.priority >= 4).ToList();
         var normal = stops.Where(s => s.priority < 4).ToList();
@@ -284,19 +290,19 @@ public static class RouteEndpoints
 
         // High priority stops first with nearest neighbor
         if (high.Any())
-            result.AddRange(NearestNeighborSort(high, start));
+            result.AddRange(NearestNeighborSort(high, start, etaService));
 
         // Then normal priority from last high priority location
         if (normal.Any())
         {
             var cur = result.Any() ? result.Last() : start;
-            result.AddRange(NearestNeighborSort(normal, cur));
+            result.AddRange(NearestNeighborSort(normal, cur, etaService));
         }
 
         return result;
     }
 
-    private static List<StopDto> OptimizeTimeWindow(List<StopDto> stops, StopDto start)
+    private static List<StopDto> OptimizeTimeWindow(List<StopDto> stops, StopDto start, IEtaservice etaService)
     {
         var timed = stops.Where(s => s.windowStart.HasValue).ToList();
         var normal = stops.Where(s => !s.windowStart.HasValue).ToList();
@@ -307,14 +313,14 @@ public static class RouteEndpoints
         {
             result.AddRange(
                 timed.OrderBy(s => s.windowStart)
-                     .ThenBy(s => Haversine(start.lat, start.lng, s.lat, s.lng))
+                     .ThenBy(s => etaService.GetDistance(start.lat, start.lng, s.lat, s.lng))
             );
         }
 
         if (normal.Any())
         {
             var cur = result.Any() ? result.Last() : start;
-            result.AddRange(NearestNeighborSort(normal, cur));
+            result.AddRange(NearestNeighborSort(normal, cur, etaService));
         }
 
         return result;
@@ -323,20 +329,21 @@ public static class RouteEndpoints
     private static List<StopDto> OptimizeAvoidIssues(
         List<StopDto> stops,
         StopDto start,
-        List<RoadIssueDto> issues)
+        List<RoadIssueDto> issues,
+        IEtaservice etaService)
     {
         // Sort by issue risk score (lowest risk first)
         var sorted = stops
-            .OrderBy(s => IssueRiskScore(s, issues))
+            .OrderBy(s => IssueRiskScore(s, issues, etaService))
             .ThenByDescending(s => s.priority)
             .ToList();
 
-        return NearestNeighborSort(sorted, start);
+        return NearestNeighborSort(sorted, start, etaService);
     }
 
     // ---------------- NEAREST NEIGHBOR ALGORITHM ----------------
 
-    private static List<StopDto> NearestNeighborSort(List<StopDto> stops, StopDto start)
+    private static List<StopDto> NearestNeighborSort(List<StopDto> stops, StopDto start, IEtaservice etaService)
     {
         var remaining = new List<StopDto>(stops);
         var result = new List<StopDto>();
@@ -345,7 +352,7 @@ public static class RouteEndpoints
         while (remaining.Any())
         {
             var nearest = remaining
-                .OrderBy(s => Haversine(current.lat, current.lng, s.lat, s.lng))
+                .OrderBy(s => etaService.GetDistance(current.lat, current.lng, s.lat, s.lng))
                 .First();
 
             result.Add(nearest);
@@ -361,12 +368,12 @@ public static class RouteEndpoints
     private static bool IsInTN(double lat, double lng) =>
         lat >= MinLat && lat <= MaxLat && lng >= MinLng && lng <= MaxLng;
 
-    private static double IssueRiskScore(StopDto stop, List<RoadIssueDto> issues)
+    private static double IssueRiskScore(StopDto stop, List<RoadIssueDto> issues, IEtaservice etaService)
     {
         double score = 0;
         foreach (var i in issues)
         {
-            var d = Haversine(stop.lat, stop.lng, i.latitude, i.longitude);
+            var d = etaService.GetDistance(stop.lat, stop.lng, i.latitude, i.longitude);
             if (d < 5)
             {
                 score += i.severity switch
@@ -381,19 +388,7 @@ public static class RouteEndpoints
         return score;
     }
 
-    private static double Haversine(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double R = 6371;
-        var dLat = (lat2 - lat1) * Math.PI / 180;
-        var dLon = (lon2 - lon1) * Math.PI / 180;
 
-        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(lat1 * Math.PI / 180) *
-                Math.Cos(lat2 * Math.PI / 180) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-        return 2 * R * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-    }
 
     // ---------------- OSRM WITH TURN-BY-TURN STEPS ----------------
 

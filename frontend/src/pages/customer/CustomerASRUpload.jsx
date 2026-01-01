@@ -119,23 +119,26 @@ export default function CustomerASRUpload({ orderId, onClose }) {
     try {
       setUploading(true);
       
-      const documentUrls = [];
+      const documentKeys = [];
       
       // Front (mandatory)
-      documentUrls.push(await fileToBase64(aadhaarFront));
+      const frontKey = await uploadToS3(aadhaarFront);
+      documentKeys.push(frontKey);
       
       // Back (optional)
       if (aadhaarBack) {
-        documentUrls.push(await fileToBase64(aadhaarBack));
+        const backKey = await uploadToS3(aadhaarBack);
+        documentKeys.push(backKey);
       }
       
       // PAN (optional)
       if (panCard) {
-        documentUrls.push(await fileToBase64(panCard));
+        const panKey = await uploadToS3(panCard);
+        documentKeys.push(panKey);
       }
 
       await api.post(`/asr/customer/upload-documents/${asrStatus.asrId}`, {
-        documentUrls: documentUrls,
+        documentUrls: documentKeys,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '')
       });
 
@@ -150,13 +153,14 @@ export default function CustomerASRUpload({ orderId, onClose }) {
     }
   };
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
+  const uploadToS3 = async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await api.post("/aws/files", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+      });
+      return res.data.key;
   };
 
   if (loading) {

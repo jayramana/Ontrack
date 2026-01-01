@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 
 public static class WarehouseEndpoints
 {
-    public static void MapWarehouseEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapWarehouseEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/warehouse").WithTags("Warehouse");
 
@@ -184,5 +184,6 @@ public static class WarehouseEndpoints
 
             return Results.Ok(warehouse);
         });
+        return group;
     }
 }

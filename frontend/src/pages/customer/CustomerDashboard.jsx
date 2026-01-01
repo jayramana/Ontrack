@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
+import { formatStatus } from "@/lib/utils";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -21,7 +22,7 @@ import { Doughnut } from "react-chartjs-2";
 import CustomerSidebar from "./CustomerSidebar";
 import { OrdersBarChart } from "../../components/charts/OrdersBarChart";
 import { OrdersPieChart } from "../../components/charts/OrdersPieChart";
-import { OrdersAreaChart } from "../../components/charts/OrdersAreaChart";
+import { OrdersSpendingChart } from "../../components/charts/OrdersSpendingChart";
 
 ChartJS.register(
   ArcElement,
@@ -363,23 +364,23 @@ const CustomerDashboard = () => {
 
             {/* 2. ANALYTICS SECTION */}
             <div className="flex justify-between items-end">
-                 <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <GoPackage className="text-[#2563eb]" size={20} /> Analytics Overview
+                <div>
+                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <GoPackage className="text-[#ff8a3d]" size={20} /> Analytics Overview
                     </h2>
                     <p className="text-sm text-slate-400 mt-1">Track your order history and status</p>
                 </div>
                 
-                 {/* DATE FILTERS */}
-                <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5">
+                {/* DATE FILTERS */}
+                <div className="bg-white/5 p-1 rounded-xl flex gap-1 border border-white/10 backdrop-blur-sm">
                     {["1W", "1M", "3M", "1Y"].map((filter) => (
                     <button
                         key={filter}
                         onClick={() => setDateFilter(filter)}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                             dateFilter === filter
-                            ? "bg-[#2563eb] text-white shadow-lg"
-                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                            ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 backdrop-blur-md shadow-lg shadow-orange-500/10"
+                            : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
                         }`}
                     >
                         {filter}
@@ -406,18 +407,18 @@ const CustomerDashboard = () => {
                 return (
                     <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-0">
-                        <div className="w-full">
-                            <OrdersPieChart data={filteredOrders} />
-                        </div>
+                            <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                                <OrdersPieChart data={filteredOrders} />
+                            </div>
 
-                        {/* CHART 2: DAILY VOLUME */}
-                        <div className="w-full">
-                            <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
+                            {/* CHART 2: DAILY VOLUME */}
+                            <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                                <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
+                            </div>
                         </div>
-                        </div>
-                        {/* CHART 3: AREA HISTORY */}
-                        <div className="w-full">
-                            <OrdersAreaChart data={filteredOrders} filterType={dateFilter} />
+                        {/* CHART 3: SPENDING HISTORY */}
+                        <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                            <OrdersSpendingChart data={filteredOrders} filterType={dateFilter} />
                         </div>
                     </>
                 );
@@ -447,7 +448,7 @@ const CustomerDashboard = () => {
 
               <div className="p-8">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-full bg-blue-50 text-[#2563eb] flex items-center justify-center text-xl">
+                  <div className="w-12 h-12 rounded-full bg-orange-500/10 text-[#ff8a3d] flex items-center justify-center text-xl">
                     📍
                   </div>
                   <div>
@@ -455,7 +456,7 @@ const CustomerDashboard = () => {
                       Current Status
                     </p>
                     <p className="text-2xl font-black text-[#0f172a]">
-                      {trackingData.order.status}
+                      {formatStatus(trackingData.order.status)}
                     </p>
                   </div>
                 </div>
@@ -487,7 +488,8 @@ const CustomerDashboard = () => {
                   </div>
                 )}
 
-                <button
+
+                  <button
                   onClick={() =>
                     window.open(
                       `https://www.openstreetmap.org/?mlat=${trackingData.driverLocation?.latitude}&mlon=${trackingData.driverLocation?.longitude}`,
@@ -495,7 +497,7 @@ const CustomerDashboard = () => {
                     )
                   }
                   disabled={!trackingData.driverLocation}
-                  className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-extrabold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-[#ff8a3d] hover:bg-[#ff9a55] text-white font-extrabold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase"
                 >
                   OPEN IN MAPS
                 </button>
@@ -557,9 +559,11 @@ const CustomerDashboard = () => {
                     Cancel
                   </button>
 
+
+
                   <button
                     type="submit"
-                    className="flex-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95"
+                    className="flex-1 bg-[#ff8a3d] hover:bg-[#ff9a55] text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95"
                   >
                     Confirm
                   </button>

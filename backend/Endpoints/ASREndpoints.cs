@@ -11,13 +11,10 @@ using Backend.DTO;
 
 public static class ASREndpoints
 {
-    public static void MapASREndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapASREndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/asr").WithTags("ASR Verification");
 
-        // ============================================
-        // DRIVER ENDPOINTS
-        // ============================================
 
         /// <summary>
         /// Driver initiates ASR verification request
@@ -172,16 +169,28 @@ public static class ASREndpoints
                     ? null 
                     : JsonSerializer.Deserialize<object>(asr.VerificationMetadata);
 
+                var documents = JsonSerializer.Deserialize<List<string>>(asr.DocumentUrls ?? "[]")
+                    ?? new List<string>();
+                
+                // Convert keys to URLs
+                var documentUrls = documents.Select(k => asrService.GetPresignedUrl(k)).ToList();
+                var customerPhotoUrl = asrService.GetPresignedUrl(asr.CustomerPhotoUrl);
+                var signatureUrl = asrService.GetPresignedUrl(asr.SignatureUrl);
+
                 return Results.Ok(new
                 {
                     asrId = asr.Id,
                     status = asr.AIVerifyStatus,
                     score = asr.AIVerifyScore,
                     reasons = reasons,
-                    hasDocuments = !string.IsNullOrEmpty(asr.DocumentUrls) && asr.DocumentUrls != "[]",
+                    hasDocuments = documents.Any(),
+                    documentUrls = documentUrls,
+                    customerPhotoUrl = customerPhotoUrl,
+                    signatureUrl = signatureUrl,
                     hasAadhaarNumber = !string.IsNullOrEmpty(asr.AadhaarNumber),
                     hasPhoto = !string.IsNullOrEmpty(asr.CustomerPhotoUrl),
                     hasSignature = !string.IsNullOrEmpty(asr.SignatureUrl),
+
                     retryCount = asr.RetryCount,
                     metadata = metadata
                 });
@@ -279,7 +288,6 @@ public static class ASREndpoints
         .RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
 
         /// <summary>
-        /// Customer checks their ASR status
         /// </summary>
         group.MapGet("/customer/status/{orderId}", async (
             int orderId,
@@ -299,6 +307,10 @@ public static class ASREndpoints
                 if (asr == null || asr.CustomerId != customerId)
                     return Results.NotFound(new { message = "No ASR verification found" });
 
+                // Convert keys to URLs for customer view
+                var documents = JsonSerializer.Deserialize<List<string>>(asr.DocumentUrls ?? "[]") ?? new List<string>();
+                var documentUrls = documents.Select(k => asrService.GetPresignedUrl(k)).ToList();
+
                 return Results.Ok(new
                 {
                     asrId = asr.Id,
@@ -306,7 +318,8 @@ public static class ASREndpoints
                     requestedAt = asr.RequestedAt,
                     uploadedAt = asr.CustomerUploadedAt,
                     verifiedAt = asr.VerifiedAt,
-                    retryCount = asr.RetryCount
+                    retryCount = asr.RetryCount,
+                    documentUrls = documentUrls // Return the actual URLs so customer can see what they uploaded
                 });
             }
             catch (Exception ex)
@@ -371,8 +384,13 @@ public static class ASREndpoints
                 if (asr == null)
                     return Results.NotFound(new { message = "ASR verification not found" });
 
-                var documentUrls = JsonSerializer.Deserialize<List<string>>(asr.DocumentUrls ?? "[]") 
+                var keys = JsonSerializer.Deserialize<List<string>>(asr.DocumentUrls ?? "[]") 
                     ?? new List<string>();
+                
+                var documentUrls = keys.Select(k => asrService.GetPresignedUrl(k)).ToList();
+                var customerPhotoUrl = asrService.GetPresignedUrl(asr.CustomerPhotoUrl);
+                var signatureUrl = asrService.GetPresignedUrl(asr.SignatureUrl);
+
                 var reasons = JsonSerializer.Deserialize<List<string>>(asr.AIVerifyReasons ?? "[]") 
                     ?? new List<string>();
                 var metadata = string.IsNullOrEmpty(asr.VerificationMetadata) 
@@ -385,8 +403,8 @@ public static class ASREndpoints
                     asr.OrderId,
                     documentUrls = documentUrls,
                     asr.AadhaarNumber,
-                    asr.CustomerPhotoUrl,
-                    asr.SignatureUrl,
+                    customerPhotoUrl = customerPhotoUrl,
+                    signatureUrl = signatureUrl,
                     asr.AIVerifyStatus,
                     asr.AIVerifyScore,
                     reasons = reasons,
@@ -487,5 +505,6 @@ public static class ASREndpoints
             }
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
+        return group;
     }
 }

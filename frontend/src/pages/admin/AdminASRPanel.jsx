@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { formatStatus } from "@/lib/utils";
 import AdminSidebar from "./AdminSidebar";
 
 export default function AdminASRPanel() {
@@ -133,7 +134,7 @@ export default function AdminASRPanel() {
               text-xs font-semibold leading-none
               ${getStatusStyle(asr.aiVerifyStatus)}`}
 >
-  {asr.aiVerifyStatus}
+  {formatStatus(asr.aiVerifyStatus)}
 </span>
                   </div>
 

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class AdminEndpoints
 {
-    public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin")
                        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" }).WithTags("Admin");
@@ -460,5 +460,6 @@ public static class AdminEndpoints
 
 
 
+        return admin;
     }
 }

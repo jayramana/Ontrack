@@ -7,6 +7,8 @@ using Backend.Domain.Entity;
 using Backend.Services;
 using Backend.Endpoints;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
+using AWSSDK;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,7 +34,8 @@ builder.Services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowCredentials()
+            .SetIsOriginAllowed(_ => true) ;
     });
 });
 System.Console.WriteLine("Test-1");
@@ -87,13 +90,25 @@ builder.Services.AddScoped<GeminiService>();
 builder.Services.AddScoped<DriverRouteOptimizationService>();
 builder.Services.AddScoped<GeofenceService>();
 builder.Services.AddScoped<GeminiOcrService>();
-builder.Services.AddHttpClient<GeocodingService>();
-builder.Services.AddHttpClient<OpenRouteServiceClient>();
+builder.Services.AddScoped<DriverRouteOptimizationService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddHostedService<SimulationService>();
+// builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
+var awsOptions = builder.Configuration.GetSection("AWS");
+var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsOptions["AccessKey"], awsOptions["SecretKey"]);
+var awsConfig = new Amazon.S3.AmazonS3Config { RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsOptions["Region"]) };
+builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, awsConfig));
+
+
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<User>, Microsoft.AspNetCore.Identity.PasswordHasher<User>>();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
+builder.Services.AddHttpClient<OpenRouteServiceClient>();
+builder.Services.AddHttpClient<GeocodingService>();
+
 
 var app = builder.Build();
 
@@ -105,36 +120,46 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowFrontend");     // MUST be before auth
+app.UseCors("AllowFrontend");
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.StatusCode = 200;
+        await context.Response.CompleteAsync();
+        return;
+    }
+    await next();
+});// MUST be before auth
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 // -------------------- ENDPOINTS --------------------
 
-app.MapControllers();
+app.MapControllers().RequireCors("AllowFrontend");
 
-app.MapASREndpoints();
-app.MapAuthEndpoints();
-app.MapGeocodingEndpoints();
-app.MapCustomerEndpoints();
-app.MapDriverEndpoints();
-app.MapOrdersEndpoints();
-app.MapWarehouseEndpoints();
-app.MapGeofenceEndpoints();
-app.MapRouteEndpoints();
-app.MapTrackingEndpoints();
-app.MapPublicTrackingEndpoints();
-app.MapSellerAnalyticsEndpoints();
-app.MapAdminEndpoints();
-app.MapRoadIssueEndpoints();
-app.MapLocationEndpoints();
-app.MapVerificationEndpoints();
-app.MapDiagnosticEndpoints();
+app.MapASREndpoints().RequireCors("AllowFrontend");
+app.MapAuthEndpoints().RequireCors("AllowFrontend");
+app.MapCustomerEndpoints().RequireCors("AllowFrontend");
+app.MapDriverEndpoints().RequireCors("AllowFrontend");
+app.MapOrdersEndpoints().RequireCors("AllowFrontend");
+app.MapWarehouseEndpoints().RequireCors("AllowFrontend");
+app.MapGeofenceEndpoints().RequireCors("AllowFrontend");
+app.MapRouteEndpoints().RequireCors("AllowFrontend");
+app.MapTrackingEndpoints().RequireCors("AllowFrontend");
+app.MapPublicTrackingEndpoints().RequireCors("AllowFrontend");
+app.MapSellerAnalyticsEndpoints().RequireCors("AllowFrontend");
+app.MapAdminEndpoints().RequireCors("AllowFrontend");
+app.MapAWSEndpoints().RequireCors("AllowFrontend");
+app.MapRoadIssueEndpoints().RequireCors("AllowFrontend");
+app.MapLocationEndpoints().RequireCors("AllowFrontend");
+app.MapGeocodingEndpoints().RequireCors("AllowFrontend");
 
-app.MapHub<GeofenceHub>("/geofencehub");
-app.MapHub<EtaHub>("/etahub");
-app.MapHub<Backend.Hubs.LogisticsHub>("/hubs/logistics");
+app.MapHub<GeofenceHub>("/geofencehub").RequireCors("AllowFrontend");
+app.MapHub<EtaHub>("/etahub").RequireCors("AllowFrontend");
+app.MapHub<Backend.Hubs.LogisticsHub>("/hubs/logistics").RequireCors("AllowFrontend");
 
 app.MapGet("/", () => "Ontrack Backend Running ");
 

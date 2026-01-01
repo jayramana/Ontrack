@@ -192,11 +192,11 @@ export default function DriverGeofenceDetails() {
                             <h3 className="text-lg font-bold text-white">Geofence Details</h3>
                         </div>
                         <div className="space-y-0">
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Geofence Name</span>
                                 <span className="text-white text-xs">{geofence.name}</span>
                             </div>
-                             <div className="flex justify-between items-center py-2 border-b border-white/5">
+                             <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Radius</span>
                                 <span className="text-white text-xs">{geofence.radiusMeters} m</span>
                             </div>
@@ -210,21 +210,21 @@ export default function DriverGeofenceDetails() {
                         </div>
                         
                         <div className="space-y-0">
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Order ID</span>
                                 <span className="text-white text-xs">#{geofence.orderId}</span>
                             </div>
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Type</span>
                                 <span className="text-white text-xs capitalize">{order?.deliveryType || "Normal"}</span>
                             </div>
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Status</span>
                                 <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold uppercase">
                                     {order?.status || "Loading..."}
                                 </span>
                             </div>
-                             <div className="flex justify-between items-center py-2 border-b border-white/5">
+                             <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Parcel</span>
                                 <span className="text-white text-xs">{order?.parcelSize || "-"}</span>
                             </div>
@@ -239,7 +239,7 @@ export default function DriverGeofenceDetails() {
 
                          {order ? (
                             <div className="space-y-0">
-                                <div className="flex items-center gap-3 py-3 border-b border-white/5">
+                                <div className="flex items-center gap-3 py-3">
                                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-300">
                                          <User className="w-4 h-4" />
                                      </div>
@@ -251,21 +251,21 @@ export default function DriverGeofenceDetails() {
                                      </div>
                                 </div>
 
-                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <div className="flex justify-between items-center py-2">
                                     <span className="text-gray-400 text-sm">Phone</span>
                                     <span className="text-white text-xs flex items-center gap-2">
                                         <Phone className="w-3 h-3 text-gray-500" />
                                         {order.receiverPhone || "N/A"}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <div className="flex justify-between items-center py-2">
                                     <span className="text-gray-400 text-sm">Email</span>
                                     <span className="text-white text-xs flex items-center gap-2">
                                         <Mail className="w-3 h-3 text-gray-500" />
                                         {order.receiverEmail || "N/A"}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <div className="flex justify-between items-center py-2">
                                     <span className="text-gray-400 text-sm">Scheduled</span>
                                     <span className="text-white text-xs flex items-center gap-2">
                                         <Calendar className="w-3 h-3 text-gray-500" />
