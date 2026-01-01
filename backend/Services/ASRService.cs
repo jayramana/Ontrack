@@ -625,9 +625,6 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(a => a.OrderId == orderId);
         }
 
-        // =====================================================
-        // ADMIN OVERRIDE (UNCHANGED)
-        // =====================================================
         public async Task<ASRVerification> AdminOverrideAsync(
             int asrId,
             int adminId,

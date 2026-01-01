@@ -224,9 +224,11 @@ public static class RouteEndpoints
     private static readonly Uri OsrmBase = new("http://router.project-osrm.org/");
     private static readonly SemaphoreSlim osrmGate = new(8, 8);
 
-    public static void MapRouteEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapRouteEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/route/optimize", async (
+        var group = app.MapGroup("/api/route");
+
+        group.MapPost("/optimize", async (
             OptimizeRouteRequest req,
             IHttpClientFactory httpFactory,
             IMemoryCache cache,
@@ -268,8 +270,9 @@ public static class RouteEndpoints
             // Get route with turn-by-turn instructions
             var routeJson = await CallOsrmRouteWithSteps(routePoints, httpFactory);
             return Results.Content(routeJson, "application/json");
-        })
-        .WithTags("Route Optimization");
+        });
+
+        return group;
     }
 
     // ---------------- OPTIMIZATION LOGIC ----------------

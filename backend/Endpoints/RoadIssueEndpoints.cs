@@ -11,7 +11,7 @@ using Backend.DTO;
 
 public static class RoadIssueEndpoints
 {
-    public static void MapRoadIssueEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapRoadIssueEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/roadissue").WithTags("RoadIssues");
 
@@ -207,5 +207,6 @@ public static class RoadIssueEndpoints
         }
 
 
+        return group;
     }
 }

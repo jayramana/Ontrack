@@ -11,7 +11,7 @@ using Backend.Api.Mapping;
 
 public static class AuthEndpoints
 {
-    public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/auth").WithTags("Auth");
 
@@ -239,5 +239,6 @@ public static class AuthEndpoints
                 IsSharingLocation = user.IsSharingLocation
             });
         }).RequireAuthorization();
+        return group;
     }
 }

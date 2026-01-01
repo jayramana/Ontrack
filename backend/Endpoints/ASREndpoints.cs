@@ -11,7 +11,7 @@ using Backend.DTO;
 
 public static class ASREndpoints
 {
-    public static void MapASREndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapASREndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/asr").WithTags("ASR Verification");
 
@@ -288,7 +288,6 @@ public static class ASREndpoints
         .RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
 
         /// <summary>
-        /// Customer checks their ASR status
         /// </summary>
         group.MapGet("/customer/status/{orderId}", async (
             int orderId,
@@ -506,5 +505,6 @@ public static class ASREndpoints
             }
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
+        return group;
     }
 }

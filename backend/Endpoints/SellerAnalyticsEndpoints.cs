@@ -6,7 +6,7 @@ using System.Security.Claims;
 
 public static class SellerAnalyticsEndpoints
 {
-    public static void MapSellerAnalyticsEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapSellerAnalyticsEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/seller/analytics").WithTags("Seller Analytics");
 
@@ -113,5 +113,6 @@ public static class SellerAnalyticsEndpoints
 
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "seller" });
+        return group;
     }
 }

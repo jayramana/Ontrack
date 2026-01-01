@@ -44,7 +44,7 @@ using Amazon.S3.Model;
 
 public static class AWSEndpoints
 {
-    public static void MapAWSEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapAWSEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/aws").WithTags("AWS");
         group.MapPost("/uploads/presign", async (
@@ -160,5 +160,6 @@ public static class AWSEndpoints
             return Results.Ok(new { message = "File uploaded successfully", key });
         }).DisableAntiforgery(); // Disable antiforgery for simple API testing
 
+        return group;
     }
 }

@@ -5,7 +5,7 @@ namespace Backend.Endpoints
 {
     public static class TrackingEndpoints
     {
-        public static void MapTrackingEndpoints(this WebApplication app)
+        public static RouteGroupBuilder MapTrackingEndpoints(this WebApplication app)
         {
             var group = app.MapGroup("/api/track")
                            .WithTags("Tracking");
@@ -41,6 +41,7 @@ namespace Backend.Endpoints
                     DriverPhone = order.Driver?.UserPhonePrimary
                 });
             });
+            return group;
         }
     }
 }

@@ -522,7 +522,7 @@ using Microsoft.AspNetCore.SignalR;
 
 public static class DriverEndpoints
 {
-    public static void MapDriverEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapDriverEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/driver")
                        .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" }).WithTags("Driver");
@@ -1037,5 +1037,6 @@ public static class DriverEndpoints
                 estimatedDelivery = order.EstimatedDeliveryDate
             });
         });
+        return group;
     }
 }

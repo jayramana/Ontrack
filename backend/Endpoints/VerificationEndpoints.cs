@@ -5,7 +5,7 @@ namespace Backend.Endpoints
 {
     public static class VerificationEndpoints
     {
-        public static void MapVerificationEndpoints(this IEndpointRouteBuilder app)
+        public static RouteGroupBuilder MapVerificationEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/api/verification").WithTags("Verification");
 
@@ -82,6 +82,7 @@ namespace Backend.Endpoints
                     });
                 }
             });
+            return group;
         }
     }
 

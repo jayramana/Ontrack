@@ -10,7 +10,7 @@ using System.Security.Claims;
 
 public static class OrdersEndpoints
 {
-    public static void MapOrdersEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapOrdersEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
@@ -627,5 +627,6 @@ public static class OrdersEndpoints
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return R * c;
         }
+        return group;
     }
 }
