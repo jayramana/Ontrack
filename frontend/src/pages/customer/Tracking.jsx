@@ -137,44 +137,9 @@ function Tracking() {
   const renderInputForm = () => (
     <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-10">
       <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16">
-        {isPublic && (
-          <div className="md:col-span-4 space-y-6 border-r border-white/10 md:pr-10">
-            <div className="space-y-4">
-              <h3 className="text-xl font-bold text-white border-b-4 border-[#ff8a3d] inline-block pb-1">
-                Log In
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                By logging in, you can access your full order history, manage
-                deliveries, and save your preferences.
-              </p>
-              <button
-                onClick={() => navigate("/login")}
-                className="flex items-center gap-2 text-[#ff8a3d] font-bold hover:text-[#ff9a55] group"
-              >
-                Login Here{" "}
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
 
-            <div className="pt-8 border-t border-white/5 space-y-4">
-              <h4 className="font-bold text-white text-sm">
-                Forgot your password?
-              </h4>
-              <p className="text-slate-500 text-xs">
-                <span className="text-blue-400 cursor-pointer hover:underline">
-                  Click here
-                </span>{" "}
-                to reset your password and receive it via email.
-              </p>
-            </div>
-          </div>
-        )}
 
-        <div
-          className={`${
-            isPublic ? "md:col-span-8" : "md:col-span-12"
-          }`}
-        >
+        <div className="md:col-span-12">
           <div className="space-y-8 pl-4">
               {/* Header & Explanation */}
               <div className="space-y-4">
@@ -202,10 +167,10 @@ function Tracking() {
                   />
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-start">
                   <button
                     type="submit"
-                    className="bg-transparent border border-[#ff8a3d] text-[#ff8a3d] hover:bg-[#ff8a3d] hover:text-black font-bold py-3 px-8 rounded-none transition-all duration-300 tracking-wide text-sm flex items-center gap-2 uppercase"
+                    className="bg-transparent border border-[#ff8a3d] text-[#ff8a3d] hover:bg-[#ff8a3d] hover:text-black font-bold py-3 px-8 rounded-none transition-all duration-300 tracking-wide text-sm flex items-center gap-2"
                   >
                     Track Package <ArrowRight className="w-4 h-4"/>
                   </button>

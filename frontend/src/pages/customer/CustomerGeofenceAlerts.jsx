@@ -139,7 +139,14 @@ export default function CustomerGeofenceAlerts() {
           <div className="pl-0 md:pl-14">
             <div className="flex flex-col gap-2 text-sm text-gray-400">
 
-              {/* Distance Removed */}
+              {status && typeof status.distanceMeters === "number" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Distance:</span>
+                  <span className="text-white font-mono font-bold">
+                    {(status.distanceMeters / 1000).toFixed(2)} km
+                  </span>
+                </div>
+              )}
 
             </div>
           </div>
