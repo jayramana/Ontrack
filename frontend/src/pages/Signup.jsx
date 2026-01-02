@@ -6,14 +6,18 @@ import { useAuth } from '../context/AuthContext';
 // Extracted to prevent focus loss, but keeping exact original layout styling
 const InputField = ({ label, name, type = "text", required = false, value, onChange }) => (
     <div>
-        <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">{label}</label>
         <input
             type={type}
             name={name}
             value={value}
             onChange={onChange}
-            className="w-full px-4 py-2 border border-[#2d3748] rounded-lg bg-[#0b0f14] text-white
-                       focus:ring-2 focus:ring-[#ff8a3d] outline-none"
+            className="
+                w-full px-4 py-3 rounded-xl
+                bg-white/5 border border-white/10
+                text-white placeholder-slate-500
+                focus:outline-none focus:ring-2 focus:ring-[#ff8a3d]
+            "
             required={required}
         />
     </div>
@@ -141,21 +145,25 @@ const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0b0f14] p-4">
-            <div className="bg-gradient-to-br from-[#1a1f29] to-[#0f141c] rounded-2xl shadow-xl w-full max-w-md p-8 border border-[#1f2937]">
+        <div className="min-h-screen flex items-center justify-center bg-[#0b0f14] px-4">
+             {/* BACKGROUND GLOW */}
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#ff8a3d22,transparent_60%)]" />
 
-                <div className="text-center mb-6">
-                    <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">OnTrack</h1>
-                    <p className="text-gray-400">Create your OnTrack account</p>
+            {/* CARD */}
+            <div className="relative w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-8">
+
+                <div className="text-center mb-8">
+                    <h1 className="text-3xl font-black text-white tracking-tight">OnTrack</h1>
+                    <p className="text-slate-400 mt-1 text-sm">Create your OnTrack account</p>
                 </div>
 
                 {error && (
-                    <div className="bg-red-500/10 text-red-500 p-3 rounded-lg mb-6 text-sm text-center border border-red-500/20">
+                    <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm text-center">
                         {error}
                     </div>
                 )}
 
-                <form className="space-y-4">
+                <form className="space-y-5">
 
                     {/* Step 1: User Details */}
                     {currentStep === 1 && (
@@ -169,18 +177,22 @@ const Signup = () => {
                             <InputField label="Confirm Password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} type="password" required />
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1">Role</label>
+                                <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Role</label>
                                 <select
                                     name="role"
                                     value={formData.role}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-[#2d3748] rounded-lg bg-[#0b0f14] text-white
-                                               focus:ring-2 focus:ring-[#ff8a3d] outline-none"
+                                    className="
+                                        w-full px-4 py-3 rounded-xl
+                                        bg-white/5 border border-white/10
+                                        text-white
+                                        focus:outline-none focus:ring-2 focus:ring-[#ff8a3d]
+                                    "
                                 >
-                                    <option value="customer">Customer</option>
-                                    <option value="driver">Driver</option>
-                                    <option value="seller">Seller</option>
-                                    <option value="admin">Admin</option>
+                                    <option value="customer" className="text-black">Customer</option>
+                                    <option value="driver" className="text-black">Driver</option>
+                                    <option value="seller" className="text-black">Seller</option>
+                                    <option value="admin" className="text-black">Admin</option>
                                 </select>
                             </div>
 
@@ -188,10 +200,11 @@ const Signup = () => {
                                 onClick={nextStep}
                                 type="button"
                                 disabled={loading}
-                                className={`w-full py-3 rounded-lg text-white font-semibold shadow-md 
+                                className={`
+                                    w-full py-3 rounded-xl font-bold transition
                                     ${loading
-                                        ? 'bg-[#ff8a3d]/50 cursor-not-allowed'
-                                        : 'bg-[#ff8a3d] hover:bg-[#e67a35] transform hover:-translate-y-0.5'
+                                        ? 'bg-white/10 text-slate-400 cursor-not-allowed'
+                                        : 'bg-[#ff8a3d] text-black hover:bg-[#ff9f5d]'
                                     }`}
                             >
                                 {loading 
@@ -222,17 +235,21 @@ const Signup = () => {
                             {/* Seller Specific Field */}
                             {formData.role === 'seller' && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-1">Seller Type</label>
+                                    <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Seller Type</label>
                                     <select
                                         name="sellerType"
                                         value={formData.sellerType}
                                         onChange={handleChange}
-                                        className="w-full px-4 py-2 border border-[#2d3748] rounded-lg bg-[#0b0f14] text-white
-                                                   focus:ring-2 focus:ring-[#ff8a3d] outline-none"
+                                        className="
+                                            w-full px-4 py-3 rounded-xl
+                                            bg-white/5 border border-white/10
+                                            text-white
+                                            focus:outline-none focus:ring-2 focus:ring-[#ff8a3d]
+                                        "
                                     >
-                                        <option value="">Select Type</option>
-                                        <option value="individual">Individual</option>
-                                        <option value="company">Business</option>
+                                        <option value="" className="text-black">Select Type</option>
+                                        <option value="individual" className="text-black">Individual</option>
+                                        <option value="company" className="text-black">Business</option>
                                     </select>
                                 </div>
                             )}
@@ -241,7 +258,7 @@ const Signup = () => {
                                 <button
                                     onClick={prevStep}
                                     type="button"
-                                    className="w-1/3 py-3 rounded-lg text-gray-300 font-semibold border border-[#2d3748] bg-[#0b0f14] hover:bg-gray-800 transition-colors"
+                                    className="w-1/3 py-3 rounded-xl text-slate-300 font-semibold border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
                                 >
                                     Back
                                 </button>
@@ -249,10 +266,11 @@ const Signup = () => {
                                     onClick={handleSubmit} // Explicitly call submit here for Step 2
                                     type="button"
                                     disabled={loading}
-                                    className={`w-2/3 py-3 rounded-lg text-white font-semibold shadow-md 
+                                    className={`
+                                        w-2/3 py-3 rounded-xl font-bold transition shadow-md
                                         ${loading
-                                            ? 'bg-[#ff8a3d]/50 cursor-not-allowed'
-                                            : 'bg-[#ff8a3d] hover:bg-[#e67a35] transform hover:-translate-y-0.5'
+                                            ? 'bg-white/10 text-slate-400 cursor-not-allowed'
+                                            : 'bg-[#ff8a3d] text-black hover:bg-[#ff9f5d]'
                                         }`}
                                 >
                                     {loading ? 'Creating Account...' : 'Create Account'}
@@ -262,9 +280,9 @@ const Signup = () => {
                     )}
                 </form>
 
-                <div className="mt-6 text-center text-sm text-gray-400">
+                <div className="mt-6 text-center text-sm text-slate-400">
                     Already have an account?{' '}
-                    <Link to="/login" className="text-[#ff8a3d] hover:text-[#e67a35] font-medium transition-colors">
+                    <Link to="/login" className="text-[#ff8a3d] font-semibold hover:underline">
                         Sign in
                     </Link>
                 </div>

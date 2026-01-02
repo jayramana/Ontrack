@@ -20,74 +20,116 @@ function Availability() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f7f3ef]">
-
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
       {/* SIDEBAR */}
       <CustomerSidebar active="availability" />
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 p-10 transition-all duration-300">
-
+      {/* MAIN */}
+      <main className="flex-1 px-10 py-10 overflow-y-auto">
         {/* HEADER */}
-        <h2 className="text-3xl font-bold text-[#351c15] mb-1">
-          Set Availability
-        </h2>
-        <p className="text-[#6f4e37] mb-8">
-          Tell us when you're available to receive your delivery.
-        </p>
+        <div className="mb-10">
+          <h1 className="text-3xl font-black text-white">
+            Set Availability
+          </h1>
+          <p className="text-slate-400 mt-1">
+            Tell us when you're available to receive your delivery
+          </p>
+        </div>
 
         {/* INPUT CARD */}
-        <div className="bg-[#fff8e7] border border-[#e6ddc5] p-6 rounded-2xl shadow-md max-w-3xl">
-          <label className="block mb-2 text-[#351c15] font-semibold">
-            When are you available?
+        <div
+          className="
+            bg-white/5 backdrop-blur-xl
+            border border-white/10
+            rounded-3xl p-6
+            max-w-3xl
+          "
+        >
+          <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">
+            Availability Details
           </label>
 
           <textarea
-            className="w-full p-4 bg-white border border-[#d4c7b3] rounded-xl
-            text-[#351c15] h-32 focus:ring-2 focus:ring-[#f9b400] outline-none"
-            placeholder="e.g., I'm available after 6 PM tomorrow."
             value={availabilityText}
             onChange={(e) => setAvailabilityText(e.target.value)}
+            placeholder="e.g. I'm available after 6 PM tomorrow"
+            className="
+              w-full h-32 p-4 rounded-xl
+              bg-white/5 border border-white/10
+              text-white placeholder-slate-500
+              focus:outline-none focus:ring-2 focus:ring-[#ff8a3d]
+            "
           />
 
           <button
             onClick={handleAnalyze}
-            className="mt-5 bg-[#351c15] hover:bg-[#4a2a21]
-            text-white p-3 rounded-xl w-full font-semibold shadow transition"
+            className="
+              mt-5 w-full py-3 rounded-xl
+              bg-[#ff8a3d] text-black
+              font-bold
+              hover:bg-[#ff9f5d]
+              transition
+            "
           >
             Analyze Availability
           </button>
         </div>
 
-        {/* PARSED RESULT CARD */}
+        {/* PARSED RESULT */}
         {parsedAvailability && (
-          <div className="bg-[#fff8e7] border border-[#e6ddc5] p-6 rounded-2xl shadow-md max-w-3xl mt-8">
-            <h3 className="text-lg font-bold text-[#351c15] mb-4">
+          <div
+            className="
+              mt-8
+              bg-white/5 backdrop-blur-xl
+              border border-white/10
+              rounded-3xl p-6
+              max-w-3xl
+            "
+          >
+            <h3 className="text-lg font-bold text-white mb-4">
               Parsed Availability
             </h3>
 
-            <div className="bg-white border border-[#d4c7b3] p-4 rounded-xl">
-              <p className="text-[#351c15] mb-1">
-                <b>Date:</b> {parsedAvailability.date}
+            <div className="space-y-2 text-sm">
+              <p>
+                <span className="text-slate-400">Date:</span>{" "}
+                <span className="font-semibold">{parsedAvailability.date}</span>
               </p>
-              <p className="text-[#351c15] mb-1">
-                <b>Time:</b> {parsedAvailability.start} – {parsedAvailability.end}
+              <p>
+                <span className="text-slate-400">Time:</span>{" "}
+                <span className="font-semibold">
+                  {parsedAvailability.start} – {parsedAvailability.end}
+                </span>
               </p>
-              <p className="text-[#351c15]">
-                <b>Priority:</b> {parsedAvailability.priority}
+              <p>
+                <span className="text-slate-400">Priority:</span>{" "}
+                <span
+                  className={`font-bold ${
+                    parsedAvailability.priority === "High"
+                      ? "text-red-400"
+                      : "text-green-400"
+                  }`}
+                >
+                  {parsedAvailability.priority}
+                </span>
               </p>
             </div>
 
             <button
               onClick={handleSave}
-              className="mt-5 bg-[#f9b400] hover:bg-[#e0a200]
-              text-[#351c15] p-3 rounded-xl w-full font-bold shadow transition"
+              className="
+                mt-6 w-full py-3 rounded-xl
+                bg-white/10 border border-white/20
+                text-white font-bold
+                hover:bg-white/20
+                transition
+              "
             >
               Confirm & Save
             </button>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

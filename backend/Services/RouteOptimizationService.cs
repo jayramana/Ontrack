@@ -138,11 +138,13 @@ namespace Backend.Services
     {
         private readonly AppDbContext _context;
         private readonly OpenRouteServiceClient _ors;
+        private readonly IEtaservice _etaService;
 
-        public RouteOptimizationService(AppDbContext context, OpenRouteServiceClient ors)
+        public RouteOptimizationService(AppDbContext context, OpenRouteServiceClient ors, IEtaservice etaService)
         {
             _context = context;
             _ors = ors;
+            _etaService = etaService;
         }
 
         public async Task OptimizeRouteForDriver(int driverId)
@@ -224,7 +226,7 @@ namespace Backend.Services
                     }
                     else
                     {
-                        distanceKm = GetDistance(currentLat, currentLng, s.Latitude, s.Longitude);
+                        distanceKm = _etaService.GetDistance(currentLat, currentLng, s.Latitude, s.Longitude);
                         durationSec = (distanceKm / 40.0) * 3600.0;
                     }
 
@@ -272,7 +274,7 @@ namespace Backend.Services
                     }
                     else
                     {
-                        distanceKm = GetDistance(currentLat, currentLng, s.Latitude, s.Longitude);
+                        distanceKm = _etaService.GetDistance(currentLat, currentLng, s.Latitude, s.Longitude);
                         durationSec = (distanceKm / 40.0) * 3600.0;
                     }
 
@@ -307,21 +309,7 @@ namespace Backend.Services
             await _context.SaveChangesAsync();
         }
 
-        // Haversine fallback
-        private double GetDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            var R = 6371.0;
-            var dLat = Deg2Rad(lat2 - lat1);
-            var dLon = Deg2Rad(lon2 - lon1);
-            var a =
-                Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
-                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            return R * c;
-        }
 
-        private double Deg2Rad(double deg) => deg * (Math.PI / 180.0);
     }
 
     

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import api from "../../services/api";
+import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
 
 export default function DriverASRVerification({ orderId, onClose }) {
@@ -48,7 +48,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
       } catch (err) {
         // ASR doesn't exist yet - this is fine
         if (err.response?.status === 404) {
-          console.log("ASR not initiated yet");
+          
           setAsrStatus(null);
         } else {
           throw err;
@@ -68,8 +68,10 @@ export default function DriverASRVerification({ orderId, onClose }) {
   useEffect(() => {
     const setupSignalR = async () => {
       try {
+        const hubUrl = API_BASE_URL.replace("/api", "/hubs/logistics");
+
         const conn = new signalR.HubConnectionBuilder()
-          .withUrl("http://localhost:5066/hubs/logistics", {
+          .withUrl(hubUrl, {
             accessTokenFactory: () => localStorage.getItem("token") || "",
           })
           .withAutomaticReconnect()
@@ -192,12 +194,18 @@ export default function DriverASRVerification({ orderId, onClose }) {
     try {
       setUploading(true);
       
-      // Convert photo to base64
-      const photoBase64 = await fileToBase64(customerPhoto);
+      // 1. Upload Customer Photo to S3
+      const photoKey = await uploadToS3(customerPhoto);
+
+      // 2. Convert Signature to Blob and Upload to S3
+      const signatureBlob = dataURLtoBlob(signatureData);
+      const signatureFile = new File([signatureBlob], "signature.png", { type: "image/png" });
+      const signatureKey = await uploadToS3(signatureFile);
       
+      // 3. Submit Keys to ASR Service
       const response = await api.post(`/asr/driver/upload-captures/${asrStatus.asrId}`, {
-        customerPhotoUrl: photoBase64,
-        signatureUrl: signatureData
+        customerPhotoUrl: photoKey,
+        signatureUrl: signatureKey
       });
 
       alert("Captures uploaded! Waiting for AI verification...");
@@ -210,17 +218,30 @@ export default function DriverASRVerification({ orderId, onClose }) {
     }
   };
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
+  const uploadToS3 = async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      const res = await api.post("/aws/files", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+      });
+      return res.data.key;
+  };
+
+  const dataURLtoBlob = (dataURL) => {
+      const arr = dataURL.split(',');
+      const mime = arr[0].match(/:(.*?);/)[1];
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while(n--){
+          u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], {type:mime});
   };
 
   const handleCompleteDelivery = async () => {
-    console.log("completing delivery");
+    
     if (!canCompleteDelivery) {
       alert("Cannot complete delivery - ASR verification not successful");
       return;
@@ -235,254 +256,306 @@ export default function DriverASRVerification({ orderId, onClose }) {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-6">
-          <p className="text-[#351c15]">Loading ASR verification...</p>
+ if (loading) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div
+        className="
+          bg-white/5 backdrop-blur-xl
+          border border-white/10
+          rounded-3xl
+          px-8 py-6
+          shadow-2xl
+          flex flex-col items-center gap-3
+        "
+      >
+        {/* Spinner */}
+        <div
+          className="
+            h-10 w-10
+            rounded-full
+            border-4 border-white/10
+            border-t-[#ff8a3d]
+            animate-spin
+          "
+        />
+
+        <p className="text-slate-300 font-medium">
+          Loading ASR verification…
+        </p>
+      </div>
+    </div>
+  );
+}
+
+ return (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
+    <div
+      className="
+        bg-white/5 backdrop-blur-xl
+        border border-white/10
+        rounded-3xl
+        max-w-4xl w-full
+        max-h-[90vh] overflow-y-auto
+        text-slate-100
+      "
+    >
+      {/* HEADER */}
+      <div className="sticky top-0 z-10 px-6 py-5 border-b border-white/10 bg-black/30 backdrop-blur-xl">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-black text-white">
+              🔒 ASR Verification Required
+            </h1>
+            <p className="text-slate-400 text-sm">
+              Order #{orderId} — {order?.customerName}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-300 hover:text-white text-3xl font-bold"
+          >
+            ×
+          </button>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-[#f7f3ef] rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-[#fff8e7] border-b border-[#e6ddc5] p-6 sticky top-0 z-10">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-[#351c15]">
-                🔒 ASR Verification Required
-              </h1>
-              <p className="text-[#6f4e37]">Order #{orderId} - {order?.customerName}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-[#351c15] hover:text-[#2b160f] text-2xl font-bold"
-            >
-              ×
-            </button>
-          </div>
-        </div>
+      <div className="p-6 space-y-6">
 
-        <div className="p-6 space-y-6">
-          {/* ASR Status Card */}
-          {asrStatus && (
-            <div className={`border-l-4 p-4 rounded-lg ${
-              asrStatus.status === "Success" ? "bg-green-50 border-green-500" :
-              asrStatus.status === "Failed" ? "bg-red-50 border-red-500" :
-              asrStatus.status === "InProgress" ? "bg-yellow-50 border-yellow-500" :
-              "bg-blue-50 border-blue-500"
-            }`}>
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-lg text-[#351c15]">
-                    Status: {asrStatus.status}
-                  </h3>
-                  {asrStatus.score && (
-                    <p className="text-sm text-[#6f4e37]">
-                      AI Confidence: {(asrStatus.score * 100).toFixed(1)}%
-                    </p>
-                  )}
-                </div>
-
-                {asrStatus.status === "Success" && (
-                  <div className="text-green-600 text-3xl">✓</div>
+        {/* ASR STATUS */}
+        {asrStatus && (
+          <div
+            className={`
+              rounded-2xl p-5 border
+              ${
+                asrStatus.status === "Success"
+                  ? "bg-green-500/10 border-green-500/30"
+                  : asrStatus.status === "Failed"
+                  ? "bg-red-500/10 border-red-500/30"
+                  : asrStatus.status === "InProgress"
+                  ? "bg-yellow-500/10 border-yellow-500/30"
+                  : "bg-blue-500/10 border-blue-500/30"
+              }
+            `}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold">
+                  Status: {asrStatus.status}
+                </h3>
+                {asrStatus.score && (
+                  <p className="text-sm text-slate-400">
+                    AI Confidence: {(asrStatus.score * 100).toFixed(1)}%
+                  </p>
                 )}
               </div>
 
-              {asrStatus.reasons && asrStatus.reasons.length > 0 && (
-                <div className="mt-3 bg-white p-3 rounded border border-[#e6ddc5]">
-                  <p className="font-semibold text-sm text-[#351c15] mb-1">Details:</p>
-                  <ul className="text-sm text-[#6f4e37] space-y-1">
-                    {asrStatus.reasons.map((reason, idx) => (
-                      <li key={idx}>• {reason}</li>
-                    ))}
-                  </ul>
-                </div>
+              {asrStatus.status === "Success" && (
+                <div className="text-green-400 text-3xl">✓</div>
               )}
             </div>
-          )}
 
-          {/* Step 1: Initiate ASR */}
-          {!asrStatus && (
-            <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6">
-              <h2 className="text-xl font-bold text-[#351c15] mb-3">Step 1: Request Documents</h2>
-              <p className="text-[#6f4e37] mb-4">
-                Notify customer to upload Aadhaar or PAN card
-              </p>
-              <button
-                onClick={handleInitiateASR}
-                disabled={initiating}
-                className="px-6 py-3 bg-[#351c15] text-white rounded-lg hover:bg-[#2b160f] font-semibold shadow disabled:opacity-50"
-              >
-                {initiating ? "Sending..." : "🔔 Send ASR Request"}
-              </button>
-            </div>
-          )}
-
-          {/* Step 2: Waiting for customer */}
-          {asrStatus && !asrStatus.hasDocuments && (
-            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-6">
-              <h2 className="text-xl font-bold text-yellow-800 mb-2">
-                ⏳ Waiting for Customer
-              </h2>
-              <p className="text-yellow-700">
-                Customer notification sent. Waiting for ID upload...
-              </p>
-              <button
-                onClick={loadData}
-                className="mt-3 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-              >
-                🔄 Refresh Status
-              </button>
-            </div>
-          )}
-
-          {/* Step 3: Capture photo & signature */}
-          {asrStatus && asrStatus.hasDocuments && !asrStatus.hasPhoto && (
-            <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6">
-              <h2 className="text-xl font-bold text-[#351c15] mb-4">
-                Step 2: Capture Photo & Signature
-              </h2>
-
-              {/* Photo */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-[#351c15] mb-2">📸 Customer Photo</h3>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handlePhotoCapture}
-                  className="mb-3 block w-full text-sm text-[#6f4e37]
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-full file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-[#351c15] file:text-white
-                    hover:file:bg-[#2b160f]"
-                />
-                {customerPhotoPreview && (
-                  <img 
-                    src={customerPhotoPreview} 
-                    alt="Customer" 
-                    className="w-48 h-48 object-cover rounded-lg border-2 border-[#e6ddc5]"
-                  />
-                )}
-              </div>
-
-              {/* Signature */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-[#351c15] mb-2">✍️ Signature</h3>
-                
-                {!isCapturingSignature && !signatureData && (
-                  <button
-                    onClick={() => setIsCapturingSignature(true)}
-                    className="px-4 py-2 bg-[#f9b400] text-[#351c15] rounded-lg hover:bg-[#e0a200]"
-                  >
-                    Start Capture
-                  </button>
-                )}
-
-                {isCapturingSignature && (
-                  <div>
-                    <canvas
-                      ref={canvasRef}
-                      width={400}
-                      height={200}
-                      onMouseDown={startDrawing}
-                      onMouseMove={draw}
-                      onMouseUp={stopDrawing}
-                      onMouseLeave={stopDrawing}
-                      className="border-2 border-[#351c15] rounded-lg bg-white cursor-crosshair touch-none"
-                    />
-                    <div className="flex gap-3 mt-3">
-                      <button
-                        onClick={clearSignature}
-                        className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500"
-                      >
-                        Clear
-                      </button>
-                      <button
-                        onClick={saveSignature}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {signatureData && !isCapturingSignature && (
-                  <div>
-                    <img 
-                      src={signatureData} 
-                      alt="Signature" 
-                      className="border-2 border-[#e6ddc5] rounded-lg bg-white"
-                    />
-                    <button
-                      onClick={() => setIsCapturingSignature(true)}
-                      className="mt-2 px-4 py-2 bg-[#f9b400] text-[#351c15] rounded-lg"
-                    >
-                      Retake
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={handleUploadCaptures}
-                disabled={!customerPhoto || !signatureData || uploading}
-                className="w-full px-6 py-3 bg-[#351c15] text-white rounded-lg hover:bg-[#2b160f] font-semibold disabled:opacity-50"
-              >
-                {uploading ? "Uploading..." : "📤 Upload & Verify"}
-              </button>
-            </div>
-          )}
-
-          {/* Verification Result */}
-          {verificationResult && (
-            <div className={`border-l-4 p-6 rounded-lg ${
-              verificationResult.status === "Success" 
-                ? "bg-green-50 border-green-500" 
-                : "bg-red-50 border-red-500"
-            }`}>
-              <h2 className="text-xl font-bold mb-3">
-                {verificationResult.status === "Success" ? "✅ Verified" : "❌ Failed"}
-              </h2>
-              <p className="text-sm mb-2">Score: {(verificationResult.score * 100).toFixed(1)}%</p>
-              <div className="bg-white p-3 rounded">
-                <ul className="text-sm space-y-1">
-                  {verificationResult.reasons?.map((r, i) => (
+            {asrStatus.reasons?.length > 0 && (
+              <div className="mt-4 bg-black/30 border border-white/10 rounded-xl p-4">
+                <p className="font-semibold text-sm mb-2">Details</p>
+                <ul className="text-sm text-slate-300 space-y-1">
+                  {asrStatus.reasons.map((r, i) => (
                     <li key={i}>• {r}</li>
                   ))}
                 </ul>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* STEP 1 */}
+        {!asrStatus && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <h2 className="text-xl font-bold mb-2">
+              Step 1: Request Documents
+            </h2>
+            <p className="text-slate-400 mb-4">
+              Notify customer to upload Aadhaar or PAN card
+            </p>
+
+            <button
+              onClick={handleInitiateASR}
+              disabled={initiating}
+              className="
+                px-6 py-3 rounded-xl
+                bg-[#ff8a3d] text-black font-bold
+                hover:opacity-90
+                disabled:opacity-50
+              "
+            >
+              {initiating ? "Sending…" : "🔔 Send ASR Request"}
+            </button>
+          </div>
+        )}
+
+        {/* WAITING */}
+        {asrStatus && !asrStatus.hasDocuments && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-yellow-300 mb-2">
+              ⏳ Waiting for Customer
+            </h2>
+            <p className="text-yellow-200">
+              Customer notification sent. Waiting for ID upload…
+            </p>
+            <button
+              onClick={loadData}
+              className="
+                mt-4 px-4 py-2 rounded-xl
+                bg-yellow-500 text-black font-bold
+                hover:opacity-90
+              "
+            >
+              🔄 Refresh Status
+            </button>
+          </div>
+        )}
+
+        {/* CAPTURE */}
+        {asrStatus && asrStatus.hasDocuments && !asrStatus.hasPhoto && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <h2 className="text-xl font-bold mb-4">
+              Step 2: Capture Photo & Signature
+            </h2>
+
+            {/* PHOTO */}
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2">📸 Customer Photo</h3>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoCapture}
+                className="
+                  block w-full text-sm text-slate-300
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-xl file:border-0
+                  file:bg-white/10 file:text-white
+                  hover:file:bg-white/20
+                "
+              />
+
+              {customerPhotoPreview && (
+                <img
+                  src={customerPhotoPreview}
+                  alt="Customer"
+                  className="mt-4 w-48 h-48 object-cover rounded-xl border border-white/10"
+                />
+              )}
+            </div>
+
+            {/* SIGNATURE */}
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2">✍️ Signature</h3>
+
+              {!isCapturingSignature && !signatureData && (
+                <button
+                  onClick={() => setIsCapturingSignature(true)}
+                  className="
+                    px-4 py-2 rounded-xl
+                    bg-[#ff8a3d] text-black font-bold
+                  "
+                >
+                  Start Capture
+                </button>
+              )}
+
+              {isCapturingSignature && (
+                <>
+                  <canvas
+                    ref={canvasRef}
+                    width={400}
+                    height={200}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    className="
+                      border border-white/20
+                      rounded-xl bg-black
+                      cursor-crosshair touch-none
+                    "
+                  />
+                  <div className="flex gap-3 mt-3">
+                    <button
+                      onClick={clearSignature}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={saveSignature}
+                      className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 font-bold"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {signatureData && !isCapturingSignature && (
+                <>
+                  <img
+                    src={signatureData}
+                    alt="Signature"
+                    className="border border-white/10 rounded-xl bg-black"
+                  />
+                  <button
+                    onClick={() => setIsCapturingSignature(true)}
+                    className="mt-2 px-4 py-2 rounded-xl bg-[#ff8a3d] text-black font-bold"
+                  >
+                    Retake
+                  </button>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={handleUploadCaptures}
+              disabled={!customerPhoto || !signatureData || uploading}
+              className="
+                w-full px-6 py-3 rounded-xl
+                bg-[#ff8a3d] text-black font-bold
+                disabled:opacity-50
+              "
+            >
+              {uploading ? "Uploading…" : "📤 Upload & Verify"}
+            </button>
+          </div>
+        )}
+
+        {/* COMPLETE DELIVERY */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+          <h2 className="text-xl font-bold mb-4">Complete Delivery</h2>
+
+          {!canCompleteDelivery && (
+            <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl mb-4">
+              ⚠️ ASR verification required
             </div>
           )}
 
-          {/* Complete Delivery */}
-          <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl p-6">
-            <h2 className="text-xl font-bold text-[#351c15] mb-4">Complete Delivery</h2>
-            
-            {!canCompleteDelivery && (
-              <div className="bg-yellow-50 border border-yellow-300 p-4 rounded-lg mb-4">
-                <p className="text-yellow-800">
-                  ⚠️ ASR verification required
-                </p>
-              </div>
-            )}
-
-            <button
-              onClick={handleCompleteDelivery}
-              disabled={!canCompleteDelivery}
-              className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold disabled:opacity-50"
-            >
-              {canCompleteDelivery ? "✓ Mark Delivered" : "🔒 Waiting for Verification"}
-            </button>
-          </div>
+          <button
+            onClick={handleCompleteDelivery}
+            disabled={!canCompleteDelivery}
+            className="
+              w-full px-6 py-3 rounded-xl font-bold
+              bg-green-600 hover:bg-green-700
+              disabled:opacity-50
+            "
+          >
+            {canCompleteDelivery
+              ? "✓ Mark Delivered"
+              : "🔒 Waiting for Verification"}
+          </button>
         </div>
+
       </div>
     </div>
-  );
+  </div>
+);
+
 }

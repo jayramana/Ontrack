@@ -6,7 +6,7 @@ namespace Backend.Endpoints
 {
     public static class PublicTrackingEndpoints
     {
-        public static void MapPublicTrackingEndpoints(this WebApplication app)
+        public static RouteGroupBuilder MapPublicTrackingEndpoints(this WebApplication app)
         {
             var group = app.MapGroup("/api/public/tracking")
                            .WithTags("PublicTracking");
@@ -82,6 +82,7 @@ namespace Backend.Endpoints
                     eta
                 });
             });
+            return group;
         }
     }
 }

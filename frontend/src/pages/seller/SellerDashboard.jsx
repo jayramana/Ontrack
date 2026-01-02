@@ -15,11 +15,17 @@ function SenderDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [dateFilter, setDateFilter] = useState("1W");
 
   useEffect(() => {
     const fetchStats = async () => {
+      let days = 7;
+      if (dateFilter === "1M") days = 30;
+      if (dateFilter === "3M") days = 90;
+      if (dateFilter === "1Y") days = 365;
+
       try {
-        const response = await api.get("/seller/analytics");
+        const response = await api.get(`/seller/analytics?days=${days}`);
         setStats(response.data);
       } catch (error) {
         console.error("Failed to fetch analytics", error);
@@ -28,7 +34,7 @@ function SenderDashboard() {
       }
     };
     fetchStats();
-  }, []);
+  }, [dateFilter]);
 
   return (
     <div className="min-h-screen flex bg-[#0b0f14]">
@@ -137,6 +143,27 @@ function SenderDashboard() {
               </div>
 
               {/* CHARTS */}
+              <div className="flex justify-between items-end mb-6">
+                <h2 className="text-xl font-bold text-white">Analytics Overview</h2>
+                
+                {/* DATE FILTERS */}
+                <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5">
+                {["1W", "1M", "3M", "1Y"].map((filter) => (
+                    <button
+                    key={filter}
+                    onClick={() => setDateFilter(filter)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                        dateFilter === filter
+                        ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 shadow-lg shadow-orange-500/10"
+                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                    }`}
+                    >
+                    {filter}
+                    </button>
+                ))}
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Revenue Chart */}
                 <div className="lg:col-span-2 bg-[#0b0f14] rounded-xl shadow border border-[#1f2937]">

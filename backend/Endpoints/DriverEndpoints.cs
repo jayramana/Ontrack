@@ -522,7 +522,7 @@ using Microsoft.AspNetCore.SignalR;
 
 public static class DriverEndpoints
 {
-    public static void MapDriverEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapDriverEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/driver")
                        .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" }).WithTags("Driver");
@@ -642,7 +642,7 @@ public static class DriverEndpoints
                         {
                             o.DestinationWarehouse.Id,
                             o.DestinationWarehouse.Name,
-                            o.CurrentWarehouse.City
+                            o.DestinationWarehouse.City
                         }
                         : null
                 })
@@ -806,10 +806,25 @@ public static class DriverEndpoints
             if (order.Status != "Assigned")
                 return Results.BadRequest(new { message = "Order is not in Assigned state." });
 
+            order.Status = "AtDestinationWarehouse";
+            await context.SaveChangesAsync();
+
+            return Results.Ok(new { message = "Order accepted. Now At Destination Warehouse." });
+        });
+
+        group.MapPost("/pickup/{orderId}", async (int orderId, AppDbContext context) =>
+        {
+            var order = await context.Orders.FindAsync(orderId);
+            if (order == null) return Results.NotFound();
+
+            // Only allow if currently AtDestinationWarehouse
+            if (order.Status != "AtDestinationWarehouse")
+                return Results.BadRequest(new { message = "Order is not ready for pickup (must be accepted first)." });
+
             order.Status = "OutForDelivery";
             await context.SaveChangesAsync();
 
-            return Results.Ok(new { message = "Order accepted. Now Out for Delivery." });
+            return Results.Ok(new { message = "Order picked up. Now Out for Delivery." });
         });
 
         group.MapPost("/reject/{orderId}", async (int orderId, AppDbContext context) =>
@@ -958,6 +973,9 @@ public static class DriverEndpoints
                 order.Priority,
                 order.AiPriority,
                 order.AiPriorityJustification,
+                order.Weight,
+                order.Price,
+                order.DeliveryType,
                 order.IsASR,
                 order.ASRStatus,
                 originWarehouse = order.OriginWarehouse != null ? new
@@ -1019,5 +1037,6 @@ public static class DriverEndpoints
                 estimatedDelivery = order.EstimatedDeliveryDate
             });
         });
+        return group;
     }
 }

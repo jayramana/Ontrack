@@ -19,7 +19,7 @@ L.Icon.Default.mergeOptions({
 
 // Default center: Chennai
 const DEFAULT_CENTER = [13.0827, 80.2707];
-const API_BASE = "http://localhost:5066/api/geocode";
+const API_BASE = `${import.meta.env.VITE_API_URL}/api/geocode`;
 
 function ClickHandler({ setPosition }) {
   useMapEvents({

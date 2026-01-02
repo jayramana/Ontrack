@@ -51,7 +51,7 @@ public static class VerificationEndpoints
 
 public static class DiagnosticEndpoints
 {
-    public static void MapDiagnosticEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapDiagnosticEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/diagnostic").WithTags("Diagnostic");
 
@@ -306,6 +306,7 @@ public static class DiagnosticEndpoints
                 timestamp = DateTime.UtcNow
             });
         });
+        return group;
     }
 }
 

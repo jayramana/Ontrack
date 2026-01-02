@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+import { formatStatus } from "@/lib/utils";
 
 const OrderDetailsModal = ({ orderId, onClose }) => {
   const [order, setOrder] = useState(null);
@@ -69,7 +70,7 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
               {/* STATUS */}
               <div className="flex justify-between items-center">
                 <span className={`px-4 py-2 rounded-full text-sm font-semibold ${statusColor}`}>
-                  {order.status}
+                  {formatStatus(order.status)}
                 </span>
                 <span className="text-sm text-gray-400">Order #{order.id}</span>
               </div>

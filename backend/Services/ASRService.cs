@@ -421,11 +421,13 @@ namespace Backend.Services
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
         private readonly HttpClient _http;
+        private readonly Amazon.S3.IAmazonS3 _s3;
 
-        public ASRService(AppDbContext context, IConfiguration config)
+        public ASRService(AppDbContext context, IConfiguration config, Amazon.S3.IAmazonS3 s3)
         {
             _context = context;
             _config = config;
+            _s3 = s3;
             _http = new HttpClient();
         }
 
@@ -526,9 +528,9 @@ namespace Backend.Services
 
             // Validate required data
             var documentUrls = JsonSerializer.Deserialize<List<string>>(asr.DocumentUrls ?? "[]") ?? new();
-            var aadhaarFront = documentUrls.FirstOrDefault();
+            var aadhaarFrontKey = documentUrls.FirstOrDefault();
 
-            if (string.IsNullOrEmpty(aadhaarFront) || string.IsNullOrEmpty(asr.AadhaarNumber))
+            if (string.IsNullOrEmpty(aadhaarFrontKey) || string.IsNullOrEmpty(asr.AadhaarNumber))
             {
                 asr.AIVerifyStatus = "Failed";
                 asr.AIVerifyReasons = JsonSerializer.Serialize(
@@ -540,16 +542,24 @@ namespace Backend.Services
 
             try
             {
-                // =============================
-                // CALL n8n WEBHOOK
-                // =============================
+
+                var aadhaarFrontBase64 = await GetImageBase64Async(aadhaarFrontKey);
+                var aadhaarBackKey = documentUrls.Count > 1 ? documentUrls[1] : null;
+                var aadhaarBackBase64 = aadhaarBackKey != null ? await GetImageBase64Async(aadhaarBackKey) : null;
+
+
                 var payload = new
                 {
                     aadhaarNumber = asr.AadhaarNumber,
-                    aadhaarFrontImage = aadhaarFront,
-                    aadhaarBackImage = documentUrls.Count > 1 ? documentUrls[1] : null,
+                    aadhaarFrontUrl = GetPresignedUrl(aadhaarFrontKey),
+                    aadhaarBackUrl = aadhaarBackKey != null ? GetPresignedUrl(aadhaarBackKey) : null,
+                    aadhaarFrontImage = aadhaarFrontBase64,
+                    aadhaarBackImage = aadhaarBackBase64,
                     asrId = asr.Id
                 };
+
+                Console.WriteLine($"S3 Front URL: {payload.aadhaarFrontUrl}");
+                Console.WriteLine($"S3 Back URL: {payload.aadhaarBackUrl}");
 
                 var response = await _http.PostAsync(
                     _config["n8n:AadhaarVerifyUrl"],
@@ -569,9 +579,7 @@ namespace Backend.Services
                     await response.Content.ReadAsStringAsync()
                 ).RootElement;
 
-                // =============================
-                // MAP n8n RESULT
-                // =============================
+            
                 var status = result.GetProperty("status").GetString() ?? "Failed";
                 var score = result.GetProperty("score").GetDouble();
                 var reasons = result.GetProperty("reasons")
@@ -608,9 +616,6 @@ namespace Backend.Services
             }
         }
 
-        // =====================================================
-        // GET ASR STATUS (UNCHANGED)
-        // =====================================================
         public async Task<ASRVerification?> GetASRVerificationAsync(int orderId)
         {
             return await _context.ASRVerifications
@@ -620,9 +625,6 @@ namespace Backend.Services
                 .FirstOrDefaultAsync(a => a.OrderId == orderId);
         }
 
-        // =====================================================
-        // ADMIN OVERRIDE (UNCHANGED)
-        // =====================================================
         public async Task<ASRVerification> AdminOverrideAsync(
             int asrId,
             int adminId,
@@ -669,6 +671,83 @@ namespace Backend.Services
 
             await _context.SaveChangesAsync();
             return asr;
+        }
+
+        // =====================================================
+        // HELPER: Get Base64 from S3 or Input
+        // =====================================================
+        private async Task<string> GetImageBase64Async(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "";
+
+            // If it's already Base64 (starts with "data:image" or no prefix but looks like base64), return it.
+            // Assumption: S3 keys start with "uploads/" as per AWSEndpoints
+            if (!input.StartsWith("uploads/"))
+            {
+                return input;
+            }
+
+            try 
+            {
+                var bucket = _config["AWS:BucketName"];
+                if (string.IsNullOrEmpty(bucket)) return input; // Safety fallback
+
+                var request = new Amazon.S3.Model.GetObjectRequest
+                {
+                    BucketName = bucket,
+                    Key = input
+                };
+
+                using var response = await _s3.GetObjectAsync(request);
+                using var ms = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(ms);
+                
+                var bytes = ms.ToArray();
+                var base64 = Convert.ToBase64String(bytes);
+                
+                // Determine mime type from key extension or default to jpeg
+                var ext = Path.GetExtension(input).ToLower();
+                var mime = ext == ".png" ? "image/png" : "image/jpeg";
+                
+                return $"data:{mime};base64,{base64}";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching from S3: {ex.Message}");
+                // Fallback: return input as is (maybe it wasn't an S3 key?)
+                return input;
+            }
+        }
+
+        // =====================================================
+        // HELPER: Get Presigned URL for S3 Key
+        // =====================================================
+        public string GetPresignedUrl(string? key)
+        {
+            if (string.IsNullOrEmpty(key)) return "";
+            
+            // If it's a legacy base64 string or url, return as is (but truncate base64 for safety if needed, though frontend expects full)
+            if (!key.StartsWith("uploads/")) return key;
+
+            try
+            {
+                var bucket = _config["AWS:BucketName"];
+                if (string.IsNullOrEmpty(bucket)) return "";
+
+                var request = new Amazon.S3.Model.GetPreSignedUrlRequest
+                {
+                    BucketName = bucket,
+                    Key = key,
+                    Verb = Amazon.S3.HttpVerb.GET,
+                    Expires = DateTime.UtcNow.AddMinutes(60)
+                };
+
+                return _s3.GetPreSignedURL(request);
+            }
+            catch
+            {
+                return "";
+            }
         }
     }
 }

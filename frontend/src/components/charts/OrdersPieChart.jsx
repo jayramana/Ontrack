@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatStatus } from "@/lib/utils";
 import { TrendingUp } from "lucide-react";
 import { Pie, PieChart } from "recharts";
 import api from "../../services/api";
@@ -20,16 +21,17 @@ import {
 export const description = "A pie chart for order statuses";
 
 // Map statuses to the CSS variables used in the original chart to preserve theme
+// Map statuses to a pure orange gradient as requested (light to dark orange)
 const statusColorMap = {
-  PendingAssignment: "#fbbf24",
-  AtOriginWarehouse: "#fbbf24",
-  Assigned: "#f59e0b",
-  InTransit: "#f97316",
-  OutForDelivery: "#d97706",
-  AtDestinationWarehouse: "#78350f",
-  Delivered: "#b45309",
-  DeliveryAttempted: "#b91c1c",
-  Cancelled: "#7f1d1d",
+  PendingAssignment: "#ffedd5",     // Very light orange
+  AtOriginWarehouse: "#fed7aa",     // Light orange
+  Assigned: "#fdba74",              // Soft orange
+  InTransit: "#fb923c",             // Medium orange
+  OutForDelivery: "#f97316",        // Bright orange
+  AtDestinationWarehouse: "#ea580c",// Darker orange
+  Delivered: "#c2410c",             // Deep orange (but not blood red)
+  DeliveryAttempted: "#9a3412",     // Darkest orange (used sparingly)
+  Cancelled: "#7c2d12",             // Brownish orange (for cancelled)
 };
 
 const chartConfig = {
@@ -38,36 +40,62 @@ const chartConfig = {
   },
   PendingAssignment: {
     label: "Pending",
-    color: "#fbbf24", 
+    color: "#ffedd5", 
   },
   AtOriginWarehouse: {
     label: "At Origin",
-    color: "#fbbf24", // Amber 400
+    color: "#fed7aa", 
   },
   Assigned: {
     label: "Assigned",
-    color: "#f59e0b", // Amber 500
+    color: "#fdba74", 
   },
   InTransit: {
     label: "In Transit",
-    color: "#f97316", // Orange 500
+    color: "#fb923c", 
   },
   OutForDelivery: {
     label: "Out For Delivery",
-    color: "#d97706", // Amber 600
+    color: "#f97316", 
   },
   AtDestinationWarehouse: {
     label: "At Destination",
-    color: "#78350f", // Amber 900
+    color: "#ea580c", 
   },
   Delivered: {
     label: "Delivered",
-    color: "#b45309", // Amber 700
+    color: "#c2410c", 
   },
   DeliveryAttempted: {
     label: "Exception",
-    color: "#b91c1c", // Red 700
+    color: "#9a3412", 
   },
+  Cancelled: {
+    label: "Cancelled",
+    color: "#7c2d12", 
+  },
+};
+
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0];
+    return (
+      <div className="bg-[#0b0f14] border border-white/10 rounded-xl p-3 shadow-2xl flex items-center gap-3 min-w-[150px]">
+        <div 
+          className="w-3 h-3 rounded-sm"
+          style={{ backgroundColor: data.fill || data.payload?.fill }}
+        />
+        <span className="text-slate-300 font-medium text-sm">
+          {formatStatus(data.name)}
+        </span>
+        <span className="text-white font-black ml-auto text-sm">
+          {data.value}
+        </span>
+      </div>
+    );
+  }
+  return null;
 };
 
 export function OrdersPieChart({ data: orders = [] }) {
@@ -109,7 +137,7 @@ export function OrdersPieChart({ data: orders = [] }) {
           <PieChart>
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel />}
+              content={<CustomTooltip />}
             />
             <Pie
               data={chartData}
@@ -131,5 +159,6 @@ export function OrdersPieChart({ data: orders = [] }) {
     </Card>
   );
 }
+
 
 export default OrdersPieChart;

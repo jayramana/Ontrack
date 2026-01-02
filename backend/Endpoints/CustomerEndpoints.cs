@@ -233,6 +233,7 @@ public static class CustomerEndpoints
                 driver = order.Driver, // Explicitly return driver since it is [JsonIgnore] in Order entity
                 driverLocation,
                 estimatedDelivery = order.EstimatedDeliveryDate,
+                scheduledDate = order.ScheduledDate,
                 eta
             });
         });

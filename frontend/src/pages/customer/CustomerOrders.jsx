@@ -78,7 +78,7 @@
 //           styles[status] || "bg-slate-500/20 text-slate-300"
 //         }`}
 //       >
-//         {status}
+//         {formatStatus(status)}
 //       </span>
 //     );
 //   };
@@ -100,7 +100,7 @@
 //           colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
 //         }`}
 //       >
-//         🔒 ASR: {order.asrStatus || "Required"}
+//         🔒 ASR: {formatStatus(order.asrStatus) || "Required"}
 //       </span>
 //     );
 //   };
@@ -248,19 +248,16 @@ import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "../../context/AuthContext";
-import CustomerASRUpload from "./CustomerASRUpload";
+import { formatStatus } from "@/lib/utils";
+
 
 export default function CustomerOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [showASRUploadModal, setShowASRUploadModal] = useState(false);
-  const [selectedASROrderId, setSelectedASROrderId] = useState(null);
-
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  /* ---------------- FETCH + SIGNALR (UNCHANGED) ---------------- */
   useEffect(() => {
     fetchOrders();
 
@@ -278,11 +275,6 @@ export default function CustomerOrders() {
         }
       })
       .catch((err) => console.error("SignalR Connection Error: ", err));
-
-    connection.on("ASRVerificationRequested", (data) => {
-      setSelectedASROrderId(data.orderId);
-      setShowASRUploadModal(true);
-    });
 
     connection.on("ASRVerificationCompleted", () => {
       fetchOrders();
@@ -322,7 +314,7 @@ export default function CustomerOrders() {
           styles[status] || "bg-slate-500/20 text-slate-300"
         }`}
       >
-        {status}
+        {formatStatus(status)}
       </span>
     );
   };
@@ -344,7 +336,27 @@ export default function CustomerOrders() {
           colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
         }`}
       >
-        🔒 ASR: {order.asrStatus || "Required"}
+        🔒 ASR: {formatStatus(order.asrStatus) || "Required"}
+      </span>
+    );
+  };
+
+  /* ---------------- DELIVERY TYPE BADGE ---------------- */
+  const getDeliveryTypeBadge = (type) => {
+    const isExpress = (type || "").toLowerCase() === "express";
+
+    if (isExpress) {
+      return (
+        <span className="px-3 py-1 rounded-full text-xs font-black tracking-wide bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-orange-400 border border-orange-500/50 shadow-[0_0_10px_rgba(249,115,22,0.2)] flex items-center gap-1">
+          Express
+        </span>
+      );
+    }
+    
+    // Normal / Standard
+    return (
+      <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-slate-500/10 text-slate-400 border border-slate-500/20">
+        Normal
       </span>
     );
   };
@@ -366,9 +378,10 @@ export default function CustomerOrders() {
         {/* LEFT */}
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <span className="px-3 py-1 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
+            {getDeliveryTypeBadge(o.deliveryType)}
+            {/* <span className="px-3 py-1 rounded-full bg-white/10 text-slate-200 text-xs font-bold">
               {o.trackingId || `ORD-${o.id}`}
-            </span>
+            </span> */}
 
           </div>
 
@@ -409,24 +422,7 @@ export default function CustomerOrders() {
             View Details
           </button>
 
-          {o.isASR && ["Pending", "NotStarted"].includes(o.asrStatus) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedASROrderId(o.id);
-                setShowASRUploadModal(true);
-              }}
-              className="
-                px-6 py-2 rounded-xl
-                bg-red-500/20 border border-red-500/30
-                text-red-300 font-bold text-sm
-                hover:bg-red-500/30 transition
-                w-full lg:w-auto
-              "
-            >
-              Upload ID
-            </button>
-          )}
+
         </div>
 
       </div>
@@ -453,24 +449,16 @@ export default function CustomerOrders() {
           </div>
         ) : orders.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
-            <p className="text-slate-400">No orders found</p>
-            <button className="mt-6 px-6 py-2 rounded-xl bg-[#ff8a3d] text-black font-bold">
-              Place New Order
-            </button>
+            <h3 className="text-xl font-bold text-white mb-2">No packages scheduled</h3>
+            <p className="text-slate-400">
+              We will update your orders if any package is scheduled for you account
+            </p>
           </div>
         ) : (
           <div>{orders.map(renderOrderCard)}</div>
         )}
 
-        {showASRUploadModal && (
-          <CustomerASRUpload
-            orderId={selectedASROrderId}
-            onClose={() => {
-              setShowASRUploadModal(false);
-              fetchOrders();
-            }}
-          />
-        )}
+
 
       </main>
     </div>
