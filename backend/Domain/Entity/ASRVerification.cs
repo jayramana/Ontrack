@@ -172,6 +172,9 @@ namespace Backend.Domain.Entity
         public User? OverriddenByAdmin { get; set; }
         public string? OverrideReason { get; set; }
 
+        // Customer Requests
+        public bool CustomerReverifyRequested { get; set; } = false;
+
         // Retry tracking
         public int RetryCount { get; set; } = 0;
     }

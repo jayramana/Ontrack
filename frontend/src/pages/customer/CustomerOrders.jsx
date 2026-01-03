@@ -310,9 +310,8 @@ export default function CustomerOrders() {
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${
-          styles[status] || "bg-slate-500/20 text-slate-300"
-        }`}
+        className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${styles[status] || "bg-slate-500/20 text-slate-300"
+          }`}
       >
         {formatStatus(status)}
       </span>
@@ -332,9 +331,8 @@ export default function CustomerOrders() {
 
     return (
       <span
-        className={`px-2 py-1 rounded-full text-xs font-bold ${
-          colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
-        }`}
+        className={`px-2 py-1 rounded-full text-xs font-bold ${colors[order.asrStatus] || "bg-slate-500/20 text-slate-300"
+          }`}
       >
         🔒 ASR: {formatStatus(order.asrStatus) || "Required"}
       </span>
@@ -352,7 +350,7 @@ export default function CustomerOrders() {
         </span>
       );
     }
-    
+
     // Normal / Standard
     return (
       <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide bg-slate-500/10 text-slate-400 border border-slate-500/20">
@@ -421,6 +419,59 @@ export default function CustomerOrders() {
           >
             View Details
           </button>
+
+          {/* FAILED ASR / RETURNED Actions */}
+          {(o.asrStatus === "Failed" || o.status === "ReturnedToWarehouse" || o.status === "DeliveryAttempted") && (
+            <div className="mt-4 flex flex-col gap-2 w-full lg:w-auto">
+              {o.asrStatus === "Failed" && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (o.customerReverifyRequested) return;
+                    if (!window.confirm("Request manual re-verification by admin?")) return;
+                    try {
+                      if (!o.asrVerificationId) {
+                        alert("Verification ID missing. Cannot request.");
+                        return;
+                      }
+                      await api.post(`/asr/customer/request-reverify/${o.asrVerificationId}`);
+                      alert("Request sent! Admin will review.");
+                      // Manually update local state or fetch
+                      // For simplicity, trigger generic fetch if available or just alert
+                      // fetchOrders is defined in the component scope? I need to check closure.
+                      // Yes, renderOrderCard is inside the component.
+                      window.location.reload(); // Simple refresh to show updated state
+                    } catch (err) { alert(err.response?.data?.message || err.message); }
+                  }}
+                  disabled={o.customerReverifyRequested}
+                  className={`
+                            px-6 py-2 rounded-xl border font-bold text-sm w-full lg:w-auto transition
+                            ${o.customerReverifyRequested
+                      ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500 cursor-not-allowed"
+                      : "bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500/20"}
+                        `}
+                >
+                  {o.customerReverifyRequested ? "Re-verification Requested" : "Request Re-verification"}
+                </button>
+              )}
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  alert("Package is returned to Admin Warehouse. Please contact support to resolve the issue.");
+                }}
+                className="
+                        px-6 py-2 rounded-xl
+                        bg-slate-700/50 border border-slate-600
+                        text-slate-300 font-bold text-sm
+                        hover:bg-slate-700 transition
+                        w-full lg:w-auto
+                    "
+              >
+                Report Issue
+              </button>
+            </div>
+          )}
 
 
         </div>

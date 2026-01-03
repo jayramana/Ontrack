@@ -82,7 +82,7 @@
 //     if (modifier?.includes("slight left")) return "↖️";
 //     if (modifier?.includes("slight right")) return "↗️";
 //   }
-  
+
 //   const icons = {
 //     depart: "🚀",
 //     arrive: "🎯",
@@ -97,7 +97,7 @@
 //     "exit roundabout": "↗️",
 //     "exit rotary": "↗️",
 //   };
-  
+
 //   return icons[type] || "➡️";
 // };
 
@@ -475,12 +475,12 @@
 //       }
 //     }
 //   };
-  
+
 //     const optimizeStops = async () => {
 //       if (!driverLocation) return;
-  
+
 //       setRouting(true);
-  
+
 //       const optimizedStops = optimizeRouteLocally(
 //         rawStops,
 //         driverLocation.lat,
@@ -488,15 +488,15 @@
 //         roadIssues,
 //         mode
 //       );
-  
+
 //       setStops(optimizedStops);
 //       setRouteChanged(true);
 //       setTimeout(() => setRouteChanged(false), 3000);
-  
+
 //       if (optimizedStops.length >= 1) {
 //         await calculateRoute(optimizedStops);
 //       }
-  
+
 //       setRouting(false);
 //     };
 
@@ -535,7 +535,7 @@
 //           );
 
 //           if (deviation > ROUTE_DEVIATION_THRESHOLD) {
-            
+
 //             optimizeStops();
 //           }
 //         }
@@ -579,7 +579,7 @@
 //     instructions.forEach((inst, idx) => {
 //       const [lat, lng] = inst.location;
 //       const dist = haversineDistance(pos.lat, pos.lng, lat, lng);
-      
+
 //       if (dist < minDist) {
 //         minDist = dist;
 //         currentIdx = idx;
@@ -598,7 +598,7 @@
 //         setCurrentInstruction(current);
 //         lastInstructionRef.current = current.id;
 //         nextInstructionAnnouncedRef.current = false;
-        
+
 //         if (voiceEnabled) {
 //           const distText = distToCurrent < 0.01
 //             ? ""
@@ -687,7 +687,7 @@
 
 
 //         <div className="flex-1 p-8 pt-2">
-            
+
 //         {routeChanged && (
 //             <div className="fixed top-24 right-8 z-50 bg-emerald-500/20 border border-emerald-500 text-emerald-500 px-4 py-3 rounded-xl shadow-lg animate-fade-in-down flex items-center gap-2">
 //             <span className="text-xl">✅</span> Route optimized successfully!
@@ -853,7 +853,7 @@
 //                          {s.receiverPhone && <><span className="text-gray-400">Phone:</span> <span className="text-gray-200">{s.receiverPhone}</span></>}
 //                         <span className="text-gray-400">ETA:</span> <span className="font-bold text-emerald-400">{etas[i]} min</span>
 //                       </div>
-                      
+
 //                       {s.aiPriority && (
 //                         <div className="mt-2 text-purple-300 text-[10px] font-semibold bg-purple-900/30 p-1 rounded border border-purple-500/30 text-center">
 //                           🤖 AI Priority: {s.aiPriority}/5
@@ -885,7 +885,7 @@
 //                 </Circle>
 //               ))}
 //             </MapContainer>
-            
+
 //             {/* Map Overlay Controls could go here */}
 //           </div>
 
@@ -897,7 +897,7 @@
 //                 <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full border border-gray-700">{stops.length} Stops</span>
 //               </h2>
 //             </div>
-            
+
 //             <div className="overflow-y-auto custom-scrollbar">
 //               {stops.length === 0 ? (
 //                 <div className="p-12 text-center text-gray-500 flex flex-col items-center">
@@ -910,7 +910,7 @@
 //                     const distFromPrev = idx > 0
 //                       ? haversineDistance(stops[idx - 1].lat, stops[idx - 1].lng, stop.lat, stop.lng)
 //                       : 0;
-                    
+
 //                     const isNext = idx === 0 && !isNavigating || (isNavigating && nextInstruction && currentInstruction && idx===0); // Logic simplification needed here potentially
 
 //                     return (
@@ -951,7 +951,7 @@
 //                                 <div><span className="text-gray-500 text-xs uppercase tracking-wide">Order ID:</span> <span className="font-mono text-blue-400">{stop.trackingId || stop.id}</span></div>
 //                                 <div><span className="text-gray-500 text-xs uppercase tracking-wide">Status:</span> <span className="text-gray-300">{stop.status}</span></div>
 //                             </div>
-                            
+
 //                             <div className="text-sm text-gray-400 mb-2 flex items-start gap-1">
 //                                 <span className="mt-0.5 opacity-60">📍</span>
 //                                 <span className="truncate">{stop.receiverAddress}</span>
@@ -967,7 +967,7 @@
 //                               <span className="flex items-center gap-1 text-emerald-400 bg-emerald-900/10 px-2 py-1 rounded">
 //                                 ⏱ ETA: <strong className="text-emerald-300">{etas[idx] || 'N/A'} min</strong>
 //                               </span>
-                              
+
 //                               {idx > 0 && (
 //                                 <span className="flex items-center gap-1 text-blue-400 bg-blue-900/10 px-2 py-1 rounded">
 //                                   📏 <strong className="text-blue-300">{distFromPrev.toFixed(1)} km</strong> from prev
@@ -1681,49 +1681,51 @@ export default function DriverRoutePage() {
       >
         {/* HEADER */}
         <header
-          className="z-40 bg-[#0b0f14] border-b border-white/10 shadow-lg flex-shrink-0"
+          className="sticky top-0 z-40 bg-[#0b0f14]/80 backdrop-blur-md border-b border-white/10 shadow-lg flex-shrink-0"
         >
-          <div className="px-6 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-lg shadow-blue-900/20">
-                <span className="text-2xl">🗺️</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Driver Navigation</h1>
+          <div className="px-4 md:px-6 py-3 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="md:pl-0 pl-12 flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl shadow-lg shadow-blue-900/20 md:flex hidden">
+                  <span className="text-xl">🗺️</span>
+                </div>
+                <div>
+                  <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Navigation</h1>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 bg-[#141922] border border-white/5 px-4 py-2 rounded-xl shadow-inner">
-                <span className="relative flex h-3 w-3">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl">
+                <span className="relative flex h-2 w-2">
                   <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isNavigating ? "bg-emerald-400" : "bg-gray-400"}`}></span>
-                  <span className={`relative inline-flex rounded-full h-3 w-3 ${isNavigating ? "bg-emerald-500" : "bg-gray-500"}`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isNavigating ? "bg-emerald-500" : "bg-gray-500"}`}></span>
                 </span>
-                <span className="text-sm font-medium text-gray-300">{isNavigating ? "Navigating" : "Idle"}</span>
+                <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-gray-400">{isNavigating ? "Live" : "Idle"}</span>
               </div>
 
               {isNavigating ? (
                 <button
                   onClick={stopNavigation}
-                  className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 hover:shadow-lg hover:shadow-red-900/20"
+                  className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-3 md:px-4 py-2 rounded-xl font-bold text-xs md:text-sm transition-all flex items-center gap-2 shadow-lg shadow-red-900/10"
                 >
-                  ⏹ Stop
+                  <span className="md:inline hidden">⏹</span> Stop
                 </button>
               ) : (
                 <button
                   onClick={startNavigation}
                   disabled={!routeCoords.length || routing}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-2 rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-900/20 hover:shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 md:px-6 py-2 rounded-xl font-bold text-xs md:text-sm transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50 flex items-center gap-2"
                 >
-                  🚀 Start
+                  <span className="md:inline hidden">🚀</span> Start
                 </button>
               )}
 
               <button
                 onClick={() => setVoiceEnabled(!voiceEnabled)}
-                className={`p-2.5 rounded-xl border transition-all ${voiceEnabled
-                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
-                  : "bg-[#141922] text-gray-500 border-white/5 hover:text-gray-300"
+                className={`p-2 rounded-xl border transition-all ${voiceEnabled
+                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20 shadow-lg shadow-blue-900/10"
+                  : "bg-white/5 text-gray-500 border-white/5"
                   }`}
               >
                 {voiceEnabled ? "🔊" : "🔇"}
@@ -1764,47 +1766,52 @@ export default function DriverRoutePage() {
         <div className="flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative">
 
           {/* MAP AREA */}
-          <div className={`relative bg-[#141922] z-0 transition-all duration-300 ${isNavigating ? "w-full h-full" : "w-full lg:flex-1 h-[50vh] lg:h-full"}`}>
+          <div className={`relative bg-[#141922] z-0 transition-all duration-500 flex-1 ${isNavigating ? "h-full" : "h-[50vh] lg:h-full"}`}>
 
-            {/* FLOAT BOX: STATS DASHBOARD */}
-            <div className="absolute top-4 right-4 z-[500] bg-[#0b0f14]/90 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-2xl min-w-[200px]">
-              <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">Trip Summary</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm">Total Dist</span>
-                  <span className="font-mono text-white">{stats?.distance || 0} km</span>
+            {/* FLOAT BOX: STATS DASHBOARD - MORE COMPACT */}
+            <div className={`absolute top-4 right-4 z-[500] bg-[#0b0f14]/80 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl min-w-[180px] transition-all duration-300 ${isNavigating ? "opacity-0 pointer-events-none translate-y-[-10px]" : "opacity-100"}`}>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">Distance</span>
+                    <span className="text-lg font-black text-white leading-none">{stats?.distance || 0}<span className="text-xs ml-0.5 text-gray-500">km</span></span>
+                  </div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">Duration</span>
+                    <span className="text-lg font-black text-emerald-400 leading-none">{stats?.duration || 0}<span className="text-xs ml-0.5 text-gray-500">min</span></span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm">Total Time</span>
-                  <span className="font-mono text-emerald-400">{stats?.duration || 0} min</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm">Stops</span>
-                  <span className="font-mono text-blue-400">{stops.length}</span>
+                <div className="pt-3 border-t border-white/5 flex justify-between items-center">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-tighter">Total Stops</span>
+                  <span className="text-sm font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20">{stops.length}</span>
                 </div>
               </div>
             </div>
 
-            {/* FLOAT BOX: ROAD ISSUES */}
+            {/* FLOAT BOX: ROAD ISSUES - MOVED TO TOP LEFT */}
             {roadIssues.length > 0 && (
-              <div className="absolute bottom-4 left-4 z-[500] max-w-xs max-h-[30vh] overflow-y-auto custom-scrollbar flex flex-col gap-2">
+              <div className={`absolute top-4 left-4 z-[500] max-w-xs max-h-[40vh] overflow-y-auto custom-scrollbar flex flex-col gap-2 transition-all duration-300 ${isNavigating ? "opacity-0 pointer-events-none translate-x-[-10px]" : "opacity-100"}`}>
+                <div className="bg-[#0b0f14]/80 backdrop-blur-md border border-white/10 rounded-xl px-3 py-1.5 self-start mb-1 shadow-lg">
+                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Road Alerts ({roadIssues.length})</span>
+                </div>
                 {roadIssues.map(issue => (
                   <div
                     key={issue.id}
                     className={`
-                                   bg-[#0b0f14]/90 backdrop-blur-md border px-4 py-3 rounded-xl shadow-lg flex items-start gap-3
+                                   bg-[#0b0f14]/80 backdrop-blur-md border px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 transition-all
                                    ${issue.severity === 'Critical' ? 'border-red-500/30' : 'border-amber-500/30'}
                                `}
                   >
-                    <div className={`mt-0.5 p-1 rounded-full ${issue.severity === 'Critical' ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                    <div className={`mt-0.5 p-1.5 rounded-full shrink-0 ${issue.severity === 'Critical' ? 'bg-red-500/20 text-red-500' : 'bg-amber-500/20 text-amber-500'}`}>
                       <span className="text-xs">⚠️</span>
                     </div>
                     <div>
-                      <div className={`font-bold text-sm ${issue.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'}`}>
+                      <div className={`font-black text-xs uppercase tracking-tight ${issue.severity === 'Critical' ? 'text-red-400' : 'text-amber-400'}`}>
                         {issue.description}
                       </div>
-                      <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                        <span>📍</span> {issue.location}
+                      <div className="text-[10px] text-slate-500 font-bold mt-1 flex items-center gap-1 uppercase tracking-tighter">
+                        <span className="opacity-50">📍</span> {issue.location}
                       </div>
                     </div>
                   </div>
@@ -1822,22 +1829,24 @@ export default function DriverRoutePage() {
               </div>
             )}
 
-            {/* NAV OVERLAY */}
+            {/* NAV OVERLAY - MOVED TO BOTTOM FOR MOBILE ACCESSIBILITY */}
             {isNavigating && currentInstruction && (
-              <div className="absolute top-4 left-4 right-4 z-[500] pointer-events-none flex justify-center">
-                <div className="bg-[#0b0f14]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-4 max-w-xl w-full pointer-events-auto flex items-center gap-4">
-                  <div className="h-16 w-16 bg-blue-600 rounded-xl flex items-center justify-center text-3xl shadow-lg shadow-blue-900/50">
+              <div className="absolute bottom-6 left-4 right-4 z-[500] pointer-events-none flex justify-center animate-in slide-in-from-bottom-5 duration-300">
+                <div className="bg-[#0b0f14]/95 backdrop-blur-xl border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-5 max-w-xl w-full pointer-events-auto flex items-center gap-5">
+                  <div className="h-16 w-16 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-blue-900/50 shrink-0">
                     {getInstructionIcon(currentInstruction.type, currentInstruction.modifier)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-2xl font-black text-white leading-none mb-1">{currentInstruction.instruction}</div>
+                    <div className="text-xl md:text-2xl font-black text-white leading-tight mb-2 truncate">
+                      {currentInstruction.instruction}
+                    </div>
                     <div className="flex items-center gap-3">
-                      <div className="bg-[#141922] px-2 py-0.5 rounded border border-white/5 text-blue-400 font-mono font-bold text-lg">
-                        {(currentInstruction.distance / 1000).toFixed(1)} km
+                      <div className="bg-blue-500/20 px-3 py-1 rounded-full border border-blue-500/30 text-blue-400 font-mono font-black text-lg">
+                        {(currentInstruction.distance / 1000).toFixed(1)} <span className="text-xs uppercase ml-0.5">km</span>
                       </div>
                       {currentInstruction.roadName && (
-                        <div className="text-gray-400 font-medium truncate">
-                          on <span className="text-white">{currentInstruction.roadName}</span>
+                        <div className="text-slate-400 font-bold truncate text-sm">
+                          ON <span className="text-white uppercase">{currentInstruction.roadName}</span>
                         </div>
                       )}
                     </div>
@@ -1905,62 +1914,67 @@ export default function DriverRoutePage() {
 
           {/* STOP LIST (Fixed Width Panel) */}
           <div className={`
-                 bg-[#0b0f14] border-l border-white/5 flex flex-col transition-all duration-300 z-10
-                 ${isNavigating ? "hidden w-0" : "flex w-full lg:w-[400px] h-[50vh] lg:h-full"}
+                 bg-[#0b0f14] border-l border-white/5 flex flex-col transition-all duration-500 z-10
+                 ${isNavigating ? "hidden w-0" : "flex w-full lg:w-[420px] h-[50vh] lg:h-full"}
              `}>
-            <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-[#0b0f14]">
-              <h3 className="font-bold text-gray-200">Delivery Sequence</h3>
-              <button className="text-xs text-blue-400 hover:text-blue-300 hover:underline">View manifest</button>
+            <div className="px-6 py-5 border-b border-white/5 flex justify-between items-center bg-[#0b0f14]/80 backdrop-blur-md">
+              <div className="flex flex-col">
+                <h3 className="font-black text-white tracking-tight uppercase text-sm">Delivery Sequence</h3>
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{stops.length} STOPS ASSIGNED</span>
+              </div>
+              <button className="text-xs font-black text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20 uppercase tracking-wider">Manifest</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-gradient-to-b from-[#0b0f14] to-[#141922]">
               {stops.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-600 opacity-50">
-                  <span className="text-4xl mb-2 grayscale">📍</span>
-                  <p>No stops assigned</p>
+                  <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center text-4xl mb-4">📍</div>
+                  <p className="font-bold text-sm tracking-widest uppercase">No stops assigned</p>
                 </div>
               ) : (
                 stops.map((stop, idx) => (
                   <div
                     key={stop.id}
                     onClick={() => setSelectedStop(stop)}
-                    className="group bg-[#141922] p-4 rounded-xl border border-white/5 hover:border-white/20 transition-all hover:bg-[#1a1f29] relative overflow-hidden cursor-pointer"
+                    className="group bg-[#1a1f29]/40 backdrop-blur-sm p-5 rounded-2xl border border-white/5 hover:border-white/20 transition-all hover:bg-[#1a1f29] relative overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl"
                   >
                     {/* Progress Line */}
                     {idx !== stops.length - 1 && (
-                      <div className="absolute left-7 top-14 bottom-0 w-0.5 bg-gray-800 group-hover:bg-gray-700 transition-colors"></div>
+                      <div className="absolute left-[39px] top-16 bottom-0 w-0.5 bg-gradient-to-b from-blue-500/30 to-transparent group-hover:from-blue-500/50 transition-all"></div>
                     )}
 
-                    <div className="flex gap-4 relative z-10">
+                    <div className="flex gap-5 relative z-10">
                       {/* Number Badge */}
-                      <div className={`
-                                        flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-lg
-                                        ${(stop.aiPriority || stop.priority) >= 4 ? 'bg-rose-600 text-white' :
-                          (stop.aiPriority || stop.priority) >= 3 ? 'bg-amber-500 text-black' :
-                            'bg-blue-600 text-white'}
-                                      `}>
-                        {idx + 1}
+                      <div className="flex flex-col items-center">
+                        <div className={`
+                                          flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center font-black text-base shadow-2xl transition-transform group-hover:scale-110
+                                          ${(stop.aiPriority || stop.priority) >= 4 ? 'bg-rose-600 text-white' :
+                            (stop.aiPriority || stop.priority) >= 3 ? 'bg-amber-500 text-black' :
+                              'bg-blue-600 text-white'}
+                                        `}>
+                          {idx + 1}
+                        </div>
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-gray-200 truncate group-hover:text-white transition-colors">{stop.receiverName}</h4>
-                          <div className="flex flex-col items-end">
-                            {etas[idx] && <span className="text-xs font-mono text-emerald-500">~{etas[idx]} min</span>}
-                            <span className="text-[10px] text-blue-400 font-medium mt-0.5">+{getDistanceToStop(idx)} km</span>
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-black text-white truncate text-lg leading-none">{stop.receiverName}</h4>
+                          <div className="flex flex-col items-end shrink-0">
+                            {etas[idx] && <span className="text-[11px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">~{etas[idx]}m</span>}
+                            <span className="text-[10px] text-blue-400 font-black mt-1 uppercase tracking-tighter">+{getDistanceToStop(idx)} km</span>
                           </div>
                         </div>
 
-                        <p className="text-sm text-gray-500 truncate mb-3">{stop.receiverAddress}</p>
+                        <p className="text-sm text-gray-400 font-medium truncate mb-4 italic">"{stop.receiverAddress}"</p>
 
                         <div className="flex items-center gap-2 flex-wrap">
                           {stop.aiPriority && (
-                            <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-medium">
-                              AI Priority
+                            <span className="text-[9px] font-black bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2.5 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-purple-900/10">
+                              AI PRIORITY
                             </span>
                           )}
-                          <span className="text-[10px] bg-gray-800 text-gray-400 border border-white/5 px-2 py-0.5 rounded">
-                            #{stop.trackingId || stop.id}
+                          <span className="text-[9px] font-black bg-white/5 text-gray-500 border border-white/10 px-2.5 py-1 rounded-full uppercase tracking-widest">
+                            ID: {stop.trackingId || stop.id}
                           </span>
                         </div>
                       </div>

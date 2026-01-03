@@ -421,13 +421,13 @@ namespace Backend.Services
         private readonly AppDbContext _context;
         private readonly IConfiguration _config;
         private readonly HttpClient _http;
-        private readonly Amazon.S3.IAmazonS3 _s3;
+        private readonly NotificationService _notificationService;
 
-        public ASRService(AppDbContext context, IConfiguration config, Amazon.S3.IAmazonS3 s3)
+        public ASRService(AppDbContext context, IConfiguration config, NotificationService notificationService)
         {
             _context = context;
             _config = config;
-            _s3 = s3;
+            _notificationService = notificationService;
             _http = new HttpClient();
         }
 
@@ -466,9 +466,10 @@ namespace Backend.Services
             _context.ASRVerifications.Add(asr);
             await _context.SaveChangesAsync();
 
-            order.ASRVerificationId = asr.Id;
             order.ASRStatus = "Pending";
             await _context.SaveChangesAsync();
+
+            await _notificationService.AddNotificationAsync(driverId, $"New ASR verification required for Order #{orderId}", "Alert");
 
             return asr;
         }
@@ -491,6 +492,10 @@ namespace Backend.Services
             asr.AIVerifyStatus = "DocumentsReceived";
 
             await _context.SaveChangesAsync();
+            
+            if (asr.DriverId.HasValue)
+                await _notificationService.AddNotificationAsync(asr.DriverId.Value, $"Customer has uploaded documents for ASR Request #{asrId}", "Info");
+
             return asr;
         }
 
@@ -499,15 +504,16 @@ namespace Backend.Services
         // =====================================================
         public async Task<ASRVerification> UploadDriverCapturesAsync(
             int asrId,
-            string customerPhotoUrl,
-            string signatureUrl)
+            string? customerPhotoUrl,
+            string? signatureUrl)
         {
             var asr = await _context.ASRVerifications.FindAsync(asrId);
             if (asr == null)
                 throw new Exception("ASR not found");
 
-            asr.CustomerPhotoUrl = customerPhotoUrl;
-            asr.SignatureUrl = signatureUrl;
+            if (!string.IsNullOrEmpty(customerPhotoUrl)) asr.CustomerPhotoUrl = customerPhotoUrl;
+            if (!string.IsNullOrEmpty(signatureUrl)) asr.SignatureUrl = signatureUrl;
+            
             asr.AIVerifyStatus = "InProgress";
 
             await _context.SaveChangesAsync();
@@ -560,6 +566,7 @@ namespace Backend.Services
 
                 Console.WriteLine($"S3 Front URL: {payload.aadhaarFrontUrl}");
                 Console.WriteLine($"S3 Back URL: {payload.aadhaarBackUrl}");
+                Console.WriteLine($"Sending Aadhaar Number: {payload.aadhaarNumber}");
 
                 var response = await _http.PostAsync(
                     _config["n8n:AadhaarVerifyUrl"],
@@ -579,13 +586,36 @@ namespace Backend.Services
                     await response.Content.ReadAsStringAsync()
                 ).RootElement;
 
-            
-                var status = result.GetProperty("status").GetString() ?? "Failed";
-                var score = result.GetProperty("score").GetDouble();
-                var reasons = result.GetProperty("reasons")
-                    .EnumerateArray()
-                    .Select(r => r.GetString() ?? "")
-                    .ToList();
+                var status = "Failed";
+                if (result.TryGetProperty("status", out var statusProp))
+                    status = statusProp.GetString() ?? "Failed";
+                
+                double score = 0;
+                if (result.TryGetProperty("score", out var scoreProp))
+                    score = scoreProp.GetDouble();
+
+                var reasons = new List<string>();
+                if (result.TryGetProperty("reasons", out var reasonsProp) && reasonsProp.ValueKind == JsonValueKind.Array)
+                {
+                    reasons = reasonsProp.EnumerateArray()
+                        .Select(r => r.GetString() ?? "")
+                        .ToList();
+                }
+
+                // If Failed but no reasons, check if there's an error message
+                if (status == "Failed" && reasons.Count == 0)
+                {
+                    if (result.TryGetProperty("message", out var msgProp))
+                         reasons.Add($"n8n Error: {msgProp.GetString()}");
+                     else
+                         reasons.Add("Verification failed (Unknown reason from AI provider)");
+                }
+
+                // Normalize status to capitalized (e.g., "failed" -> "Failed")
+                if (!string.IsNullOrEmpty(status))
+                {
+                    status = char.ToUpper(status[0]) + status.Substring(1).ToLower();
+                }
 
                 asr.AIVerifyStatus = status;
                 asr.AIVerifyScore = score;
@@ -599,10 +629,31 @@ namespace Backend.Services
 
                 if (asr.Order != null)
                 {
-                    asr.Order.ASRStatus = status;
+                    // If failed, mark as ReturnedToWarehouse (or DeliveryAttempted) so customer sees it
+                    if (status == "Failed")
+                    {
+                         // Only set to ReturnedToWarehouse if it's a hard fail (no retries left? or immediate?)
+                         // For now, let's say a Failure means the package goes back.
+                         asr.Order.Status = "ReturnedToWarehouse";
+                         asr.Order.ASRStatus = "Failed";
+                    }
+                    else
+                    {
+                        asr.Order.ASRStatus = status;
+                    }
                 }
 
                 await _context.SaveChangesAsync();
+
+                // Notify both driver and customer
+                var resultMsg = status == "Success" ? $"ASR Verification for Order #{asr.OrderId} was successful!" : $"ASR Verification for Order #{asr.OrderId} failed.";
+                var notifyType = status == "Success" ? "Success" : "Alert";
+
+                if (asr.DriverId.HasValue)
+                    await _notificationService.AddNotificationAsync(asr.DriverId.Value, resultMsg, notifyType);
+                
+                await _notificationService.AddNotificationAsync(asr.CustomerId, resultMsg, notifyType);
+
                 return asr;
             }
             catch (Exception ex)
@@ -611,6 +662,14 @@ namespace Backend.Services
                 asr.AIVerifyReasons = JsonSerializer.Serialize(
                     new[] { $"Verification error: {ex.Message}" }
                 );
+                
+                // Also update order status on exception
+                 if (asr.Order != null)
+                {
+                    asr.Order.Status = "ReturnedToWarehouse";
+                    asr.Order.ASRStatus = "Failed";
+                }
+
                 await _context.SaveChangesAsync();
                 return asr;
             }
@@ -623,6 +682,17 @@ namespace Backend.Services
                 .Include(a => a.Customer)
                 .Include(a => a.Driver)
                 .FirstOrDefaultAsync(a => a.OrderId == orderId);
+        }
+
+        public async Task<ASRVerification> RequestReverificationAsync(int asrId, int customerId)
+        {
+             var asr = await _context.ASRVerifications.FindAsync(asrId);
+             if (asr == null) throw new Exception("ASR not found");
+             if (asr.CustomerId != customerId) throw new Exception("Unauthorized");
+
+             asr.CustomerReverifyRequested = true;
+             await _context.SaveChangesAsync();
+             return asr;
         }
 
         public async Task<ASRVerification> AdminOverrideAsync(
@@ -649,6 +719,14 @@ namespace Backend.Services
             }
 
             await _context.SaveChangesAsync();
+
+            // Notify both driver and customer
+            var overrideMsg = $"Admin has overridden the ASR verification for Order #{asr.OrderId}.";
+            if (asr.DriverId.HasValue)
+                await _notificationService.AddNotificationAsync(asr.DriverId.Value, overrideMsg, "Info");
+            
+            await _notificationService.AddNotificationAsync(asr.CustomerId, overrideMsg, "Info");
+
             return asr;
         }
 
@@ -663,6 +741,29 @@ namespace Backend.Services
 
             asr.RetryCount++;
             asr.AIVerifyStatus = "Pending";
+            asr.AIVerifyReasons = "[]"; // Clear previous errors
+            
+            // 🆕 Non-destructive retry: Keep existing data so they can edit it
+            // asr.DocumentUrls = "[]";
+            // asr.AadhaarNumber = "";
+            // asr.CustomerPhotoUrl = null;
+            // asr.SignatureUrl = null;
+            // asr.CustomerUploadedAt = null;
+
+            await _context.SaveChangesAsync();
+            return asr;
+        }
+
+        public async Task<ASRVerification> ResetVerificationAsync(int asrId)
+        {
+            var asr = await _context.ASRVerifications.FindAsync(asrId);
+            if (asr == null)
+                throw new Exception("ASR verification not found");
+
+            asr.RetryCount++;
+            asr.AIVerifyStatus = "Pending";
+            
+            // 🔥 Hard Reset: Clear ALL data
             asr.DocumentUrls = "[]";
             asr.AadhaarNumber = "";
             asr.CustomerPhotoUrl = null;
@@ -674,80 +775,74 @@ namespace Backend.Services
         }
 
         // =====================================================
-        // HELPER: Get Base64 from S3 or Input
+        // OPEN STEP 1 FOR CUSTOMER RE-EDITING
+        // =====================================================
+        public async Task<ASRVerification> OpenStep1ForCustomerAsync(int asrId)
+        {
+            var asr = await _context.ASRVerifications
+                .Include(a => a.Order)
+                .FirstOrDefaultAsync(a => a.Id == asrId);
+
+            if (asr == null)
+                throw new Exception("ASR verification not found");
+
+            // Set status back to Pending to allow customer re-editing
+            asr.AIVerifyStatus = "Pending";
+            asr.AIVerifyReasons = "[]"; // Clear previous errors
+            
+            if (asr.Order != null)
+            {
+                asr.Order.ASRStatus = "Pending";
+                // If it was marked as ReturnedToWarehouse due to failure, we might want to keep it that way 
+                // until re-verification, but usually "Pending" ASR means the delivery is still active.
+                // Let's ensure the order is in a state where it's still with the driver.
+                if (asr.Order.Status == "ReturnedToWarehouse")
+                {
+                    asr.Order.Status = "OutForDelivery";
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return asr;
+        }
+
+        // =====================================================
+        // HELPER: Get Base64 from Local Storage
         // =====================================================
         private async Task<string> GetImageBase64Async(string input)
         {
             if (string.IsNullOrEmpty(input)) return "";
 
-            // If it's already Base64 (starts with "data:image" or no prefix but looks like base64), return it.
-            // Assumption: S3 keys start with "uploads/" as per AWSEndpoints
-            if (!input.StartsWith("uploads/"))
+            // If it's a local path (uploads/...), read from disk
+            if (input.StartsWith("uploads/"))
             {
-                return input;
-            }
-
-            try 
-            {
-                var bucket = _config["AWS:BucketName"];
-                if (string.IsNullOrEmpty(bucket)) return input; // Safety fallback
-
-                var request = new Amazon.S3.Model.GetObjectRequest
+                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", input);
+                if (File.Exists(filePath))
                 {
-                    BucketName = bucket,
-                    Key = input
-                };
+                    var bytes = await File.ReadAllBytesAsync(filePath);
+                    return Convert.ToBase64String(bytes);
+                }
+            }
 
-                using var response = await _s3.GetObjectAsync(request);
-                using var ms = new MemoryStream();
-                await response.ResponseStream.CopyToAsync(ms);
-                
-                var bytes = ms.ToArray();
-                var base64 = Convert.ToBase64String(bytes);
-                
-                // Determine mime type from key extension or default to jpeg
-                var ext = Path.GetExtension(input).ToLower();
-                var mime = ext == ".png" ? "image/png" : "image/jpeg";
-                
-                return $"data:{mime};base64,{base64}";
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error fetching from S3: {ex.Message}");
-                // Fallback: return input as is (maybe it wasn't an S3 key?)
-                return input;
-            }
+            // Fallback (might be already base64 or legacy)
+            return input;
         }
 
         // =====================================================
-        // HELPER: Get Presigned URL for S3 Key
+        // HELPER: Get Public URL for Local Key
         // =====================================================
         public string GetPresignedUrl(string? key)
         {
             if (string.IsNullOrEmpty(key)) return "";
-            
-            // If it's a legacy base64 string or url, return as is (but truncate base64 for safety if needed, though frontend expects full)
-            if (!key.StartsWith("uploads/")) return key;
 
-            try
+            // If it's a local path, return fully qualified URL
+            if (key.StartsWith("uploads/"))
             {
-                var bucket = _config["AWS:BucketName"];
-                if (string.IsNullOrEmpty(bucket)) return "";
-
-                var request = new Amazon.S3.Model.GetPreSignedUrlRequest
-                {
-                    BucketName = bucket,
-                    Key = key,
-                    Verb = Amazon.S3.HttpVerb.GET,
-                    Expires = DateTime.UtcNow.AddMinutes(60)
-                };
-
-                return _s3.GetPreSignedURL(request);
+                var baseUrl = _config["ApiBaseUrl"] ?? "http://localhost:5066";
+                return $"{baseUrl}/{key}";
             }
-            catch
-            {
-                return "";
-            }
+
+            return key;
         }
     }
 }

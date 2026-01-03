@@ -214,7 +214,7 @@ public static class OrdersEndpoints
                 orderAgeHours
             );
 
-            // Update
+            // Update Dates
             order.RescheduledAt = DateTime.UtcNow;
             order.RescheduledDate = dto.NewDate.ToUniversalTime();
             order.EstimatedDeliveryDate = dto.NewDate.ToUniversalTime();
@@ -223,8 +223,30 @@ public static class OrdersEndpoints
             order.AiPriorityJustification = ai.Justification;
             order.Priority = ai.AiPriority;
 
+            // CHECK: Future vs Today
+            bool isFutureDate = order.EstimatedDeliveryDate.Value.Date > DateTime.UtcNow.Date;
+
+            if (isFutureDate)
+            {
+                // FUTURE DATE: Unassign Driver + Reset Status
+                order.DriverId = null;
+                order.Status = "AtDestinationWarehouse"; // Back to warehouse pool
+                // We do NOT notify the driver via specialized "Reschedule" event since they are removed
+                // But we might want to refresh their list to remove it
+            }
+            else
+            {
+                // SAME DAY: Ensure it is Active
+                // If it was "DeliveryAttempted" (failed), reset to "Assigned" so it appears in "Today" list
+                if (order.Status == "DeliveryAttempted")
+                {
+                    order.Status = "Assigned";
+                }
+            }
+
             await context.SaveChangesAsync();
 
+            // NOTIFY DRIVER (Only if still assigned)
             if (order.DriverId.HasValue)
             {
                 await hubContext.Clients
@@ -239,7 +261,8 @@ public static class OrdersEndpoints
                         order.ReceiverEmail,
                         order.ReceiverPhone,
                         aiPriority = order.AiPriority,
-                        aiJustification = order.AiPriorityJustification
+                        aiJustification = order.AiPriorityJustification,
+                        status = order.Status // Send updated status
                     });
 
                 await driverRouteService.OptimizeRouteAfterReschedule(order.DriverId.Value);
@@ -461,6 +484,7 @@ public static class OrdersEndpoints
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.CurrentWarehouse)
                 .Include(o => o.DestinationWarehouse)
+                .Include(o => o.ASRVerification) // 🆕 Include ASR data
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new
                 {
@@ -481,6 +505,8 @@ public static class OrdersEndpoints
                     o.AiPriorityJustification,
                     o.IsASR,
                     o.ASRStatus,
+                    asrVerificationId = o.ASRVerificationId, // 🆕 Added for Frontend
+                    customerReverifyRequested = o.ASRVerification != null ? o.ASRVerification.CustomerReverifyRequested : false, // 🆕 Mapped
                     o.DriverId,
                     driver = o.Driver != null ? new { o.Driver.UserId, DriverName = o.Driver.UserFName + " " + o.Driver.UserLName } : null,
                     originWarehouse = o.OriginWarehouse != null ? new { o.OriginWarehouse.Id, o.OriginWarehouse.Name, o.OriginWarehouse.City } : null,

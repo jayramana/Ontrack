@@ -149,6 +149,208 @@ public static class ASREndpoints
         .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" });
 
         /// <summary>
+        /// Driver retries verification (resets status to Pending)
+        /// </summary>
+        group.MapPost("/driver/retry/{asrId}", async (
+            int asrId,
+            ASRService asrService,
+            IHubContext<LogisticsHub> hubContext
+        ) =>
+        {
+            try
+            {
+                var asr = await asrService.RetryVerificationAsync(asrId);
+
+                // Notify Customer to re-check/edit
+                 if (asr.CustomerId != 0)
+                {
+                    try
+                    {
+                        await hubContext.Clients
+                            .Group($"Customer_{asr.CustomerId}")
+                            .SendAsync("ASRRetryRequested", new
+                            {
+                                asrId = asr.Id,
+                                orderId = asr.OrderId,
+                                message = "Driver has requested to retry verification. Please check/edit your documents."
+                            });
+                    }
+                    catch { }
+                }
+
+                return Results.Ok(new { message = "Retry initiated", asr });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" });
+
+        /// <summary>
+        /// Driver resets verification (Hard Reset - Clears all data)
+        /// </summary>
+        group.MapPost("/driver/reset/{asrId}", async (
+            int asrId,
+            ASRService asrService,
+            IHubContext<LogisticsHub> hubContext
+        ) =>
+        {
+            try
+            {
+                var asr = await asrService.ResetVerificationAsync(asrId);
+
+                // Notify Customer to start over
+                 if (asr.CustomerId != 0)
+                {
+                    try
+                    {
+                        await hubContext.Clients
+                            .Group($"Customer_{asr.CustomerId}")
+                            .SendAsync("ASRResetRequested", new
+                            {
+                                asrId = asr.Id,
+                                orderId = asr.OrderId,
+                                message = "Driver has reset the verification process. Please upload your documents again."
+                            });
+                    }
+                    catch { }
+                }
+
+                return Results.Ok(new { message = "Verification reset successfully", asr });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" });
+
+        /// <summary>
+        /// Driver re-initiates ASR for a reassigned order (resets to Pending, allows customer to re-upload)
+        /// </summary>
+        group.MapPost("/driver/reinitiate/{orderId}", async (
+            int orderId,
+            HttpContext http,
+            AppDbContext context,
+            ASRService asrService,
+            IHubContext<LogisticsHub> hubContext
+        ) =>
+        {
+            try
+            {
+                var driverIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+                if (driverIdClaim == null)
+                    return Results.Unauthorized();
+
+                var driverId = int.Parse(driverIdClaim.Value);
+                
+                // Get existing ASR
+                var asr = await context.ASRVerifications
+                    .FirstOrDefaultAsync(a => a.OrderId == orderId);
+                
+                if (asr == null)
+                    return Results.NotFound(new { message = "No ASR verification found for this order" });
+
+                // Update ASR to allow re-upload
+                asr.DriverId = driverId; // Update to new driver
+                asr.AIVerifyStatus = "Pending";
+                asr.AIVerifyReasons = "[]"; // Clear previous errors
+                asr.RetryCount++;
+                
+                // Clear old verification data to force fresh upload
+                asr.DocumentUrls = "[]";
+                asr.AadhaarNumber = "";
+                asr.CustomerPhotoUrl = null;
+                asr.SignatureUrl = null;
+                asr.CustomerUploadedAt = null;
+                asr.VerifiedAt = null;
+                asr.AIVerifyScore = null;
+                asr.VerificationMetadata = null;
+                
+                await context.SaveChangesAsync();
+
+                // Update order ASR status
+                var order = await context.Orders.FindAsync(orderId);
+                if (order != null)
+                {
+                    order.ASRStatus = "Pending";
+                    await context.SaveChangesAsync();
+                }
+
+                // Notify customer to upload documents
+                if (asr.CustomerId != 0)
+                {
+                    try
+                    {
+                        await hubContext.Clients
+                            .Group($"Customer_{asr.CustomerId}")
+                            .SendAsync("ASRVerificationRequested", new
+                            {
+                                orderId = order?.Id,
+                                trackingId = order?.TrackingId,
+                                asrId = asr.Id,
+                                message = "Your order has been reassigned. Please upload your ASR documents again."
+                            });
+                    }
+                    catch { }
+                }
+
+                return Results.Ok(new 
+                { 
+                    message = "ASR re-initiated successfully. Customer can now upload documents.",
+                    asrId = asr.Id,
+                    status = asr.AIVerifyStatus
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Error: {ex.Message}");
+            }
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" });
+        
+        /// <summary>
+        /// Driver opens Step 1 for customer to re-edit documents (Non-destructive)
+        /// </summary>
+        group.MapPost("/driver/open-step1/{asrId}", async (
+            int asrId,
+            ASRService asrService,
+            IHubContext<LogisticsHub> hubContext
+        ) =>
+        {
+            try
+            {
+                var asr = await asrService.OpenStep1ForCustomerAsync(asrId);
+
+                // Notify Customer that they can re-edit
+                if (asr.CustomerId != 0)
+                {
+                    try
+                    {
+                        await hubContext.Clients
+                            .Group($"Customer_{asr.CustomerId}")
+                            .SendAsync("ASRReopenedForEditing", new
+                            {
+                                asrId = asr.Id,
+                                orderId = asr.OrderId,
+                                message = "Driver has opened Step 1. You can now re-edit and reupload your documents."
+                            });
+                    }
+                    catch { }
+                }
+
+                return Results.Ok(new { message = "Step 1 opened for customer", asr });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
+            }
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "driver,Driver" });
+
+
+        /// <summary>
         /// Driver checks ASR status
         /// </summary>
         group.MapGet("/driver/status/{orderId}", async (
@@ -319,12 +521,39 @@ public static class ASREndpoints
                     uploadedAt = asr.CustomerUploadedAt,
                     verifiedAt = asr.VerifiedAt,
                     retryCount = asr.RetryCount,
+                    aadhaarNumber = asr.AadhaarNumber,
                     documentUrls = documentUrls // Return the actual URLs so customer can see what they uploaded
                 });
             }
             catch (Exception ex)
             {
                 return Results.Problem($"Error: {ex.Message}");
+            }
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
+
+        /// <summary>
+        /// Customer requests manual reverification
+        /// </summary>
+        group.MapPost("/customer/request-reverify/{asrId}", async (
+            int asrId,
+            HttpContext http,
+            ASRService asrService
+        ) =>
+        {
+            try
+            {
+                var customerIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+                if (customerIdClaim == null) return Results.Unauthorized();
+                var customerId = int.Parse(customerIdClaim.Value);
+
+                var asr = await asrService.RequestReverificationAsync(asrId, customerId);
+
+                return Results.Ok(new { message = "Reverification requested successfully", asr });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(ex.Message);
             }
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "customer" });
@@ -357,6 +586,7 @@ public static class ASREndpoints
                         a.RequestedAt,
                         a.VerifiedAt,
                         a.IsAdminOverride,
+                        a.CustomerReverifyRequested, // 🆕 Added
                         a.RetryCount
                     })
                     .ToListAsync();
