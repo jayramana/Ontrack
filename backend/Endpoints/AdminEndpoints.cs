@@ -355,7 +355,8 @@ public static class AdminEndpoints
             DriverRouteOptimizationService driverRouteService,
             RouteOptimizationService persistenceService,
             GeofenceService geofenceService,
-            IHubContext<LogisticsHub> hubContext
+            IHubContext<LogisticsHub> hubContext,
+            NotificationService notificationService
         ) =>
         {
             var order = await context.Orders.FindAsync(orderId);
@@ -365,6 +366,12 @@ public static class AdminEndpoints
             order.DriverId = driverId;
             order.Status = "Assigned";
             await context.SaveChangesAsync();
+
+            await notificationService.AddNotificationAsync(driverId, $"You have been assigned to Order #{orderId}", "Info");
+            if (order.CustomerId.HasValue)
+            {
+                await notificationService.AddNotificationAsync(order.CustomerId.Value, $"Driver has been assigned to your Order #{orderId}", "Info");
+            }
 
             // 1. Create Geofence if missing (Prioritize tracking)
 // 1. Create Geofence if missing

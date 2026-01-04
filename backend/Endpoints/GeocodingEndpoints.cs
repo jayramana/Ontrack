@@ -9,10 +9,10 @@ public static class GeocodingEndpoints
 
         group.MapGet("/reverse", async (
             double lat,
-            double lon
+            double lon,
+            HttpClient client
         ) =>
         {
-            var client = new HttpClient();
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OnTrackLogistics/1.0 (contact@ontrack.com)");
 
             var url =

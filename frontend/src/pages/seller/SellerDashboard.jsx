@@ -46,41 +46,31 @@ function SenderDashboard() {
       >
         <header
           className={`sticky top-0 z-40 transition-all duration-300
-              ${
-                isScrolled
-                  ? "bg-[#0b0f14]/60 backdrop-blur-xl"
-                  : "bg-transparent"
-              }
+              ${isScrolled
+              ? "bg-[#0b0f14]/60 backdrop-blur-xl"
+              : "bg-transparent"
+            }
             `}
         >
-          <div className="px-8 py-5">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <div>
+          <div className="px-4 md:px-8 py-5">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="md:pl-0 pl-12">
                 <h1 className="text-3xl font-bold text-white">
                   Sender Dashboard
                 </h1>
-                {/* <p className="text-sm mt-1">
-                  Welcome, {user?.first_name} {user?.last_name}!
-                </p> */}
               </div>
-              {/* <button
-                onClick={logout}
-                className="px-4 py-2 bg-[#351c15] text-white rounded-lg shadow hover:bg-[#4a2a21]"
-              >
-                Logout
-              </button> */}
             </div>
           </div>
         </header>
 
         {/* CONTENT */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 md:p-8">
           {loading ? (
             <p className="text-[#6b4f3a]">Loading analytics...</p>
           ) : (
             <div className="max-w-7xl mx-auto">
               {/* STAT CARDS */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {/* Total Revenue */}
                 <div className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center">
                   <div>
@@ -88,7 +78,7 @@ function SenderDashboard() {
                       Total Revenue
                     </p>
                     <p className="text-3xl font-bold text-white mt-2">
-                       ₹ {stats?.totalRevenue}
+                      ₹ {stats?.totalRevenue}
                     </p>
                   </div>
                   <div className="p-3 bg-orange-500/10 rounded-full">
@@ -143,24 +133,23 @@ function SenderDashboard() {
               </div>
 
               {/* CHARTS */}
-              <div className="flex justify-between items-end mb-6">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
                 <h2 className="text-xl font-bold text-white">Analytics Overview</h2>
-                
+
                 {/* DATE FILTERS */}
-                <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5">
-                {["1W", "1M", "3M", "1Y"].map((filter) => (
+                <div className="bg-[#1a1f29] p-1 rounded-xl flex gap-1 border border-white/5 overflow-x-auto max-w-full">
+                  {["1W", "1M", "3M", "1Y"].map((filter) => (
                     <button
-                    key={filter}
-                    onClick={() => setDateFilter(filter)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
-                        dateFilter === filter
+                      key={filter}
+                      onClick={() => setDateFilter(filter)}
+                      className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${dateFilter === filter
                         ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 shadow-lg shadow-orange-500/10"
                         : "text-gray-400 hover:text-white hover:bg-white/5"
-                    }`}
+                        }`}
                     >
-                    {filter}
+                      {filter}
                     </button>
-                ))}
+                  ))}
                 </div>
               </div>
 
@@ -172,7 +161,7 @@ function SenderDashboard() {
 
                 {/* Status Chart */}
                 <div className="bg-[#0b0f14] rounded-xl shadow border border-[#1f2937]">
-                   <SenderChart data={stats?.statusDistribution} />
+                  <SenderChart data={stats?.statusDistribution} />
                 </div>
               </div>
             </div>

@@ -3,51 +3,6 @@ using Backend.DTO;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
-public static class VerificationEndpoints
-{
-    public static void MapVerificationEndpoints(this IEndpointRouteBuilder app)
-    {
-        var group = app.MapGroup("/api/verification").WithTags("Verification");
-
-        /// <summary>
-        /// Health check for Python service
-        /// </summary>
-        group.MapGet("/health", async () =>
-        {
-            try
-            {
-                var httpClient = new HttpClient();
-                var response = await httpClient.GetAsync("http://localhost:5001/health");
-                
-                if (response.IsSuccessStatusCode)
-                {
-                    return Results.Ok(new
-                    {
-                        status = "OK",
-                        message = "Python verification service is running",
-                        pythonService = "http://localhost:5001"
-                    });
-                }
-                else
-                {
-                    return Results.Ok(new
-                    {
-                        status = "ERROR",
-                        message = "Python verification service is not responding"
-                    });
-                }
-            }
-            catch
-            {
-                return Results.Ok(new
-                {
-                    status = "ERROR",
-                    message = "Cannot connect to Python verification service"
-                });
-            }
-        });
-    }
-}
 
 public static class DiagnosticEndpoints
 {

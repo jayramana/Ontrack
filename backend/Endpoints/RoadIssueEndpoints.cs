@@ -21,7 +21,8 @@ public static class RoadIssueEndpoints
             AppDbContext context,
             IHubContext<LogisticsHub> hubContext,
             DriverRouteOptimizationService routeService,
-            IEtaservice etaService
+            IEtaservice etaService,
+            NotificationService notificationService
         ) =>
         {
             try
@@ -47,6 +48,13 @@ public static class RoadIssueEndpoints
 
                 context.RoadIssues.Add(issue);
                 await context.SaveChangesAsync();
+
+                // Notify all admins
+                var admins = await context.Users.Where(u => u.UserRole == "admin").ToListAsync();
+                foreach (var admin in admins)
+                {
+                    await notificationService.AddNotificationAsync(admin.UserId, $"Driver {driver.UserFName} reported a {issue.IssueType} issue (Severity: {issue.Severity})", "Alert");
+                }
 
                 await hubContext.Clients
                     .Group("Admins")

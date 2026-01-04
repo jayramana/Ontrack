@@ -29,8 +29,8 @@ builder.Services.AddCors(options =>
     {
         policy
             .WithOrigins(
-                "https://d5p1wvesrltks.cloudfront.net",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "https://d5p1wvesrltks.cloudfront.net"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
@@ -87,21 +87,24 @@ builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<WarehouseAssignmentService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<GeminiService>();
+builder.Services.AddScoped<DriverRouteOptimizationService>();
 builder.Services.AddScoped<GeofenceService>();
 builder.Services.AddScoped<GeminiOcrService>();
 builder.Services.AddScoped<DriverRouteOptimizationService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddHostedService<SimulationService>();
 // builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
-var awsOptions = builder.Configuration.GetSection("AWS");
-var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsOptions["AccessKey"], awsOptions["SecretKey"]);
-var awsConfig = new Amazon.S3.AmazonS3Config { RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsOptions["Region"]) };
-builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, awsConfig));
+// var awsOptions = builder.Configuration.GetSection("AWS");
+// var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsOptions["AccessKey"], awsOptions["SecretKey"]);
+// var awsConfig = new Amazon.S3.AmazonS3Config { RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsOptions["Region"]) };
+// builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, awsConfig));
 
 
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
+builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<User>, Microsoft.AspNetCore.Identity.PasswordHasher<User>>();
 builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 builder.Services.AddHttpClient<OpenRouteServiceClient>();
@@ -134,10 +137,10 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.UseAuthorization();
 
-// -------------------- ENDPOINTS --------------------
-
+app.UseStaticFiles(); // Enable serving files from wwwroot
 app.MapControllers().RequireCors("AllowFrontend");
 
+app.MapFileUploadEndpoints().RequireCors("AllowFrontend"); // 🆕 Local Uploads
 app.MapASREndpoints().RequireCors("AllowFrontend");
 app.MapAuthEndpoints().RequireCors("AllowFrontend");
 app.MapCustomerEndpoints().RequireCors("AllowFrontend");
@@ -150,10 +153,11 @@ app.MapTrackingEndpoints().RequireCors("AllowFrontend");
 app.MapPublicTrackingEndpoints().RequireCors("AllowFrontend");
 app.MapSellerAnalyticsEndpoints().RequireCors("AllowFrontend");
 app.MapAdminEndpoints().RequireCors("AllowFrontend");
-app.MapAWSEndpoints().RequireCors("AllowFrontend");
+// app.MapAWSEndpoints().RequireCors("AllowFrontend");
 app.MapRoadIssueEndpoints().RequireCors("AllowFrontend");
 app.MapLocationEndpoints().RequireCors("AllowFrontend");
 app.MapGeocodingEndpoints().RequireCors("AllowFrontend");
+app.MapNotificationEndpoints().RequireCors("AllowFrontend");
 
 app.MapHub<GeofenceHub>("/geofencehub").RequireCors("AllowFrontend");
 app.MapHub<EtaHub>("/etahub").RequireCors("AllowFrontend");

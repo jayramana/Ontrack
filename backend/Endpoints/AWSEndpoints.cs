@@ -29,6 +29,7 @@
 //     return Results.Ok(results);
 // });
 
+/*
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -163,3 +164,4 @@ public static class AWSEndpoints
         return group;
     }
 }
+*/

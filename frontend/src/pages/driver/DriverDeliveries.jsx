@@ -81,17 +81,16 @@ export default function DriverDeliveries() {
 
           <span
             className={`px-3 py-1 rounded-full text-xs font-bold
-              ${
-                order.status === "Delivered"
-                  ? "bg-green-500/20 text-green-400"
-                  : order.status === "Cancelled" ||
-                    order.status === "DeliveryAttempted"
+              ${order.status === "Delivered"
+                ? "bg-green-500/20 text-green-400"
+                : order.status === "Cancelled" ||
+                  order.status === "DeliveryAttempted"
                   ? "bg-red-500/20 text-red-400"
                   : order.status === "Assigned"
-                  ? "bg-blue-500/20 text-blue-400"
-                  : order.status === "Pending" && order.previousDriverId
-                  ? "bg-yellow-500/20 text-yellow-400"
-                  : "bg-orange-500/20 text-orange-400"
+                    ? "bg-blue-500/20 text-blue-400"
+                    : order.status === "Pending" && order.previousDriverId
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-orange-500/20 text-orange-400"
               }
             `}
           >
@@ -156,15 +155,15 @@ export default function DriverDeliveries() {
     </div>
   );
 
-    const getFilteredOrders = () => {
+  const getFilteredOrders = () => {
     // Decode driver ID from token (simple parse)
     const token = localStorage.getItem("token");
     let currentDriverId = 0;
     if (token) {
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            currentDriverId = parseInt(payload.id || payload.nameid || 0);
-        } catch (e) { console.error("Token parse error", e); }
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        currentDriverId = parseInt(payload.id || payload.nameid || 0);
+      } catch (e) { console.error("Token parse error", e); }
     }
 
     switch (activeTab) {
@@ -173,7 +172,7 @@ export default function DriverDeliveries() {
         return orders.filter((o) => o.status === "Assigned" && o.driverId === currentDriverId);
       case "completed":
         // Past orders (Delivered, Cancelled) OR (status=Pending due to reschedule && I was previous)
-        return orders.filter((o) => 
+        return orders.filter((o) =>
           ["Delivered", "Cancelled", "DeliveryAttempted"].includes(o.status) ||
           (o.status === "Pending" && o.previousDriverId === currentDriverId) ||
           (o.status === "Assigned" && o.driverId !== currentDriverId && o.previousDriverId === currentDriverId) // Re-assigned to someone else
@@ -212,10 +211,9 @@ export default function DriverDeliveries() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition
-                  ${
-                    activeTab === tab.id
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:text-white"
+                  ${activeTab === tab.id
+                    ? "bg-white/10 text-white"
+                    : "text-slate-400 hover:text-white"
                   }
                 `}
               >

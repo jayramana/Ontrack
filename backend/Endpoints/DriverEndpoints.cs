@@ -683,7 +683,7 @@ public static class DriverEndpoints
                     .Where(o => o.DeliveryLatitude != 0 && o.DeliveryLongitude != 0)
                     .OrderByDescending(o => o.IsASR) // ASR first
                     .ThenByDescending(o => o.AiPriority ?? o.Priority)
-                    .ThenBy(o => o.ScheduledDate)
+                    .ThenBy(o => o.EstimatedDeliveryDate) // 🆕 Use Effective Date
                     .Select(o => new
                     {
                         id = o.Id,

@@ -55,7 +55,7 @@ const CustomerDashboard = () => {
     fetchOrders();
     setupSignalR();
     return () => {
-      if (connection) connection.stop().catch(() => {});
+      if (connection) connection.stop().catch(() => { });
     };
   }, []);
 
@@ -127,7 +127,7 @@ const CustomerDashboard = () => {
       const order = data.order || data;
       const latestDriverLocation = data.latestDriverLocation;
 
-      
+
 
       let driverLat;
       let driverLon;
@@ -176,7 +176,7 @@ const CustomerDashboard = () => {
           driverProfile.currentLatitude &&
           driverProfile.currentLongitude
         ) {
-          
+
           driverLat = driverProfile.currentLatitude;
           driverLon = driverProfile.currentLongitude;
         } else if (
@@ -184,7 +184,7 @@ const CustomerDashboard = () => {
           driverHistory.latitude &&
           driverHistory.longitude
         ) {
-          
+
           driverLat = driverHistory.latitude;
           driverLon = driverHistory.longitude;
         } else if (
@@ -210,7 +210,7 @@ const CustomerDashboard = () => {
       });
 
       const etaVal = etaRes.data.eta;
-      const displayEta = typeof etaVal === 'object' ? etaVal.average : etaVal; 
+      const displayEta = typeof etaVal === 'object' ? etaVal.average : etaVal;
       alert(`ETA: ${displayEta}\nDistance: ${etaRes.data.distance_km} km`);
     } catch (error) {
       console.error("ETA error:", error);
@@ -271,23 +271,20 @@ const CustomerDashboard = () => {
           {/* HEADER */}
           <header
             className={`sticky top-0 z-40 transition-all duration-300
-              ${
-                isScrolled
-                  ? "bg-[#0b0f14]/60 backdrop-blur-xl"
-                  : "bg-transparent"
+              ${isScrolled
+                ? "bg-[#0b0f14]/60 backdrop-blur-xl"
+                : "bg-transparent"
               }
             `}
           >
             <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-              <div>
+              <div className="md:pl-0 pl-12"> {/* Added padding for mobile menu button */}
                 <h1 className="text-2xl font-extrabold">Dashboard</h1>
                 <p className="text-sm text-[#64748b]">
                   Welcome back, {user?.first_name}
                 </p>
               </div>
             </div>
-
-
           </header>
           <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
             {/* 1. METRICS ROW */}
@@ -363,65 +360,64 @@ const CustomerDashboard = () => {
             </div>
 
             {/* 2. ANALYTICS SECTION */}
-            <div className="flex justify-between items-end">
-                <div>
-                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <GoPackage className="text-[#ff8a3d]" size={20} /> Analytics Overview
-                    </h2>
-                    <p className="text-sm text-slate-400 mt-1">Track your order history and status</p>
-                </div>
-                
-                {/* DATE FILTERS */}
-                <div className="bg-white/5 p-1 rounded-xl flex gap-1 border border-white/10 backdrop-blur-sm">
-                    {["1W", "1M", "3M", "1Y"].map((filter) => (
-                    <button
-                        key={filter}
-                        onClick={() => setDateFilter(filter)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            dateFilter === filter
-                            ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 backdrop-blur-md shadow-lg shadow-orange-500/10"
-                            : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
-                        }`}
-                    >
-                        {filter}
-                    </button>
-                    ))}
-                </div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <GoPackage className="text-[#ff8a3d]" size={20} /> Analytics Overview
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">Track your order history and status</p>
+              </div>
+
+              {/* DATE FILTERS */}
+              <div className="bg-white/5 p-1 rounded-xl flex gap-1 border border-white/10 backdrop-blur-sm overflow-x-auto max-w-full">
+                {["1W", "1M", "3M", "1Y"].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setDateFilter(filter)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${dateFilter === filter
+                        ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 backdrop-blur-md shadow-lg shadow-orange-500/10"
+                        : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                      }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {(() => {
-                // Filter Logic
-                const now = new Date();
-                const past = new Date();
-                if (dateFilter === "1Y") past.setDate(past.getDate() - 365);
-                else if (dateFilter === "3M") past.setDate(past.getDate() - 90);
-                else if (dateFilter === "1M") past.setDate(past.getDate() - 30);
-                else past.setDate(past.getDate() - 7);
+              // Filter Logic
+              const now = new Date();
+              const past = new Date();
+              if (dateFilter === "1Y") past.setDate(past.getDate() - 365);
+              else if (dateFilter === "3M") past.setDate(past.getDate() - 90);
+              else if (dateFilter === "1M") past.setDate(past.getDate() - 30);
+              else past.setDate(past.getDate() - 7);
 
-                const filteredOrders = orders.filter(o => {
-                    if (!o.createdAt) return false;
-                    const d = new Date(o.createdAt);
-                    return d >= past && d <= now;
-                });
+              const filteredOrders = orders.filter(o => {
+                if (!o.createdAt) return false;
+                const d = new Date(o.createdAt);
+                return d >= past && d <= now;
+              });
 
-                return (
-                    <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-0">
-                            <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
-                                <OrdersPieChart data={filteredOrders} />
-                            </div>
+              return (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-0">
+                    <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                      <OrdersPieChart data={filteredOrders} />
+                    </div>
 
-                            {/* CHART 2: DAILY VOLUME */}
-                            <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
-                                <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
-                            </div>
-                        </div>
-                        {/* CHART 3: SPENDING HISTORY */}
-                        <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
-                            <OrdersSpendingChart data={filteredOrders} filterType={dateFilter} />
-                        </div>
-                    </>
-                );
+                    {/* CHART 2: DAILY VOLUME */}
+                    <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                      <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
+                    </div>
+                  </div>
+                  {/* CHART 3: SPENDING HISTORY */}
+                  <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                    <OrdersSpendingChart data={filteredOrders} filterType={dateFilter} />
+                  </div>
+                </>
+              );
             })()}
           </div>
         </main>
@@ -489,7 +485,7 @@ const CustomerDashboard = () => {
                 )}
 
 
-                  <button
+                <button
                   onClick={() =>
                     window.open(
                       `https://www.openstreetmap.org/?mlat=${trackingData.driverLocation?.latitude}&mlon=${trackingData.driverLocation?.longitude}`,
