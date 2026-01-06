@@ -45,7 +45,7 @@ function Availability() {
             max-w-3xl
           "
         >
-          <label className="block text-xs uppercase tracking-widest text-slate-400 mb-2">
+          <label className="block text-xs text-slate-400 mb-2">
             Availability Details
           </label>
 

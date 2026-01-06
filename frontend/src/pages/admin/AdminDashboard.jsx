@@ -4,8 +4,6 @@ import AdminSidebar from "./AdminSidebar";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import * as signalR from "@microsoft/signalr";
-import OrderDetailsModal from "./OrderDetailsModal";
-import DriverDetailsModal from "./DriverDetailsModal";
 
 import { OrdersBarChart } from "../../components/charts/OrdersBarChart";
 import { OrdersPieChart } from "../../components/charts/OrdersPieChart";
@@ -17,33 +15,15 @@ import {
   CheckCircle,
   AlertTriangle,
   Lock,
-  ClipboardList,
   Map as MapIcon,
   Calendar,
   LogOut,
-  Search,
-  User,
 } from "lucide-react";
-import { formatStatus } from "@/lib/utils";
-
-/*  HELPERS  */
-const normalizeStatus = (status) => {
-  if (!status) return "Pending";
-  const s = status.toLowerCase();
-  if (s.includes("deliver")) return "Delivered";
-  if (s.includes("transit") || s.includes("assign")) return "In Transit";
-  if (s.includes("asr")) return "ASR";
-  return "Pending";
-};
 
 /*  COMPONENT  */
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
 
-  const [drivers, setDrivers] = useState([]);
-  const [selectedDrivers, setSelectedDrivers] = useState({});
-  const [pendingOrders, setPendingOrders] = useState([]);
-  const [assignedOrders, setAssignedOrders] = useState([]);
   const [allOrders, setAllOrders] = useState([]);
   const [roadIssues, setRoadIssues] = useState([]);
 
@@ -53,70 +33,53 @@ export default function AdminDashboard() {
     delivered: 0,
     exceptions: 0,
     asr: 0,
+    reverifyCount: 0,
   });
 
   const [dateFilter, setDateFilter] = useState("1W");
-
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [selectedDriverId, setSelectedDriverId] = useState(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const [showDriverModal, setShowDriverModal] = useState(false);
-
-  const [activeTab, setActiveTab] = useState("orders");
   const [roadAlert, setRoadAlert] = useState(null);
 
   const fetchDashboard = async () => {
-    const [
-      allOrdersRes,
-      driversRes,
-      roadIssuesRes,
-      asrRes,
-    ] = await Promise.all([
-      api.get("/orders/admin/all"),
-      api.get("/admin/drivers"),
-      api.get("/roadissue/unresolved"),
-      api.get("/asr/admin/list"),
-    ]);
-
-    const all = (allOrdersRes.data || []).map((o) => {
-      const rawStatus = o.status || o.orderStatus;
-      return {
-        ...o,
-        status: rawStatus || "Pending", // Keep raw status
-        isASR: o.isASR || rawStatus?.toLowerCase().includes("asr"),
-        createdAt: o.createdAt || o.created_at,
-        driverId: o.driverId || o.driver?.userId || o.driver?.id,
-      };
-    });
-
-    // Unassigned: Pending, Approved, AtOriginWarehouse, ReturnedToWarehouse
-    const pending = all.filter(o =>
-      ["Pending", "Approved", "AtOriginWarehouse", "ReturnedToWarehouse"].includes(o.status)
-    );
-
-    // Assigned: Assigned, In Transit, OutForDelivery
-    const assigned = all.filter(o =>
-      ["Assigned", "In Transit", "OutForDelivery", "Out for delivery"].includes(o.status)
-    );
-
-    setPendingOrders(pending);
-    setAssignedOrders(assigned);
-    setAllOrders(all);
-    setDrivers(driversRes.data || []);
-    setRoadIssues(roadIssuesRes.data || []);
-
-    /*  STATS  */
-    const delivered = all.filter(o => o.status === "Delivered").length;
-    const active = all.filter(o => ["In Transit", "Assigned", "OutForDelivery", "Out for delivery"].includes(o.status)).length;
-    const asrCount = all.filter(o => o.isASR).length;
-
-    setStats({
-      total: all.length,
-      active,
-      delivered,
-      exceptions: roadIssuesRes.data?.length || 0,
-      asr: asrCount,
-    });
+    try {
+        const [
+            allOrdersRes,
+            roadIssuesRes,
+            asrRes,
+          ] = await Promise.all([
+            api.get("/orders/admin/all"),
+            api.get("/roadissue/unresolved"),
+            api.get("/asr/admin/list"),
+          ]);
+      
+          const all = (allOrdersRes.data || []).map((o) => {
+            const rawStatus = o.status || o.orderStatus;
+            return {
+              ...o,
+              status: rawStatus || "Pending", // Keep raw status
+              isASR: o.isASR || rawStatus?.toLowerCase().includes("asr"),
+              createdAt: o.createdAt || o.created_at,
+            };
+          });
+      
+          setAllOrders(all);
+          setRoadIssues(roadIssuesRes.data || []);
+      
+          /*  STATS  */
+          const delivered = all.filter(o => o.status === "Delivered").length;
+          const active = all.filter(o => ["In Transit", "Assigned", "OutForDelivery", "Out for delivery"].includes(o.status)).length;
+          const asrCount = all.filter(o => o.isASR).length;
+      
+          setStats({
+            total: all.length,
+            active,
+            delivered,
+            exceptions: roadIssuesRes.data?.length || 0,
+            asr: asrCount,
+            reverifyCount: (asrRes.data || []).filter(a => a.customerReverifyRequested && a.aiVerifyStatus !== 'AdminOverride' && a.aiVerifyStatus !== 'Success').length,
+          });
+    } catch (e) {
+        console.error("Dashboard fetch error", e);
+    }
   };
 
   /*  SIGNALR  */
@@ -146,14 +109,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboard();
   }, []);
-
-
-  const handleAssign = async (orderId) => {
-    const driverId = selectedDrivers[orderId];
-    if (!driverId) return alert("Select driver");
-    await api.post(`/admin/assign-driver/${orderId}/${driverId}`);
-    fetchDashboard();
-  };
 
   const broadcastRoadIssue = async (id) => {
     await api.post(`/admin/broadcast-road-issue/${id}`);
@@ -185,8 +140,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex gap-4 items-center">
-
-
             <button
               onClick={logout}
               className="flex items-center gap-2 bg-red-500/10 text-red-500 border border-red-500/20 px-4 py-2 rounded-lg font-bold hover:bg-red-500 hover:text-white transition-all text-sm"
@@ -212,7 +165,7 @@ export default function AdminDashboard() {
                 }`}
             >
               <div>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">{item.label}</p>
+                <p className="text-slate-400 text-xs font-bold">{item.label}</p>
                 <p className="text-3xl font-black text-white mt-2 group-hover:scale-105 transition-transform origin-left">{item.value}</p>
               </div>
               <div className={`p-4 rounded-xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}>
@@ -284,172 +237,31 @@ export default function AdminDashboard() {
           })()}
         </div>
 
-        {/* TABS */}
-        <div className="px-4 md:px-8 mb-6 overflow-x-auto">
-          <div className="flex gap-4 border-b border-white/10 pb-1 min-w-max">
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all font-bold ${activeTab === "orders" ? "border-[#ff8a3d] text-[#ff8a3d]" : "border-transparent text-slate-400 hover:text-white"}`}
-            >
-              <ClipboardList size={18} /> Orders
-            </button>
-            <button
-              onClick={() => setActiveTab("road")}
-              className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-all font-bold ${activeTab === "road" ? "border-red-500 text-red-500" : "border-transparent text-slate-400 hover:text-white"}`}
-            >
-              <AlertTriangle size={18} /> Road Issues
-            </button>
-            <button
-              onClick={navigateToASR}
-              className="ml-auto flex items-center gap-2 px-6 py-3 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-t-lg transition-all border-b-2 border-purple-500/50 font-bold"
-            >
-              <Lock size={18} /> ASR Verification ({stats.asr})
-            </button>
-          </div>
-        </div>
-
         {/* CONTENT AREA */}
         <div className="px-4 md:px-8 pb-12">
-          {activeTab === "orders" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Unassigned */}
-              <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden flex flex-col h-[600px]">
-                <div className="p-4 bg-yellow-500/10 border-b border-yellow-500/20 flex justify-between items-center sticky top-0 backdrop-blur-sm">
-                  <h2 className="text-yellow-500 font-bold flex items-center gap-2">
-                    <ClipboardList size={18} /> Unassigned Orders
-                    <span className="text-xs bg-yellow-500/20 px-2 py-0.5 rounded text-yellow-300 font-bold">{pendingOrders.length}</span>
-                  </h2>
+          
+          {/* ACTION REQUIRED BANNER */}
+          {stats.reverifyCount > 0 && (
+            <div className="mb-8 bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl flex items-center justify-between animate-pulse-slow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-500/20 rounded-full text-orange-500">
+                  <AlertTriangle size={24} />
                 </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                  {pendingOrders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
-                      <ClipboardList className="text-4xl mb-2" />
-                      <p>No unassigned orders</p>
-                    </div>
-                  ) : (
-                    pendingOrders.map(o => (
-                      <div
-                        key={o.id}
-                        className="bg-black/20 p-4 rounded-xl border border-white/10 hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all group"
-                        onClick={() => {
-                          setSelectedOrderId(o.id);
-                          setShowOrderModal(true);
-                        }}
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <p className="font-bold text-white group-hover:text-yellow-500 transition-colors">Order #{o.id}</p>
-                            <p className="text-xs text-slate-400 flex items-center gap-1 mt-1">
-                              <Calendar size={12} /> {new Date(o.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <span className="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded font-bold tracking-wide">{formatStatus(o.status)}</span>
-                        </div>
-
-                        <div className="flex gap-2 mt-4">
-                          <div className="flex-1 relative">
-                            <select
-                              className="w-full bg-[#0b0f14] text-slate-300 text-sm p-2 rounded-lg border border-white/10 appearance-none focus:border-yellow-500 focus:outline-none"
-                              onClick={e => e.stopPropagation()}
-                              onChange={e =>
-                                setSelectedDrivers({ ...selectedDrivers, [o.id]: e.target.value })
-                              }
-                            >
-                              <option value="">Select Driver...</option>
-                              {drivers.map(d => (
-                                <option key={d.userId} value={d.userId}>
-                                  {d.userFName} {d.userLName}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="absolute right-3 top-2.5 text-slate-500 pointer-events-none">
-                              <User size={14} />
-                            </div>
-                          </div>
-
-                          <button
-                            className="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-500 border border-yellow-500/50 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-yellow-500/10"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleAssign(o.id);
-                            }}
-                          >
-                            Assign
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                <div>
+                  <h3 className="font-bold text-orange-400 text-lg">Action Required: {stats.reverifyCount} ASR Re-verification Requests</h3>
+                  <p className="text-slate-400 text-sm">Customers have appealed AI verification failures. Please review and approve manually if valid.</p>
                 </div>
               </div>
-
-              {/* Assigned */}
-              <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden flex flex-col h-[600px]">
-                <div className="p-4 bg-blue-500/10 border-b border-blue-500/20 flex justify-between items-center sticky top-0 backdrop-blur-sm">
-                  <h2 className="text-blue-400 font-bold flex items-center gap-2">
-                    <Truck size={18} /> Assigned Orders
-                    <span className="text-xs bg-blue-500/20 px-2 py-0.5 rounded text-blue-300 font-bold">{assignedOrders.length}</span>
-                  </h2>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                  {assignedOrders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
-                      <Truck className="text-4xl mb-2" />
-                      <p>No assigned orders</p>
-                    </div>
-                  ) : (
-                    assignedOrders.map(o => (
-                      <div
-                        key={o.id}
-                        className="bg-black/20 p-4 rounded-xl border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer group"
-                        onClick={() => {
-                          setSelectedOrderId(o.id);
-                          setShowOrderModal(true);
-                        }}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/5 rounded-lg text-blue-400 border border-white/5">
-                              <Package size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold text-white group-hover:text-blue-400 transition-colors">Order #{o.id}</p>
-                              <p className="text-xs text-slate-500 capitalize">{o.isASR ? "ASR Secure" : "Standard"}</p>
-                            </div>
-                          </div>
-                          <span className={`text-xs px-2 py-1 rounded font-bold border ${o.status === "Delivered" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                            }`}>
-                            {formatStatus(o.status)}
-                          </span>
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-white/5 flex justify-between items-center">
-                          <div className="text-xs text-slate-400">
-                            <p>Driver ID: {o.driverId ? `DRV-${o.driverId}` : "N/A"}</p>
-                          </div>
-                          <button
-                            className="text-blue-400 hover:text-blue-300 text-xs font-bold flex items-center gap-1 bg-blue-500/10 border border-blue-500/20 backdrop-blur-sm px-2 py-1 rounded hover:bg-blue-500/20 transition-all"
-                            onClick={e => {
-                              e.stopPropagation();
-                              setSelectedDriverId(o.driverId);
-                              setShowDriverModal(true);
-                            }}
-                          >
-                            <User size={12} /> View Driver
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              <button 
+                onClick={navigateToASR}
+                className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-black font-bold rounded-lg transition shadow-lg shadow-orange-500/20"
+              >
+                Review Now
+              </button>
             </div>
           )}
 
           {/* ROAD ISSUES */}
-          {activeTab === "road" && (
             <div className="bg-white/5 backdrop-blur-xl p-6 rounded-2xl border border-white/10 min-h-[400px]">
               <h2 className="text-red-500 font-bold mb-6 flex items-center gap-2 text-xl">
                 <AlertTriangle size={24} /> Active Road Issues
@@ -466,7 +278,7 @@ export default function AdminDashboard() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-red-500 font-bold text-lg">{r.issueType}</span>
-                          <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded border border-red-500/20 font-bold uppercase">Critical</span>
+                          <span className="text-xs bg-red-500/10 text-red-500 px-2 py-0.5 rounded border border-red-500/20 font-bold">Critical</span>
                         </div>
                         <p className="text-slate-300 mb-2">{r.reason || r.description}</p>
                         <p className="text-xs text-slate-500 flex items-center gap-1">
@@ -493,22 +305,7 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-          )}
         </div>
-
-        {showOrderModal && (
-          <OrderDetailsModal
-            orderId={selectedOrderId}
-            onClose={() => setShowOrderModal(false)}
-          />
-        )}
-
-        {showDriverModal && (
-          <DriverDetailsModal
-            driverId={selectedDriverId}
-            onClose={() => setShowDriverModal(false)}
-          />
-        )}
       </div>
     </div>
   );

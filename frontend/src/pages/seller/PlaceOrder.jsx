@@ -86,23 +86,28 @@ function PlaceOrder() {
     }
   };
 
-  const calculatePrice = () => {
-    let weightPrice = parseFloat(formData.weight || 0) * 10;
+  useEffect(() => {
+    const weightVal = parseFloat(formData.weight) || 0;
+    const sizeVal = formData.parcelSize;
+    const asrVal = formData.isASR;
+
+    let weightPrice = weightVal * 10;
     let sizePrice =
-      formData.parcelSize === "Large"
+      sizeVal === "Large"
         ? 50
-        : formData.parcelSize === "Medium"
+        : sizeVal === "Medium"
         ? 30
         : 10;
 
-    // ASR adds extra cost
-    let asrPrice = formData.isASR ? 100 : 0;
+    let asrPrice = asrVal ? 100 : 0;
 
-    setFormData((s) => ({
-      ...s,
-      price: weightPrice + sizePrice + asrPrice,
-    }));
-  };
+    const newPrice = weightPrice + sizePrice + asrPrice;
+
+    setFormData((prev) => {
+      if (prev.price === newPrice) return prev;
+      return { ...prev, price: newPrice };
+    });
+  }, [formData.weight, formData.parcelSize, formData.isASR]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,7 +157,7 @@ function PlaceOrder() {
   const inputClass =
     "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#ff8a3d] focus:ring-1 focus:ring-[#ff8a3d] transition";
   const labelClass =
-    "block mb-1 text-sm font-semibold text-slate-400 uppercase tracking-wider";
+    "block mb-1 text-sm font-semibold text-slate-400";
 
   return (
     <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
@@ -209,7 +214,7 @@ function PlaceOrder() {
                     <button
                       type="button"
                       onClick={() => setShowPickupPicker(true)}
-                      className="px-5 py-3 bg-[#ff8a3d] text-black font-bold rounded-xl hover:bg-[#e0a200] transition"
+                      className="px-5 py-3 bg-[#ff8a3d] text-black font-bold rounded-xl hover:bg-[#e57c37] hover:text-white transition"
                     >
                       Pick on map
                     </button>
@@ -223,7 +228,7 @@ function PlaceOrder() {
                       className={inputClass}
                     />
                     <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-slate-500 uppercase">
+                      <div className="text-xs text-slate-500 ">
                         Latitude
                       </div>
                       <div className="text-sm font-mono text-slate-300">
@@ -233,7 +238,7 @@ function PlaceOrder() {
                       </div>
                     </div>
                     <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-slate-500 uppercase">
+                      <div className="text-xs text-slate-500 ">
                         Longitude
                       </div>
                       <div className="text-sm font-mono text-slate-300">
@@ -289,7 +294,7 @@ function PlaceOrder() {
                     <button
                       type="button"
                       onClick={() => setShowDeliveryPicker(true)}
-                      className="px-5 py-3 bg-[#ff8a3d] text-black font-bold rounded-xl hover:bg-[#e0a200] transition"
+                      className="px-5 py-3 bg-[#ff8a3d] text-black font-bold rounded-xl hover:bg-[#e57c37] hover:text-white transition"
                     >
                       Pick on map
                     </button>
@@ -303,7 +308,7 @@ function PlaceOrder() {
                       className={inputClass}
                     />
                     <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-slate-500 uppercase">
+                      <div className="text-xs text-slate-500">
                         Latitude
                       </div>
                       <div className="text-sm font-mono text-slate-300">
@@ -313,7 +318,7 @@ function PlaceOrder() {
                       </div>
                     </div>
                     <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
-                      <div className="text-xs text-slate-500 uppercase">
+                      <div className="text-xs text-slate-500">
                         Longitude
                       </div>
                       <div className="text-sm font-mono text-slate-300">
@@ -374,7 +379,6 @@ function PlaceOrder() {
                     name="weight"
                     value={formData.weight}
                     onChange={handleChange}
-                    onBlur={calculatePrice}
                     placeholder="0.0"
                     type="number"
                     className={inputClass}
@@ -384,40 +388,36 @@ function PlaceOrder() {
 
               {/* ASR Checkbox */}
               <div className="mt-6 bg-[#ff8a3d]/10 border border-[#ff8a3d]/30 rounded-xl p-5">
-                <label className="flex items-start gap-4 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="isASR"
-                    checked={formData.isASR}
-                    onChange={(e) => {
-                      handleChange(e);
-                      setTimeout(calculatePrice, 100);
-                    }}
-                    className="mt-1 w-5 h-5 text-[#ff8a3d] border-white/30 rounded focus:ring-[#ff8a3d] bg-transparent"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
                       <ShieldCheck
                         className={`w-5 h-5 ${
                           formData.isASR ? "text-[#ff8a3d]" : "text-slate-400"
                         }`}
                       />
-                      <span
-                        className={`text-lg font-bold ${
-                          formData.isASR ? "text-white" : "text-slate-300"
-                        }`}
-                      >
-                        Require Adult Signature (ASR)
+                      <span className="text-lg font-bold text-white">
+                        Enable ASR
                       </span>
                     </div>
-                    <p className="text-sm text-slate-400">
-                      Customer must provide ID verification and signature before
-                      delivery. Additional{" "}
-                      <span className="text-white font-bold">$100</span> fee
-                      applies.
-                    </p>
-                  </div>
-                </label>
+                    
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isASR"
+                        checked={formData.isASR}
+                        onChange={handleChange}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ff8a3d]"></div>
+                    </label>
+                </div>
+                
+                <p className="text-sm text-slate-400">
+                  Customer must provide ID verification and signature before
+                  delivery. Additional{" "}
+                  <span className="text-white font-bold">₹100</span> fee
+                  applies.
+                </p>
               </div>
 
 
@@ -453,14 +453,14 @@ function PlaceOrder() {
                 Estimated Price:
               </span>
               <span className="text-3xl font-black text-white">
-                ${formData.price}
+                ₹{formData.price}
               </span>
             </div>
 
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full bg-[#ff8a3d] text-black py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_20px_rgba(255,138,61,0.4)] hover:scale-[1.01] transition disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full bg-[#ff8a3d] text-black py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_20px_rgba(255,138,61,0.4)] hover:scale-[1.01] hover:bg-[#e57c37] hover:text-white transition disabled:opacity-50 disabled:hover:scale-100"
             >
               {submitting ? "Processing..." : "Confirm & Place Order"}
             </button>

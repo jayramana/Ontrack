@@ -15,7 +15,6 @@ export default function DriverSidebar({ active }) {
     { label: "Route Planner", icon: <Map size={20} />, key: "route", path: "/driver/route" },
     { label: "Geofence Alerts", icon: <Bell size={20} />, key: "geofence", path: "/driver/geofencealerts" },
     { label: "Report Issue", icon: <AlertTriangle size={20} />, key: "issues", path: "/driver/report-issue" },
-    { label: "Profile", icon: <User size={20} />, key: "profile", path: "/driver/profile" },
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -40,10 +39,10 @@ export default function DriverSidebar({ active }) {
 
       <div
         className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-[#0b0f14] text-slate-100 shadow-xl border-r border-white/10
-          transition-transform duration-300 transform md:translate-x-0 md:static md:w-20 md:hover:w-64
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          flex flex-col p-4 shrink-0 group
+          fixed inset-y-0 left-0 z-40 bg-[#0b0f14] text-slate-100 shadow-xl border-r border-white/10
+          transition-all duration-300 ease-in-out md:translate-x-0 md:static
+          ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64 md:w-20 md:hover:w-64"}
+          overflow-hidden flex flex-col p-4 shrink-0 group
         `}
       >
         <div className="flex items-center gap-3 mb-10 pl-2">
@@ -86,9 +85,28 @@ export default function DriverSidebar({ active }) {
             </button>
           ))}
 
-          <div className="pt-2 border-t border-white/5 mt-2">
-            <NotificationBell showLabel={isOpen} />
+          <div className="pt-2  mt-2">
+            <NotificationBell showLabel={isOpen} active={active === "notifications"} navigationPath="/driver/notifications" />
           </div>
+
+          <button
+            onClick={() => {
+              navigate("/driver/profile");
+              setIsOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors
+              ${active === "profile"
+                ? "bg-white/10 text-[#f59e0b]"
+                : "hover:bg-white/10 text-slate-300"
+              }`}
+          >
+            <span className="text-lg"><User size={20} /></span>
+            <span
+              className="md:opacity-0 md:group-hover:opacity-100 transition-opacity whitespace-nowrap opacity-100"
+            >
+              Profile
+            </span>
+          </button>
         </nav>
       </div>
     </>

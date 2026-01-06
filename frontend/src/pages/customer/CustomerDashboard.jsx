@@ -294,7 +294,7 @@ const CustomerDashboard = () => {
                 <div className="relative z-10">
                   <div className="flex gap-3 items-center">
                     <GoPackage className="text-2xl text-orange-400" />
-                    <p className="text-xl font-bold text-white tracking-wider">
+                    <p className="text-xl font-bold text-white">
                       Total Orders
                     </p>
                   </div>
@@ -310,7 +310,7 @@ const CustomerDashboard = () => {
                 <div>
                   <div className="flex gap-3 items-center">
                     <BsTruckFlatbed className="text-2xl text-orange-400" />
-                    <p className="text-xl font-bold text-white tracking-wider">
+                    <p className="text-xl font-bold text-white">
                       Active Shipments
                     </p>
                   </div>
@@ -329,7 +329,7 @@ const CustomerDashboard = () => {
                 <div>
                   <div className="flex gap-3 items-center">
                     <BsCheckCircleFill className="text-xl text-orange-400" />
-                    <p className="text-xl font-bold text-white tracking-wider">
+                    <p className="text-xl font-bold text-white">
                       Delivered Orders
                     </p>
                   </div>
@@ -344,7 +344,7 @@ const CustomerDashboard = () => {
                 <div>
                   <div className="flex gap-3 items-center">
                     <BsExclamationTriangleFill className="text-xl text-orange-400" />
-                    <p className="text-xl font-bold text-white tracking-wider">
+                    <p className="text-xl font-bold text-white">
                       Exceptions
                     </p>
                   </div>
@@ -428,7 +428,7 @@ const CustomerDashboard = () => {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl p-0 max-w-2xl w-full shadow-2xl border border-[#e2e8f0] overflow-hidden">
               <div className="bg-[#0f172a] px-6 py-4 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-white uppercase tracking-wide">
+                <h3 className="text-lg font-bold text-white">
                   Live Tracking
                 </h3>
                 <button
@@ -448,7 +448,7 @@ const CustomerDashboard = () => {
                     📍
                   </div>
                   <div>
-                    <p className="text-xs text-[#64748b] font-bold uppercase">
+                    <p className="text-xs text-[#64748b] font-bold">
                       Current Status
                     </p>
                     <p className="text-2xl font-black text-[#0f172a]">
@@ -461,7 +461,7 @@ const CustomerDashboard = () => {
                   <div className="bg-[#f8fafc] p-6 rounded-xl border border-[#e2e8f0] mb-6">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-xs text-[#64748b] font-bold uppercase mb-1">
+                        <p className="text-xs text-[#64748b] font-bold mb-1">
                           Latitude
                         </p>
                         <p className="font-mono text-[#0f172a] font-bold">
@@ -469,7 +469,7 @@ const CustomerDashboard = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#64748b] font-bold uppercase mb-1">
+                        <p className="text-xs text-[#64748b] font-bold mb-1">
                           Longitude
                         </p>
                         <p className="font-mono text-[#0f172a] font-bold">
@@ -493,7 +493,7 @@ const CustomerDashboard = () => {
                     )
                   }
                   disabled={!trackingData.driverLocation}
-                  className="w-full bg-[#ff8a3d] hover:bg-[#ff9a55] text-white font-extrabold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase"
+                  className="w-full bg-[#ff8a3d] hover:bg-[#ff9a55] text-white font-extrabold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   OPEN IN MAPS
                 </button>
@@ -506,13 +506,13 @@ const CustomerDashboard = () => {
         {showRescheduleDialog && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-[#e2e8f0]">
-              <h3 className="text-xl font-black text-[#0f172a] mb-6 uppercase tracking-wide">
+              <h3 className="text-xl font-black text-[#0f172a] mb-6">
                 Reschedule Delivery
               </h3>
 
               <form onSubmit={handleReschedule} className="space-y-6">
                 <div>
-                  <label className="text-xs font-bold text-[#64748b] uppercase mb-2 block">
+                  <label className="text-xs font-bold text-[#64748b] mb-2 block">
                     New Delivery Date
                   </label>
                   <input
@@ -530,7 +530,7 @@ const CustomerDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#64748b] uppercase mb-2 block">
+                  <label className="text-xs font-bold text-[#64748b] mb-2 block">
                     Reason (Optional)
                   </label>
                   <textarea

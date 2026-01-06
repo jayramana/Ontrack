@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Circle, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
 import L from "leaflet";
+import { formatStatus } from "@/lib/utils";
 
 // Fix for default marker icon in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -235,8 +236,8 @@ export default function GeofenceDetails() {
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-white/5">
                                 <span className="text-gray-400 text-sm">Status</span>
-                                <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold uppercase">
-                                    {order?.status || "Loading..."}
+                                <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold">
+                                    {order?.status ? formatStatus(order.status) : "Loading..."}
                                 </span>
                             </div>
                              <div className="flex justify-between items-center py-2 border-b border-white/5">
@@ -262,7 +263,7 @@ export default function GeofenceDetails() {
                                          <p className="text-white font-bold text-sm">
                                              {driverProfile.userFName} {driverProfile.userLName}
                                          </p>
-                                         <p className="text-gray-500 text-[10px] uppercase tracking-wider">Verified Driver</p>
+                                         <p className="text-gray-500 text-[10px]">Verified Driver</p>
                                      </div>
                                 </div>
 

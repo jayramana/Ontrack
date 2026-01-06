@@ -74,7 +74,7 @@ function SenderDashboard() {
                 {/* Total Revenue */}
                 <div className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center">
                   <div>
-                    <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">
+                    <p className="text-gray-400 text-sm font-medium">
                       Total Revenue
                     </p>
                     <p className="text-3xl font-bold text-white mt-2">
@@ -89,7 +89,7 @@ function SenderDashboard() {
                 {/* Total Orders */}
                 <div className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center">
                   <div>
-                    <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">
+                    <p className="text-gray-400 text-sm font-medium">
                       Total Orders
                     </p>
                     <p className="text-3xl font-bold text-white mt-2">
@@ -104,7 +104,7 @@ function SenderDashboard() {
                 {/* Pending Orders */}
                 <div className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center">
                   <div>
-                    <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">
+                    <p className="text-gray-400 text-sm font-medium">
                       Pending Orders
                     </p>
                     <p className="text-3xl font-bold text-white mt-2">
@@ -119,7 +119,7 @@ function SenderDashboard() {
                 {/* Delivered Orders */}
                 <div className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center">
                   <div>
-                    <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">
+                    <p className="text-gray-400 text-sm font-medium">
                       Delivered Orders
                     </p>
                     <p className="text-3xl font-bold text-white mt-2">

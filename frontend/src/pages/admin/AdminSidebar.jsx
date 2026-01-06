@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Truck, LayoutDashboard, Warehouse, Map, Menu, X } from "lucide-react";
+import { Truck, LayoutDashboard, Warehouse, Map, Menu, X, ShieldCheck, ClipboardList } from "lucide-react";
 import NotificationBell from "../../components/NotificationBell";
 
 export default function AdminSidebar({ active }) {
@@ -9,8 +9,10 @@ export default function AdminSidebar({ active }) {
 
   const menu = [
     { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/admin/dashboard" },
+    { label: "Manage Orders", icon: <ClipboardList size={20} />, key: "manage-orders", path: "/admin/manage-orders" },
     { label: "Warehouse Management", icon: <Warehouse size={20} />, key: "warehouses", path: "/admin/warehouses" },
     { label: "Live Map", icon: <Map size={20} />, key: "live-map", path: "/admin/live-map" },
+    { label: "ASR Verification", icon: <ShieldCheck size={20} />, key: "asr", path: "/admin/asr" },
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -35,10 +37,10 @@ export default function AdminSidebar({ active }) {
 
       <div
         className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-[#0b0f14] text-slate-100 shadow-xl border-r border-white/10
-          transition-transform duration-300 transform md:translate-x-0 md:static md:w-20 md:hover:w-64
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          flex flex-col p-4 shrink-0 group
+          fixed inset-y-0 left-0 z-40 bg-[#0b0f14] text-slate-100 shadow-xl border-r border-white/10
+          transition-all duration-300 ease-in-out md:translate-x-0 md:static
+          ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64 md:w-20 md:hover:w-64"}
+          overflow-hidden flex flex-col p-4 shrink-0 group
         `}
       >
         {/* Logo */}
@@ -54,8 +56,7 @@ export default function AdminSidebar({ active }) {
         </div>
 
         <p
-          className="text-slate-400 text-sm mb-4 tracking-wider
-          md:opacity-0 md:group-hover:opacity-100 transition-opacity pl-2 opacity-100"
+          className="text-slate-400 text-sm mb-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity pl-2 opacity-100"
         >
           ADMIN PORTAL
         </p>
@@ -86,8 +87,8 @@ export default function AdminSidebar({ active }) {
             );
           })}
 
-          <div className="pt-2 border-t border-white/5 mt-2">
-            <NotificationBell showLabel={isOpen} />
+          <div className="pt-2 mt-2">
+            <NotificationBell showLabel={isOpen} active={active === "notifications"} navigationPath="/admin/notifications" />
           </div>
         </nav>
       </div>

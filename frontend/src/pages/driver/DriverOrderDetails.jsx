@@ -6,6 +6,19 @@ import DriverASRVerification from "./DriverASRVerification";
 import { Copy, Check, ShieldCheck } from "lucide-react";
 import { formatStatus } from "@/lib/utils";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+
 const DriverOrderDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -15,8 +28,16 @@ const DriverOrderDetails = () => {
   const [btnLoading, setBtnLoading] = useState(false); // For accept button
   const [showASRModal, setShowASRModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showAttemptModal, setShowAttemptModal] = useState(false);
+  const [attemptReason, setAttemptReason] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("Delivered");
   const [copied, setCopied] = useState(false);
+  const [confirmData, setConfirmData] = useState({
+        open: false,
+        title: "",
+        desc: "",
+        action: null
+    });
 
   const handleCopy = () => {
     if (order?.trackingId) {
@@ -51,16 +72,32 @@ const DriverOrderDetails = () => {
   }, [id]);
 
   const markDelivered = async () => {
-    if (!window.confirm("Confirm delivery?")) return;
-    await api.post(`/driver/mark-delivered/${id}`);
-    fetchOrder();
+    // if (!window.confirm("Confirm delivery?")) return;
+    setConfirmData({
+        open: true,
+        title: "Confirm Delivery",
+        desc: "Are you sure you want to mark this order as Delivered? This action cannot be undone.",
+        action: async () => {
+            await api.post(`/driver/mark-delivered/${id}`);
+            fetchOrder();
+        }
+    });
   };
 
   const markAttempted = async () => {
-    const reason = prompt("Reason for failed attempt:");
-    if (!reason) return;
-    await api.post(`/driver/mark-attempted/${id}`, { reason });
-    fetchOrder();
+    setAttemptReason("");
+    setShowAttemptModal(true);
+  };
+
+  const submitAttempted = async () => {
+    if (!attemptReason.trim()) return alert("Reason is required");
+    try {
+        await api.post(`/driver/mark-attempted/${id}`, { reason: attemptReason });
+        setShowAttemptModal(false);
+        fetchOrder();
+    } catch(err) {
+        alert("Failed to update status");
+    }
   };
 
   const handleAcceptAssignment = async () => {
@@ -77,18 +114,24 @@ const DriverOrderDetails = () => {
   };
 
   const handlePickup = async () => {
-     if(!window.confirm(`Confirm you have picked up the order from ${order.currentWarehouse?.name || 'the warehouse'}?`)) return;
-
-     try {
-        setBtnLoading(true);
-        await api.post(`/driver/pickup/${id}`);
-        fetchOrder();
-     } catch(err) {
-        console.error(err);
-        alert("Failed to update status");
-     } finally {
-        setBtnLoading(false);
-     }
+     // if(!window.confirm(`Confirm you have picked up the order from ${order.currentWarehouse?.name || 'the warehouse'}?`)) return;
+      setConfirmData({
+        open: true,
+        title: "Confirm Pickup",
+        desc: `Confirm you have picked up the order from ${order.currentWarehouse?.name || 'the warehouse'}?`,
+        action: async () => {
+            try {
+                setBtnLoading(true);
+                await api.post(`/driver/pickup/${id}`);
+                fetchOrder();
+             } catch(err) {
+                console.error(err);
+                alert("Failed to update status");
+             } finally {
+                setBtnLoading(false);
+             }
+        }
+    });
   };
 
   if (loading) {
@@ -137,7 +180,7 @@ const DriverOrderDetails = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100" style={{ backgroundImage: 'none', backgroundColor: '#0b0f14' }}>
       <DriverSidebar active="deliveries" />
 
       <div className="flex-1 overflow-y-auto px-10 py-8 space-y-10">
@@ -177,19 +220,19 @@ const DriverOrderDetails = () => {
 
 
         {/* MAIN CARD (Glassmorphism - Copied from Customer) */}
-        <div className="max-w-4xl bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
+        <div className="max-w-4xl bg-[#1a1f29] rounded-3xl border border-white/10 overflow-hidden">
 
           {/* SHIPMENT INFO */}
           <div className="p-8 space-y-6">
             <h2 className="text-xl font-bold">Order Details</h2>
             <div className="grid grid-cols-2 gap-y-6 gap-x-4">
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Order Name</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Order Name</h4>
                 <p className="text-white font-medium text-base">Order-{order.id}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Tracking ID</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Tracking ID</h4>
                 <div className="flex items-center gap-2">
                   <p className="text-white font-medium text-base">#{order.trackingId}</p>
                   <button
@@ -203,25 +246,25 @@ const DriverOrderDetails = () => {
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Weight</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Weight</h4>
                 <p className="text-white font-medium text-base">{order.weight} kg</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Price</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Price</h4>
                 <p className="text-white font-medium text-base">₹{order.price}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Type</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Type</h4>
                 <div className="mt-1">
                   {order.deliveryType === 'Express' ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold tracking-wide shadow-lg shadow-amber-500/20">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold shadow-lg shadow-amber-500/20">
                       <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
                       Express
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold tracking-wide border border-slate-700">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700">
                       Normal
                     </span>
                   )}
@@ -229,10 +272,10 @@ const DriverOrderDetails = () => {
               </div>
 
                <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Priority</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Priority</h4>
                  <div className="mt-1">
                     {order.aiPriority ? (
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${getPriorityBadgeColor(order.aiPriority)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${getPriorityBadgeColor(order.aiPriority)}`}>
                             AI Priority: {order.aiPriority}/5
                         </span>
                     ) : <span className="text-slate-500 text-sm">Normal</span>}
@@ -285,7 +328,7 @@ const DriverOrderDetails = () => {
                         <div>
                              <h2 className="text-xl font-bold text-white flex items-center gap-3">
                                 ASR Verification Required
-                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold tracking-wide border ${
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                                     order.asrStatus === 'Success' 
                                     ? 'bg-green-500/10 text-green-400 border-green-500/20' 
                                     : (order.asrStatus === 'Failed' 
@@ -338,7 +381,7 @@ const DriverOrderDetails = () => {
                       )}
 
                       <div>
-                        <h4 className="font-bold text-slate-400 text-lg tracking-wider">Instructions</h4>
+                        <h4 className="font-bold text-slate-400 text-lg">Instructions</h4>
                         <p className="text-slate-400 text-sm mt-1">
                           Check customer ID and verify age (21+). Take a clear photo of the ID.
                         </p>
@@ -354,7 +397,7 @@ const DriverOrderDetails = () => {
 
           {/* TIMELINE */}
           <div className="p-8">
-            <h3 className="text-sm uppercase tracking-widest text-slate-400 mb-6">
+            <h3 className="text-sm text-slate-400 mb-6">
               Tracking Status
             </h3>
 
@@ -520,6 +563,60 @@ const DriverOrderDetails = () => {
           </div>
         </div>
       )}
+
+      {/* ATTEMPT REASON MODAL */}
+      {showAttemptModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-[#0b0f14] border border-white/10 p-8 rounded-3xl w-full max-w-sm space-y-6">
+            <h3 className="text-xl font-bold text-center">Delivery Attempt Failed</h3>
+            <p className="text-sm text-slate-400 text-center">Please provide a reason for the failed delivery.</p>
+            
+            <textarea
+                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-slate-500 focus:outline-none focus:border-[#ff8a3d]"
+                rows="3"
+                placeholder="E.g., Customer not home, Wrong address..."
+                value={attemptReason}
+                onChange={(e) => setAttemptReason(e.target.value)}
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAttemptModal(false)}
+                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 font-bold transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitAttempted}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition shadow-lg shadow-red-500/20"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DIALOG */}
+      <AlertDialog open={confirmData.open} onOpenChange={(open) => setConfirmData(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-[#1a1f29] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">{confirmData.title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {confirmData.desc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#ff8a3d] text-black hover:bg-[#ff8a3d]/90 font-bold border-none"
+              onClick={confirmData.action}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

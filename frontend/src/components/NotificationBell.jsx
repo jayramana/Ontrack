@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { notificationAPI } from "../services/api";
 import NotificationCenter from "./NotificationCenter";
+import { useNavigate } from "react-router-dom";
 
-export default function NotificationBell({ showLabel = false, active = false }) {
+export default function NotificationBell({ showLabel = false, active = false, navigationPath = null }) {
     const [unreadCount, setUnreadCount] = useState(0);
     const [isCenterOpen, setIsCenterOpen] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchUnreadCount();
@@ -23,10 +25,18 @@ export default function NotificationBell({ showLabel = false, active = false }) 
         }
     };
 
+    const handleClick = () => {
+        if (navigationPath) {
+            navigate(navigationPath);
+        } else {
+            setIsCenterOpen(!isCenterOpen);
+        }
+    };
+
     return (
         <div className="relative w-full">
             <button
-                onClick={() => setIsCenterOpen(!isCenterOpen)}
+                onClick={handleClick}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all relative
                     ${active || isCenterOpen
                         ? "bg-white/10 text-[#f9b400]"
@@ -49,13 +59,15 @@ export default function NotificationBell({ showLabel = false, active = false }) 
                 </span>
             </button>
 
-            <NotificationCenter
-                isOpen={isCenterOpen}
-                onClose={() => {
-                    setIsCenterOpen(false);
-                    fetchUnreadCount();
-                }}
-            />
+            {!navigationPath && (
+                <NotificationCenter
+                    isOpen={isCenterOpen}
+                    onClose={() => {
+                        setIsCenterOpen(false);
+                        fetchUnreadCount();
+                    }}
+                />
+            )}
         </div>
     );
 }

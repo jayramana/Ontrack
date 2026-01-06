@@ -220,7 +220,7 @@ export default function DriverGeofenceDetails() {
                             </div>
                             <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Status</span>
-                                <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold uppercase">
+                                <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold">
                                     {order?.status || "Loading..."}
                                 </span>
                             </div>
@@ -247,7 +247,7 @@ export default function DriverGeofenceDetails() {
                                          <p className="text-white font-bold text-sm">
                                              {order.receiverName || "Guest Customer"}
                                          </p>
-                                         <p className="text-gray-500 text-[10px] uppercase tracking-wider">Receiver</p>
+                                         <p className="text-gray-500 text-[10px]">Receiver</p>
                                      </div>
                                 </div>
 

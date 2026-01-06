@@ -65,7 +65,7 @@ export default function SellerProfile() {
 
   const Field = ({ label, value, isAddress = false }) => (
     <div>
-      <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
+      <p className="text-xs text-slate-500 mb-1">
         {label}
       </p>
       <div

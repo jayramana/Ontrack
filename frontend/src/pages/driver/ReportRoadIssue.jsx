@@ -4,6 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import DriverSidebar from "./DriverSidebar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ReportRoadIssue() {
   const navigate = useNavigate();
@@ -21,6 +32,7 @@ export default function ReportRoadIssue() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const issueTypes = [
     { value: "Traffic", label: "Traffic", icon: "🚦" },
@@ -71,7 +83,7 @@ export default function ReportRoadIssue() {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleSubmit = async (e) => {
+  const handlePreSubmit = (e) => {
     e.preventDefault();
 
     if (!formData.issueType) return alert("Select issue type");
@@ -79,6 +91,10 @@ export default function ReportRoadIssue() {
     if (!formData.latitude || !formData.longitude)
       return alert("Location required");
 
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     setLoading(true);
 
     try {
@@ -89,6 +105,7 @@ export default function ReportRoadIssue() {
       alert("Failed to report issue");
     } finally {
       setLoading(false);
+      setShowConfirm(false);
     }
   };
 
@@ -121,14 +138,13 @@ export default function ReportRoadIssue() {
           <div className="bg-gradient-to-br from-[#1a1f29] to-[#0f141c]
             border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handlePreSubmit} className="space-y-8">
 
               {/* ISSUE TYPE */}
               <div>
                 <label className="block mb-3 font-semibold text-slate-300">
                   Issue Type
                 </label>
-
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {issueTypes.map((t) => (
                     <button
@@ -156,7 +172,6 @@ export default function ReportRoadIssue() {
                 <label className="block mb-3 font-semibold text-slate-300">
                   Severity
                 </label>
-
                 <div className="flex flex-wrap gap-3">
                   {severityLevels.map((s) => (
                     <button
@@ -200,7 +215,6 @@ export default function ReportRoadIssue() {
                 <label className="block mb-2 font-semibold text-slate-300">
                   Location
                 </label>
-
                 <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                   {locationLoading ? (
                     <p className="text-slate-400">Fetching location…</p>
@@ -269,6 +283,27 @@ export default function ReportRoadIssue() {
 
         </div>
       </div>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent className="bg-[#1a1f29] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Confirm Report</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to report this <strong>{formData.issueType}</strong> issue? 
+              This will update routes for other drivers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#ff8a3d] text-black hover:bg-[#ff8a3d]/90 font-bold border-none"
+              onClick={handleConfirmSubmit}
+            >
+              Submit Report
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

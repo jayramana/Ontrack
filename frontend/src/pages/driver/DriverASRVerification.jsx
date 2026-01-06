@@ -1,6 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function DriverASRVerification({ orderId, onClose }) {
   const [order, setOrder] = useState(null);
@@ -23,6 +34,13 @@ export default function DriverASRVerification({ orderId, onClose }) {
   const [isDrawing, setIsDrawing] = useState(false);
 
   const [connection, setConnection] = useState(null);
+  
+  const [confirmData, setConfirmData] = useState({
+    open: false,
+    title: "",
+    desc: "",
+    action: null
+  });
 
   // Load order and ASR status
   useEffect(() => {
@@ -57,7 +75,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
     } catch (err) {
       console.error("Error loading data:", err);
       if (err.response?.status !== 404) {
-        alert("Error loading order details: " + (err.response?.data?.message || err.message));
+        toast.error("Error loading order details: " + (err.response?.data?.message || err.message));
       }
     } finally {
       setLoading(false);
@@ -79,7 +97,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
 
         conn.on("CustomerDocumentsUploaded", (data) => {
           if (data.orderId === parseInt(orderId)) {
-            alert("Customer has uploaded ID documents!");
+            toast.info("Customer has uploaded ID documents!");
             loadData();
           }
         });
@@ -96,7 +114,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
 
         conn.on("ASRAdminOverride", (data) => {
           if (data.orderId === parseInt(orderId)) {
-            alert(`Admin approved ASR: ${data.reason}`);
+            toast.success(`Admin approved ASR: ${data.reason}`);
             setCanCompleteDelivery(true);
             loadData();
           }
@@ -123,10 +141,10 @@ export default function DriverASRVerification({ orderId, onClose }) {
     try {
       setInitiating(true);
       const response = await api.post(`/asr/driver/initiate/${orderId}`);
-      alert(response.data.message);
+      toast.success(response.data.message);
       await loadData();
     } catch (err) {
-      alert("Error initiating ASR: " + (err.response?.data?.message || err.message));
+      toast.error("Error initiating ASR: " + (err.response?.data?.message || err.message));
       console.error("Initiate error:", err.response?.data);
     } finally {
       setInitiating(false);
@@ -135,58 +153,73 @@ export default function DriverASRVerification({ orderId, onClose }) {
 
   // Handle Retry
   const handleRetry = async () => {
-    try {
-      if (!confirm("Are you sure you want to retry? This will allow you and the customer to edit response.")) return;
-
-      setLoading(true);
-      await api.post(`/asr/driver/retry/${asrStatus.asrId}`);
-      alert("Retry initiated! You can now re-capture or ask customer to re-upload.");
-      await loadData();
-    } catch (err) {
-      alert("Error resetting ASR: " + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
+    setConfirmData({
+      open: true,
+      title: "Confirm Retry",
+      desc: "Are you sure you want to retry? This will allow you and the customer to edit response.",
+      action: async () => {
+        try {
+          setLoading(true);
+          await api.post(`/asr/driver/retry/${asrStatus.asrId}`);
+          toast.info("Retry initiated! Re-capture or ask customer to re-upload.");
+          await loadData();
+        } catch (err) {
+          toast.error("Error resetting ASR: " + (err.response?.data?.message || err.message));
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
 
   // Handle Re-initiate (for reassigned orders)
   const handleReinitiate = async () => {
-    try {
-      if (!confirm("This will allow the customer to re-upload their documents. Continue?")) return;
+    setConfirmData({
+      open: true,
+      title: "Confirm Re-initiate",
+      desc: "This will allow the customer to re-upload their documents. Continue?",
+      action: async () => {
+        try {
+          setLoading(true);
+          await api.post(`/asr/driver/reinitiate/${orderId}`);
+          toast.info("ASR re-initiated! Customer notified.");
 
-      setLoading(true);
-      await api.post(`/asr/driver/reinitiate/${orderId}`);
-      alert("ASR re-initiated! Customer has been notified to upload documents.");
+          // Clear local states
+          setCustomerPhoto(null);
+          setCustomerPhotoPreview(null);
+          setSignatureData(null);
+          setIsCapturingSignature(false);
 
-      // Clear local states
-      setCustomerPhoto(null);
-      setCustomerPhotoPreview(null);
-      setSignatureData(null);
-      setIsCapturingSignature(false);
-
-      await loadData();
-    } catch (err) {
-      alert("Error re-initiating ASR: " + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
+          await loadData();
+        } catch (err) {
+          toast.error("Error re-initiating ASR: " + (err.response?.data?.message || err.message));
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   // Handle Open Step 1 (Allow customer to re-edit)
   const handleOpenStep1 = async () => {
-    try {
-      if (!confirm("This will allow the customer to EDIT their uploaded documents and re-submit. Continue?")) return;
-
-      setLoading(true);
-      await api.post(`/asr/driver/open-step1/${asrStatus.asrId}`);
-      alert("Step 1 opened! Customer can now re-edit their documents.");
-      await loadData();
-    } catch (err) {
-      alert("Error opening Step 1: " + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
+    setConfirmData({
+      open: true,
+      title: "Open Step 1",
+      desc: "This will allow the customer to EDIT their uploaded documents and re-submit. Continue?",
+      action: async () => {
+        try {
+          setLoading(true);
+          await api.post(`/asr/driver/open-step1/${asrStatus.asrId}`);
+          toast.success("Step 1 opened! Customer can now re-edit.");
+          await loadData();
+        } catch (err) {
+          toast.error("Error opening Step 1: " + (err.response?.data?.message || err.message));
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   // Handle photo capture
@@ -242,12 +275,12 @@ export default function DriverASRVerification({ orderId, onClose }) {
     const hasSignature = signatureData || (asrStatus && asrStatus.hasSignature);
 
     if (!hasPhoto || !hasSignature) {
-      alert("Please ensure both customer photo and signature are captured (or present).");
+      toast.warning("Please ensure both customer photo and signature are captured.");
       return;
     }
 
     if (!asrStatus?.asrId) {
-      alert("ASR not initiated yet. Please initiate ASR first.");
+      toast.error("ASR not initiated yet. Please initiate ASR first.");
       return;
     }
 
@@ -277,10 +310,10 @@ export default function DriverASRVerification({ orderId, onClose }) {
         signatureUrl: signatureKey
       });
 
-      alert("Captures uploaded! Waiting for AI verification...");
+      toast.success("Captures uploaded! Waiting for AI verification...");
       await loadData();
     } catch (err) {
-      alert("Upload error: " + (err.response?.data?.message || err.message));
+      toast.error("Upload error: " + (err.response?.data?.message || err.message));
       console.error("Upload error:", err.response?.data);
     } finally {
       setUploading(false);
@@ -312,16 +345,16 @@ export default function DriverASRVerification({ orderId, onClose }) {
   const handleCompleteDelivery = async () => {
 
     if (!canCompleteDelivery) {
-      alert("Cannot complete delivery - ASR verification not successful");
+      toast.error("Cannot complete delivery - ASR verification not successful");
       return;
     }
 
     try {
       await api.post(`/driver/mark-delivered/${orderId}`);
-      alert("Delivery completed successfully!");
+      toast.success("Delivery completed successfully!");
       if (onClose) onClose();
     } catch (err) {
-      alert("Error completing delivery: " + (err.response?.data?.message || err.message));
+      toast.error("Error completing delivery: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -358,7 +391,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[45] flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
       <div
         className="
         bg-white/5 backdrop-blur-xl
@@ -367,6 +400,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
         max-w-4xl w-full
         max-h-[90vh] overflow-y-auto
         text-slate-100
+        [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]
       "
       >
         {/* HEADER */}
@@ -496,7 +530,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
                   className="
                     flex-1 px-6 py-3 rounded-xl
                     bg-blue-500/20 text-blue-200 font-bold
-                    hover:bg-blue-500/30
+                    hover:bg-500/30
                     border border-blue-500/30
                     disabled:opacity-50
                   "
@@ -586,7 +620,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
                     <img
                       src={asrStatus.signatureUrl}
                       alt="Existing Signature"
-                      className="border border-white/10 rounded-xl bg-black mb-2"
+                      className="border border-white/10 rounded-xl bg-white mb-2"
                     />
                     <p className="text-xs text-green-400 mb-2">✓ Signature already uploaded</p>
                   </div>
@@ -616,7 +650,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
                       onMouseLeave={stopDrawing}
                       className="
                       border border-white/20
-                      rounded-xl bg-black
+                      rounded-xl bg-white
                       cursor-crosshair touch-none
                     "
                     />
@@ -642,7 +676,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
                     <img
                       src={signatureData}
                       alt="Signature"
-                      className="border border-white/10 rounded-xl bg-black"
+                      className="border border-white/10 rounded-xl bg-white"
                     />
                     <button
                       onClick={() => setIsCapturingSignature(true)}
@@ -710,6 +744,26 @@ export default function DriverASRVerification({ orderId, onClose }) {
 
         </div>
       </div>
+      <AlertDialog open={confirmData.open} onOpenChange={(open) => setConfirmData(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="z-[60] bg-[#1a1f29] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">{confirmData.title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {confirmData.desc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#ff8a3d] text-black hover:bg-[#ff8a3d]/90 font-bold border-none"
+              onClick={(e) => {
+              if (confirmData.action) {
+                 confirmData.action();
+              }
+            }}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

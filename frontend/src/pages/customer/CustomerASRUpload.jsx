@@ -3,11 +3,13 @@ import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
 import { FaCloudUploadAlt } from "react-icons/fa";
 import { MdOutlineVerifiedUser } from "react-icons/md";
+import { toast } from "sonner";
 
 export default function CustomerASRUpload({ orderId, onClose }) {
   const [asrStatus, setAsrStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+
 
   // Document uploads
   const [aadhaarFront, setAadhaarFront] = useState(null);
@@ -66,14 +68,19 @@ export default function CustomerASRUpload({ orderId, onClose }) {
 
       conn.on("ASRVerificationRequested", (data) => {
         if (data.orderId === parseInt(orderId)) {
-          alert(data.message);
+          toast.info(data.message || "ASR Verification Requested", {
+            action: {
+              label: "Refresh",
+              onClick: () => loadData()
+            }
+          });
           loadData();
         }
       });
 
       conn.on("ASRReopenedForEditing", (data) => {
         if (data.orderId === parseInt(orderId)) {
-          alert(data.message);
+          toast.warning(data.message || "Re-opened for Editing");
           loadData();
         }
       });
@@ -125,12 +132,12 @@ export default function CustomerASRUpload({ orderId, onClose }) {
 
   const handleUpload = async () => {
     if (!frontPreview) {
-      alert("Please upload Aadhaar front side (mandatory)");
+      toast.error("Please upload Aadhaar front side (mandatory)");
       return;
     }
 
     if (!aadhaarNumber || aadhaarNumber.replace(/\D/g, '').length !== 12) {
-      alert("Please enter a valid 12-digit Aadhaar number");
+      toast.error("Please enter a valid 12-digit Aadhaar number");
       return;
     }
 
@@ -153,7 +160,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
           if (keyIndex !== -1) {
             return parts.slice(keyIndex).join('/');
           }
-          return preview; // Fallback
+           return preview; // Fallback
         }
         return null;
       };
@@ -175,12 +182,12 @@ export default function CustomerASRUpload({ orderId, onClose }) {
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '')
       });
 
-      alert("Documents uploaded successfully! Driver will be notified.");
+      toast.success("Documents uploaded successfully! Driver will be notified.");
       await loadData();
-
       if (onClose) onClose();
+      
     } catch (err) {
-      alert("Upload failed: " + (err.response?.data?.message || err.message));
+      toast.error("Upload failed: " + (err.response?.data?.message || err.message));
     } finally {
       setUploading(false);
     }
@@ -236,7 +243,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-[#0b0f14] border border-white/10 rounded-2xl max-w-4xl w-full p-0 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+      <div className="bg-[#0b0f14] border border-white/10 rounded-2xl max-w-4xl w-full p-0 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#0b0f14]/80 backdrop-blur-md z-10">
@@ -267,7 +274,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
                   asrStatus.status === 'Pending' ? 'text-yellow-400' :
                     'text-blue-400'
                   }`}>
-                  STATUS: <span className="uppercase">{asrStatus.status}</span>
+                  STATUS: <span>{asrStatus.status}</span>
                 </p>
                 {(asrStatus.status === 'Pending' || asrStatus.status === 'Failed') && (
                   <p className="text-xs text-slate-400 mt-1">
@@ -334,7 +341,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
               <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:bg-white/5 hover:border-[#ff8a3d]/50 transition-all group">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl group-hover:scale-110 transition-transform text-slate-500 group-hover:text-[#ff8a3d]"><FaCloudUploadAlt /></span>
-                  <span className="text-xs text-slate-400 font-bold tracking-wider">Tap to Upload Front Side</span>
+                  <span className="text-xs text-slate-400 font-bold">Tap to Upload Front Side</span>
                 </div>
                 <input type="file" accept="image/*" capture="environment" onChange={handleFrontUpload} className="hidden" />
               </label>
@@ -356,7 +363,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
               <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:bg-white/5 hover:border-white/30 transition-all">
                 <div className="flex items-center gap-3">
                   <span className="text-xl text-slate-600"><FaCloudUploadAlt /></span>
-                  <span className="text-xs text-slate-500 font-bold  tracking-wider">Tap to Upload Back Side</span>
+                  <span className="text-xs text-slate-500 font-bold">Tap to Upload Back Side</span>
                 </div>
                 <input type="file" accept="image/*" capture="environment" onChange={handleBackUpload} className="hidden" />
               </label>
@@ -378,7 +385,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
               <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:bg-white/5 hover:border-white/30 transition-all">
                 <div className="flex items-center gap-3">
                   <span className="text-xl text-slate-600"><FaCloudUploadAlt /></span>
-                  <span className="text-xs text-slate-500 font-bold  tracking-wider">Tap to Upload PAN Card</span>
+                  <span className="text-xs text-slate-500 font-bold">Tap to Upload PAN Card</span>
                 </div>
                 <input type="file" accept="image/*" capture="environment" onChange={handlePanUpload} className="hidden" />
               </label>

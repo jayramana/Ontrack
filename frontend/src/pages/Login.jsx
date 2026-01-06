@@ -208,7 +208,7 @@ const Login = () => {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* EMAIL */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               Email
             </label>
             <input
@@ -229,7 +229,7 @@ const Login = () => {
 
           {/* PASSWORD */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               Password
             </label>
             <input
@@ -250,7 +250,7 @@ const Login = () => {
 
           {/* ROLE */}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               Login as
             </label>
             <select

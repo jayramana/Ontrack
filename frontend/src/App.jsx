@@ -23,6 +23,7 @@ import OrderDetails from "./pages/customer/OrderDetails"; // [NEW]
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
 import GeofenceDetails from "./pages/customer/GeofenceDetails"; // [NEW]
+import NotificationsPage from "./pages/NotificationsPage"; // [NEW]
 
 import Availability from "./pages/customer/Availability";
 
@@ -44,6 +45,7 @@ import DeliveryInsights from "./pages/admin/DeliveryInsights";
 import LiveMap from "./pages/admin/LiveMap";
 import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
 import AdminASRPanel from "./pages/admin/AdminASRPanel";
+import ManageOrders from "./pages/admin/ManageOrders"; // [NEW]
 //import TransportScheduler from "./pages/admin/TransportScheduler";
 //import CapacityDashboard from "./pages/admin/CapacityDashboard";
 
@@ -58,12 +60,15 @@ import SenderChart from "./components/charts/Sender/SenderChart";
 
 import "./index.css";
 
+import { Toaster } from "@/components/ui/sonner";
+
 function App() {
   return (
     <Router>
       <AuthProvider>
         <GeofenceProvider>
           <GlobalGeofenceAlerts />
+          <Toaster />
 
           <Routes>
             {/* ---------------- PUBLIC ROUTES ---------------- */}
@@ -72,6 +77,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
+            <Route path="/customer/notifications" element={<ProtectedRoute requiredRole="customer"><NotificationsPage /></ProtectedRoute>} />
 
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/tracking/:id" element={<Tracking />} />
@@ -136,6 +142,7 @@ function App() {
 
             <Route path="/driver/report-issue" element={<ReportRoadIssue />} />
             <Route path="/driver/issues" element={<ReportRoadIssue />} />
+            <Route path="/driver/notifications" element={<ProtectedRoute requiredRole="driver"><NotificationsPage /></ProtectedRoute>} />
 
             <Route path="/driver/route" element={<DriverRoutePage />} />
 
@@ -197,7 +204,9 @@ function App() {
             {/* ---------------- ADMIN ROUTES ---------------- */}
             <Route path="/admin/queries" element={<CustomerQueries />} />
             <Route path="/admin/insights" element={<DeliveryInsights />} />
+            <Route path="/admin/manage-orders" element={<ProtectedRoute requiredRole="admin"><ManageOrders /></ProtectedRoute>} />
             <Route path="/admin/asr" element={<AdminASRPanel />} />
+            <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="admin"><NotificationsPage /></ProtectedRoute>} />
 
             <Route
               path="/admin/dashboard"
@@ -242,6 +251,7 @@ function App() {
             />/*}
 
             {/* ---------------- SELLER ROUTES ---------------- */}
+            <Route path="/seller/notifications" element={<ProtectedRoute requiredRole="seller"><NotificationsPage /></ProtectedRoute>} />
             <Route
               path="/seller/dashboard"
               element={

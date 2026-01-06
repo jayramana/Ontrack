@@ -269,7 +269,7 @@ export default function MapPicker({
 
             <div className="space-y-4">
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Coordinates</p>
+                <p className="text-xs text-slate-500 mb-1">Coordinates</p>
                 <div className="flex gap-4 font-mono text-sm text-[#ff8a3d]">
                   <span>{position?.[0]?.toFixed(6) || "—"}</span>
                   <span className="text-slate-600">|</span>
@@ -278,7 +278,7 @@ export default function MapPicker({
               </div>
 
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Detected Address</p>
+                <p className="text-xs text-slate-500 mb-1">Detected Address</p>
                 <p className="text-sm text-slate-200 leading-relaxed">
                    {loading ? (
                      <span className="flex items-center gap-2 text-slate-400">
@@ -290,7 +290,7 @@ export default function MapPicker({
               </div>
 
               <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                 <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Postal Code</p>
+                 <p className="text-xs text-slate-500 mb-1">Postal Code</p>
                  <p className="text-xl font-bold text-white">
                    {loading ? "..." : reverseInfo?.postcode || "—"}
                  </p>

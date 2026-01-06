@@ -25,12 +25,21 @@ export default function AdminASRPanel() {
     }
   };
 
+  // Auto-select first re-verify request when list loads
+  useEffect(() => {
+    if (asrList.length > 0 && !selectedASR) {
+      const urgent = asrList.find(a => a.customerReverifyRequested && a.aiVerifyStatus !== 'AdminOverride');
+      if (urgent) loadASRDetails(urgent.id);
+    }
+  }, [asrList]);
+
   const loadASRDetails = async (asrId) => {
     try {
       const res = await api.get(`/asr/admin/details/${asrId}`);
       setSelectedASR(res.data);
     } catch (err) {
       console.error("Error loading ASR details:", err);
+      // alert("Failed to load details. Please check connection."); // Optional: silent fail often better for UX unless it's critical
     }
   };
 
@@ -42,12 +51,17 @@ export default function AdminASRPanel() {
 
     try {
       await api.post(`/asr/admin/override/${selectedASR.id}`, {
-        reason: overrideReason,
+        Reason: overrideReason,
       });
       setShowOverrideDialog(false);
       setOverrideReason("");
       loadASRList();
-      loadASRDetails(selectedASR.id);
+      if (selectedASR) loadASRDetails(selectedASR.id);
+      
+      // Force refresh dashboard if present
+      if (window.opener) window.opener.location.reload();
+      
+      alert("Override successful");
     } catch (err) {
       alert(err.response?.data?.message || err.message);
     }
@@ -130,7 +144,7 @@ export default function AdminASRPanel() {
                       <p className="font-semibold">Order #{asr.orderId}</p>
                       <p className="text-xs text-slate-400">{asr.trackingId}</p>
                       {asr.customerReverifyRequested && (
-                        <span className="mt-1 inline-block px-2 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] font-bold rounded uppercase border border-orange-500/30">
+                        <span className="mt-1 inline-block px-2 py-0.5 bg-orange-500/20 text-orange-400 text-[10px] font-bold rounded border border-orange-500/30">
                           Reverify Req.
                         </span>
                       )}
@@ -152,7 +166,7 @@ export default function AdminASRPanel() {
                     Driver: {asr.driverName}
                   </p>
 
-                  {asr.aiVerifyScore && (
+                  {typeof asr.aiVerifyScore === 'number' && asr.aiVerifyScore > 0 && (
                     <p className="text-xs text-slate-500 mt-2">
                       AI Score: {(asr.aiVerifyScore * 100).toFixed(1)}%
                     </p>
@@ -195,12 +209,23 @@ export default function AdminASRPanel() {
                 </div>
 
                 {selectedASR.customerReverifyRequested && (
-                  <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl flex items-center gap-3">
-                    <span className="text-2xl">📣</span>
-                    <div>
-                      <p className="font-bold text-orange-400">Customer Requested Re-Verification</p>
-                      <p className="text-sm text-slate-400">The customer believes the AI check was incorrect. Please review documents manually.</p>
+                  <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-xl flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">📣</span>
+                      <div>
+                        <p className="font-bold text-orange-400">Customer Requested Re-Verification</p>
+                        <p className="text-sm text-slate-400">The customer believes the AI check was incorrect.</p>
+                      </div>
                     </div>
+                    <button
+                      onClick={() => {
+                        setOverrideReason("Customer Appeal Accepted");
+                        setShowOverrideDialog(true);
+                      }}
+                      className="whitespace-nowrap px-4 py-2 bg-orange-500 hover:bg-orange-600 text-black font-bold rounded-lg text-sm transition"
+                    >
+                      Quick Approve
+                    </button>
                   </div>
                 )}
 
@@ -208,7 +233,7 @@ export default function AdminASRPanel() {
                 <div className="grid grid-cols-2 gap-6">
                   {/* CUSTOMER DOCUMENTS */}
                   <div className="space-y-4">
-                    <h3 className="tex-sm font-bold text-slate-400 uppercase tracking-wider">
+                    <h3 className="tex-sm font-bold text-slate-400">
                       Uploaded Documents
                     </h3>
                     <div className="grid grid-cols-1 gap-4">
@@ -230,7 +255,7 @@ export default function AdminASRPanel() {
 
                   {/* DRIVER CAPTURES */}
                   <div className="space-y-4">
-                    <h3 className="tex-sm font-bold text-slate-400 uppercase tracking-wider">
+                    <h3 className="tex-sm font-bold text-slate-400">
                       Driver Captures
                     </h3>
                     <div className="space-y-4">

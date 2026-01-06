@@ -97,17 +97,17 @@ export default function TrackPackage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Current Status</span>
+                    <span className="text-xs text-slate-500 font-bold mb-1">Current Status</span>
                     <span className="text-lg font-bold text-[#ff8a3d]">{data.status}</span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Driver</span>
+                    <span className="text-xs text-slate-500 font-bold mb-1">Driver</span>
                     <div className="flex items-center gap-2 text-white font-medium">
                       <User size={16} className="text-slate-400" /> {data.driverName}
                     </div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Phone</span>
+                    <span className="text-xs text-slate-500 font-bold mb-1">Phone</span>
                     <div className="flex items-center gap-2 text-white font-medium">
                       <Phone size={16} className="text-slate-400" /> {data.driverPhone}
                     </div>
@@ -116,13 +116,13 @@ export default function TrackPackage() {
 
                 <div className="space-y-4">
                   <div className="flex flex-col">
-                    <span className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Pickup From</span>
+                    <span className="text-xs text-slate-500 font-bold mb-1">Pickup From</span>
                     <div className="flex items-start gap-2 text-white font-medium">
                       <MapPin size={16} className="text-slate-400 mt-1 shrink-0" /> {data.pickupAddress}
                     </div>
                   </div>
                   <div className="flex flex-col text-white">
-                    <span className="text-xs uppercase tracking-widest text-slate-500 font-bold mb-1">Delivery Location</span>
+                    <span className="text-xs text-slate-500 font-bold mb-1">Delivery Location</span>
                     <div className="flex items-start gap-2 text-white font-medium leading-relaxed">
                       <MapPin size={16} className="text-[#ff8a3d] mt-1 shrink-0" /> {data.deliveryAddress}
                     </div>

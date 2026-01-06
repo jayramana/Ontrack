@@ -34,12 +34,6 @@ export default function SellerSidebar({ active }) {
       key: "create",
       path: "/seller/create-shipment",
     },
-    {
-      label: "Profile",
-      icon: <User size={20} />,
-      key: "profile",
-      path: "/seller/seller-profile",
-    },
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);
@@ -64,10 +58,10 @@ export default function SellerSidebar({ active }) {
 
       <div
         className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-[#0b0f14] text-slate-100 shadow-xl border-r border-white/10
-          transition-transform duration-300 transform md:translate-x-0 md:static md:w-20 md:hover:w-64
-          ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          flex flex-col p-4 shrink-0 group
+          fixed inset-y-0 left-0 z-40 bg-[#0b0f14] text-slate-100 shadow-xl border-r border-white/10
+          transition-all duration-300 ease-in-out md:translate-x-0 md:static
+          ${isOpen ? "translate-x-0 w-64" : "-translate-x-full w-64 md:w-20 md:hover:w-64"}
+          overflow-hidden flex flex-col p-4 shrink-0 group
         `}
       >
         <div className="flex items-center gap-3 mb-10 pl-2">
@@ -106,9 +100,26 @@ export default function SellerSidebar({ active }) {
             </button>
           ))}
 
-          <div className="pt-2 border-t border-white/5 mt-2">
-            <NotificationBell showLabel={isOpen} />
+          <div className="pt-2 mt-2">
+            <NotificationBell showLabel={isOpen} active={active === "notifications"} navigationPath="/seller/notifications" />
           </div>
+
+          <button
+            onClick={() => {
+              navigate("/seller/seller-profile");
+              setIsOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 p-3 rounded-lg transition
+              ${active === "profile"
+                ? "bg-white/10 text-[#ff8a3d]"
+                : "hover:bg-white/10 text-slate-300"
+              }`}
+          >
+            <span className="text-lg"><User size={20} /></span>
+            <span className="md:opacity-0 md:group-hover:opacity-100 transition-opacity whitespace-nowrap opacity-100">
+              Profile
+            </span>
+          </button>
         </nav>
       </div>
     </>

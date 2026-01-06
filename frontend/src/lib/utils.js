@@ -8,8 +8,8 @@ export function cn(...inputs) {
 
 export function formatStatus(status) {
   if (!status) return "";
-  // Split camelCase or PascalCase into words
-  const result = status.replace(/([A-Z])/g, " $1").trim();
-  // Capitalize only the first letter of the sentence
-  return result.charAt(0).toUpperCase() + result.slice(1).toLowerCase();
+  return status
+    .replace(/([A-Z])/g, " $1") // Add space before capital letters
+    .trim() // Remove leading/trailing spaces
+    .replace(/^./, (str) => str.toUpperCase()); // Ensure first letter is capitalized (optional if data is clean)
 }

@@ -216,7 +216,7 @@ function Tracking() {
               )}
             </div>
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">
+              <p className="text-xs text-slate-400 font-bold">
                 Estimated Arrival
               </p>
               <p className="text-xl font-bold text-white">
@@ -245,7 +245,7 @@ function Tracking() {
                   <div className="w-2 h-2 bg-[#ff8a3d] rounded-full"></div>
                 </span>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase font-bold mb-1">
+                  <p className="text-xs text-slate-500 font-bold mb-1">
                     Origin
                   </p>
                   <h4 className="text-lg font-bold text-white">
@@ -283,7 +283,7 @@ function Tracking() {
                   ></div>
                 </span>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase font-bold mb-1">
+                  <p className="text-xs text-slate-500 font-bold mb-1">
                     Destination
                   </p>
                   <h4 className="text-lg font-bold text-white">
@@ -343,7 +343,7 @@ function Tracking() {
             {localStorage.getItem("token") && (
               <div className="border-t border-white/10 pt-6 grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-slate-500 uppercase font-bold mb-1">
+                  <p className="text-xs text-slate-500 font-bold mb-1">
                     Receiver
                   </p>
                   <p className="text-white font-medium">
@@ -354,7 +354,7 @@ function Tracking() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 uppercase font-bold mb-1">
+                  <p className="text-xs text-slate-500 font-bold mb-1">
                     Package
                   </p>
                   <p className="text-white font-medium">{order?.parcelSize}</p>

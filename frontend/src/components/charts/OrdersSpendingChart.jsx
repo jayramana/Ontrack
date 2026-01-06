@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { TrendingUp, DollarSign } from "lucide-react"
+import { TrendingUp, IndianRupee } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import api from "../../services/api"
 
@@ -93,7 +93,7 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
     <Card className="flex flex-col border-0 bg-linear-to-br from-[#1a1f29] to-[#0f141c]">
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
-           <DollarSign className="w-5 h-5 text-emerald-400" /> Spending History
+           <IndianRupee className="w-5 h-5 text-emerald-400" /> Spending History
         </CardTitle>
         <CardDescription className="text-gray-400">
             {filterType === "1Y" ? "Last 12 Months" : 
@@ -126,7 +126,7 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
                 <ChartTooltipContent 
                     indicator="line" 
                     hideLabel 
-                    formatter={(value) => `$${value.toLocaleString()}`}
+                    formatter={(value) => `₹${value.toLocaleString()}`}
                 />
               }
             />
@@ -144,7 +144,7 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
         <div className="flex w-full items-start gap-2 text-sm">
           <div className="grid gap-2">
             <div className="flex items-center gap-2 leading-none font-medium text-white">
-              Total Spending in this period: <span className="text-emerald-400">${chartData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
+              Total Spending in this period: <span className="text-emerald-400">₹{chartData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none text-gray-400">
                Track your expenses

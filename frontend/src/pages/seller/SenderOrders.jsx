@@ -357,7 +357,7 @@ export default function SenderOrders() {
         {/* FILTERS */}
         <div className="flex flex-wrap gap-6 mb-8">
           <div>
-            <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               Filter by Order ID
             </label>
             <input
@@ -375,7 +375,7 @@ export default function SenderOrders() {
           </div>
 
           <div>
-            <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+            <label className="block text-xs text-slate-400 mb-1">
               Filter by Status
             </label>
             <select

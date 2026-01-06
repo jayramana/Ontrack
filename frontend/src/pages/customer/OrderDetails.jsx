@@ -216,12 +216,12 @@ const OrderDetails = () => {
             <h2 className="text-xl font-bold">Order Details</h2>
             <div className="grid grid-cols-2 gap-y-6 gap-x-4">
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Order Name</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Order Name</h4>
                 <p className="text-white font-medium text-base">Order-{order.id}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Tracking ID</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Tracking ID</h4>
                 <div className="flex items-center gap-2">
                   <p className="text-white font-medium text-base">#{order.trackingId}</p>
                   <button
@@ -235,17 +235,17 @@ const OrderDetails = () => {
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Weight</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Weight</h4>
                 <p className="text-white font-medium text-base">{order.weight} kg</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Price</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Price</h4>
                 <p className="text-white font-medium text-base">₹{order.price}</p>
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">Type</h4>
+                <h4 className="font-bold text-slate-400 text-lg">Type</h4>
                 <div className="mt-1">
                   {order.deliveryType === 'Express' ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold tracking-wide shadow-lg shadow-amber-500/20">
@@ -261,26 +261,35 @@ const OrderDetails = () => {
               </div>
 
               <div>
-                <h4 className="font-bold text-slate-400 text-lg tracking-wider">ASR Required</h4>
+                <h4 className="font-bold text-slate-400 text-lg">ASR Required</h4>
                 <p className={`font-medium text-base ${order.isASR ? 'text-[#ff8a3d]' : 'text-slate-500'}`}>
                   {order.isASR ? 'Yes' : 'No'}
                 </p>
               </div>
 
+              {order.status === "Delivered" && order.deliveredAt && (
+                <div>
+                  <h4 className="font-bold text-slate-400 text-lg">Delivered On</h4>
+                  <p className="text-white font-medium text-base">
+                    {new Date(order.deliveredAt).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
               {eta && !["Delivered", "DeliveryAttempted"].includes(order.status) && (
                 <div className="col-span-2 mt-2">
-                  <h4 className="font-bold text-slate-400 text-lg tracking-wider mb-2">Estimated Arrival</h4>
+                  <h4 className="font-bold text-slate-400 text-lg mb-2">Estimated Arrival</h4>
                   <div className="bg-white/5 rounded-xl border border-white/10 p-4 grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Fastest</p>
+                      <p className="text-[10px] font-bold text-slate-500">Fastest</p>
                       <p className="text-green-400 font-bold text-lg">{eta?.earliest || (typeof eta === 'string' ? eta : '--')}</p>
                     </div>
                     <div className="border-x border-white/10">
-                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Expected</p>
+                      <p className="text-[10px] font-bold text-slate-500">Expected</p>
                       <p className="text-[#ff8a3d] font-bold text-lg">{eta?.average || (typeof eta === 'string' ? eta : '--')}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Latest</p>
+                      <p className="text-[10px] font-bold text-slate-500">Latest</p>
                       <p className="text-red-400 font-bold text-lg">{eta?.latest || (typeof eta === 'string' ? eta : '--')}</p>
                     </div>
                   </div>
@@ -290,7 +299,7 @@ const OrderDetails = () => {
           </div>
 
           {/* ASR VERIFICATION SECTION */}
-          {order.isASR && (
+          {order.isASR && order.status !== "Delivered" && (
             <div className={`mx-8 mb-8 rounded-2xl border backdrop-blur-md overflow-hidden transition-all ${order.asrStatus === 'Success'
               ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)]'
               : 'bg-orange-500/5 border-orange-500/20 shadow-[0_0_30px_rgba(255,138,61,0.1)]'
@@ -330,7 +339,7 @@ const OrderDetails = () => {
                 </div>
 
                 <p className="text-slate-400 text-sm leading-relaxed mb-6">
-                  This order contains age-restricted items. An adult signature and valid government-issued ID proof are required upon delivery to ensure compliance with local regulations.
+                  This is an Adult-signature Required package. A valid signature and a valid government-issued ID proof are required upon delivery to ensure compliance with regulations.
                 </p>
 
                 {/* Mobile Button */}
@@ -382,7 +391,7 @@ const OrderDetails = () => {
 
           {/* TIMELINE */}
           <div className="p-8">
-            <h3 className="text-sm uppercase tracking-widest text-slate-400 mb-6">
+            <h3 className="text-sm text-slate-400 mb-6">
               Tracking Status
             </h3>
 

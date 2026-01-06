@@ -249,11 +249,28 @@ import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
 import { useAuth } from "../../context/AuthContext";
 import { formatStatus } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 export default function CustomerOrders() {
   const [orders, setOrders] = useState([]);
+  const [filterStatus, setFilterStatus] = useState("Pending");
   const [loading, setLoading] = useState(true);
+  const [confirmData, setConfirmData] = useState({
+    open: false,
+    title: "",
+    desc: "",
+    action: null
+  });
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -294,6 +311,15 @@ export default function CustomerOrders() {
       setLoading(false);
     }
   };
+
+  const filteredOrders = orders.filter((o) => {
+    if (filterStatus === "All") return true;
+    if (filterStatus === "Delivered") {
+      return o.status === "Delivered" || o.status === "DeliveryAttempted";
+    }
+    // Pending
+    return o.status !== "Delivered" && o.status !== "DeliveryAttempted";
+  });
 
   /* ---------------- STATUS UI HELPERS ---------------- */
   const getStatusBadge = (status) => {
@@ -428,20 +454,23 @@ export default function CustomerOrders() {
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (o.customerReverifyRequested) return;
-                    if (!window.confirm("Request manual re-verification by admin?")) return;
-                    try {
-                      if (!o.asrVerificationId) {
-                        alert("Verification ID missing. Cannot request.");
-                        return;
+                    
+                    setConfirmData({
+                      open: true,
+                      title: "Request Re-verification?",
+                      desc: "This will notify the admin to manually review your failed verification. Continue?",
+                      action: async () => {
+                        try {
+                          if (!o.asrVerificationId) {
+                            alert("Verification ID missing. Cannot request.");
+                            return;
+                          }
+                          await api.post(`/asr/customer/request-reverify/${o.asrVerificationId}`);
+                          alert("Request sent! Admin will review.");
+                          window.location.reload(); 
+                        } catch (err) { alert(err.response?.data?.message || err.message); }
                       }
-                      await api.post(`/asr/customer/request-reverify/${o.asrVerificationId}`);
-                      alert("Request sent! Admin will review.");
-                      // Manually update local state or fetch
-                      // For simplicity, trigger generic fetch if available or just alert
-                      // fetchOrders is defined in the component scope? I need to check closure.
-                      // Yes, renderOrderCard is inside the component.
-                      window.location.reload(); // Simple refresh to show updated state
-                    } catch (err) { alert(err.response?.data?.message || err.message); }
+                    });
                   }}
                   disabled={o.customerReverifyRequested}
                   className={`
@@ -486,32 +515,68 @@ export default function CustomerOrders() {
 
       <main className="flex-1 px-10 py-10 overflow-y-auto">
 
-        {/* HEADER */}
         <div className="mb-10">
-          <h1 className="text-3xl font-black text-white">My Orders</h1>
-          <p className="text-slate-400 mt-1">
-            Track and manage your shipments
-          </p>
+          <div>
+            <h1 className="text-3xl font-black text-white">My Orders</h1>
+            <p className="text-slate-400 mt-1 mb-6">Track and manage your shipments</p>
+          </div>
+
+          {/* FILTERS */}
+          <div className="bg-white/5 p-1 rounded-xl inline-flex border border-white/10">
+            {["Pending", "Delivered"].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${
+                  filterStatus === status
+                    ? "bg-[#ff8a3d] text-black shadow-lg shadow-orange-500/20"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
           <div className="text-center py-20 text-slate-400">
             Loading orders…
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
-            <h3 className="text-xl font-bold text-white mb-2">No packages scheduled</h3>
+            <h3 className="text-xl font-bold text-white mb-2">No {filterStatus === 'All' ? '' : filterStatus.toLowerCase()} packages found</h3>
             <p className="text-slate-400">
-              We will update your orders if any package is scheduled for you account
+              We will update here when you have new orders.
             </p>
           </div>
         ) : (
-          <div>{orders.map(renderOrderCard)}</div>
+          <div>{filteredOrders.map(renderOrderCard)}</div>
         )}
 
 
 
       </main>
+
+      <AlertDialog open={confirmData.open} onOpenChange={(open) => setConfirmData(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-[#1a1f29] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">{confirmData.title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {confirmData.desc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#ff8a3d] text-black hover:bg-[#ff8a3d]/90 font-bold border-none"
+              onClick={confirmData.action}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 // Extracted to prevent focus loss, but keeping exact original layout styling
 const InputField = ({ label, name, type = "text", required = false, value, onChange }) => (
     <div>
-        <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">{label}</label>
+        <label className="block text-xs text-slate-400 mb-1">{label}</label>
         <input
             type={type}
             name={name}
@@ -177,7 +177,7 @@ const Signup = () => {
                             <InputField label="Confirm Password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} type="password" required />
 
                             <div>
-                                <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Role</label>
+                                <label className="block text-xs text-slate-400 mb-1">Role</label>
                                 <select
                                     name="role"
                                     value={formData.role}
@@ -235,7 +235,7 @@ const Signup = () => {
                             {/* Seller Specific Field */}
                             {formData.role === 'seller' && (
                                 <div>
-                                    <label className="block text-xs uppercase tracking-widest text-slate-400 mb-1">Seller Type</label>
+                                    <label className="block text-xs text-slate-400 mb-1">Seller Type</label>
                                     <select
                                         name="sellerType"
                                         value={formData.sellerType}
