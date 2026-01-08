@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { notificationAPI } from "../services/api";
-import { Bell, X, CheckCircle, AlertTriangle, Info, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import api from "../services/api";
+import { formatStatus, formatDate, formatDateTime } from "@/lib/utils";
+import * as signalR from "@microsoft/signalr";
 
 export default function NotificationCenter({ isOpen, onClose }) {
     const [notifications, setNotifications] = useState([]);
@@ -105,7 +107,7 @@ export default function NotificationCenter({ isOpen, onClose }) {
                                         </p>
                                         <p className="text-[10px] text-slate-500 mt-1.5 flex items-center gap-1">
                                             <span className="w-1 h-1 rounded-full bg-slate-500"></span>
-                                            {new Date(notif.createdAt).toLocaleDateString()} at {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {formatDateTime(notif.createdAt)}
                                         </p>
                                     </div>
                                     {!notif.isRead && (

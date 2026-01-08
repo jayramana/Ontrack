@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import api from "../../services/api";
 import MapPicker from "../../components/MapPicker";
 import SellerSidebar from "./SellerSidebar";
 import { ShieldCheck } from "lucide-react";
 
 function PlaceOrder() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     senderName: "",
     senderPhone: "",
@@ -140,7 +143,12 @@ function PlaceOrder() {
       };
 
       await api.post("/orders", payload);
-      window.location.href = "/seller/dashboard";
+      toast.success("Order placed successfully! Redirecting to dashboard...");
+      
+      // Delay redirection to let the user see the toast
+      setTimeout(() => {
+        navigate("/seller/dashboard");
+      }, 1500);
     } catch (error) {
       console.error("Error placing order:", error);
       const errorMessage =
@@ -148,7 +156,7 @@ function PlaceOrder() {
         error.response?.data?.innerException ||
         error.message ||
         "Failed to place order.";
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -426,6 +434,7 @@ function PlaceOrder() {
                 <input 
                   type="date"
                   name="scheduledDate"
+                  min={new Date().toISOString().split("T")[0]}
                   value={formData.scheduledDate ? formData.scheduledDate.split("T")[0] : ""} 
                   onChange={(e) => {
                     const dateVal = e.target.value ? new Date(e.target.value).toISOString() : "";

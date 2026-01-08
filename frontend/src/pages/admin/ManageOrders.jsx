@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
 import AdminSidebar from "./AdminSidebar";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -16,7 +17,7 @@ import {
   AlertTriangle,
   MapPin
 } from "lucide-react";
-import { formatStatus } from "@/lib/utils";
+import { formatStatus, formatDate } from "@/lib/utils";
 
 export default function ManageOrders() {
   const { user } = useAuth();
@@ -83,15 +84,19 @@ export default function ManageOrders() {
 
   const handleAssign = async (orderId) => {
     const driverId = selectedDrivers[orderId];
-    if (!driverId) return alert("Select driver");
+    if (!driverId) {
+      toast.error("Please select a driver first");
+      return;
+    }
+    
     try {
       await api.post(`/admin/assign-driver/${orderId}/${driverId}`);
       // Optimistic update or refetch
       fetchData(); 
-      alert("Driver assigned successfully");
+      toast.success("Driver assigned successfully");
     } catch (error) {
       console.error("Assign failed", error);
-      alert("Failed to assign driver");
+      toast.error("Failed to assign driver");
     }
   };
 
@@ -173,22 +178,22 @@ export default function ManageOrders() {
                              <div>
                                 <h3 className="font-bold text-white text-lg group-hover:text-[#f9b400] transition-colors">Order #{o.id}</h3>
                                 <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                  <Calendar size={12} /> {new Date(o.createdAt).toLocaleDateString()}
+                                  <Calendar size={12} /> {formatDate(o.createdAt)}
                                 </p>
                              </div>
                           </div>
-                          <span className="text-xs px-2.5 py-1 bg-[#f9b400]/10 text-[#f9b400] border border-[#f9b400]/20 rounded-md font-bold uppercase tracking-wider">
+                          <span className="text-xs px-2.5 py-1 bg-[#f9b400]/10 text-[#f9b400] border border-[#f9b400]/20 rounded-md font-bold  tracking-wider">
                             {formatStatus(o.status)}
                           </span>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4 mt-4 mb-4">
                             <div className="bg-white/5 p-3 rounded-lg">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Pickup</p>
+                                <p className="text-xs text-gray-500  tracking-wide font-bold mb-1">Pickup</p>
                                 <p className="text-sm text-gray-300 truncate">{o.pickupAddress}</p>
                             </div>
                             <div className="bg-white/5 p-3 rounded-lg">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Dropoff</p>
+                                <p className="text-xs text-gray-500  tracking-wide font-bold mb-1">Dropoff</p>
                                 <p className="text-sm text-gray-300 truncate">{o.receiverAddress}</p>
                             </div>
                         </div>
@@ -206,9 +211,9 @@ export default function ManageOrders() {
                                 }
                                 value={selectedDrivers[o.id] || ""}
                             >
-                                <option value="" disabled>Select a driver...</option>
+                                <option className="bg-[#0b0f14] text-white" value="" disabled>Select a driver...</option>
                                 {drivers.map(d => (
-                                <option key={d.userId} value={d.userId}>
+                                <option className="bg-[#0b0f14] text-white" key={d.userId} value={d.userId}>
                                     {d.userFName} {d.userLName} ({d.isOnline ? "Online" : "Offline"})
                                 </option>
                                 ))}
@@ -280,14 +285,16 @@ export default function ManageOrders() {
                         
                         <div className="grid grid-cols-2 gap-4 mt-4">
                             <div className="bg-white/5 p-3 rounded-lg">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Driver</p>
+                                <p className="text-xs text-gray-500  tracking-wide font-bold mb-1">Driver</p>
                                 <p className="text-sm text-gray-300 font-medium">
                                     {drivers.find(d => String(d.userId) === String(o.driverId))?.userFName || "Unknown"}
                                 </p>
                             </div>
                             <div className="bg-white/5 p-3 rounded-lg">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide font-bold mb-1">Status</p>
-                                <p className="text-sm text-gray-300 font-medium">{formatStatus(o.status)}</p>
+                                <p className="text-xs text-gray-500  tracking-wide font-bold mb-1">Scheduled Date</p>
+                                <p className="text-sm text-gray-300 font-medium truncate">
+                                    {o.scheduledDate ? formatDate(o.scheduledDate) : "Not Scheduled"}
+                                </p>
                             </div>
                         </div>
                       </div>

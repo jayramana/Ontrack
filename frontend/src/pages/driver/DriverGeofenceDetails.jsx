@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DriverSidebar from "./DriverSidebar";
 import { ArrowLeft, MapPin, Package, User, Clock, Phone, Mail, Calendar } from "lucide-react";
-import { MapContainer, TileLayer, Circle, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import api from "../../services/api";
 import L from "leaflet";
+import { formatStatus, formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 
 // Fix for default marker icon in React Leaflet
@@ -221,7 +223,7 @@ export default function DriverGeofenceDetails() {
                             <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Status</span>
                                 <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold">
-                                    {order?.status || "Loading..."}
+                                    {order?.status ? formatStatus(order.status) : "Loading..."}
                                 </span>
                             </div>
                              <div className="flex justify-between items-center py-2">
@@ -269,7 +271,7 @@ export default function DriverGeofenceDetails() {
                                     <span className="text-gray-400 text-sm">Scheduled</span>
                                     <span className="text-white text-xs flex items-center gap-2">
                                         <Calendar className="w-3 h-3 text-gray-500" />
-                                        {order.scheduledDate ? new Date(order.scheduledDate).toLocaleDateString() : "Not Scheduled"}
+                                        {order.scheduledDate ? formatDate(order.scheduledDate) : "Not Scheduled"}
                                     </span>
                                 </div>
                             </div>

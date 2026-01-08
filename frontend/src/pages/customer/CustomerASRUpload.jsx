@@ -4,6 +4,7 @@ import * as signalR from "@microsoft/signalr";
 import { FaCloudUploadAlt } from "react-icons/fa";
 import { MdOutlineVerifiedUser } from "react-icons/md";
 import { toast } from "sonner";
+import { formatStatus } from "@/lib/utils";
 
 export default function CustomerASRUpload({ orderId, onClose }) {
   const [asrStatus, setAsrStatus] = useState(null);
@@ -155,10 +156,14 @@ export default function CustomerASRUpload({ orderId, onClose }) {
           // It's an existing URL, need to extract the key
           // Logic: backend returns URLs like "http://localhost:5066/uploads/filename"
           // Key should be "uploads/filename"
-          const parts = preview.split('/');
-          const keyIndex = parts.indexOf('uploads');
+          const keyIndex = preview.indexOf('uploads/');
           if (keyIndex !== -1) {
-            return parts.slice(keyIndex).join('/');
+             let key = preview.substring(keyIndex);
+             const qIndex = key.indexOf('?');
+             if (qIndex !== -1) {
+                key = key.substring(0, qIndex);
+             }
+             return key;
           }
            return preview; // Fallback
         }
@@ -197,7 +202,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await api.post("/uploads/files", formData, {
+    const res = await api.post("/aws/files", formData, {
       headers: { "Content-Type": "multipart/form-data" }
     });
     return res.data.key;
@@ -274,7 +279,7 @@ export default function CustomerASRUpload({ orderId, onClose }) {
                   asrStatus.status === 'Pending' ? 'text-yellow-400' :
                     'text-blue-400'
                   }`}>
-                  STATUS: <span>{asrStatus.status}</span>
+                  STATUS: <span>{formatStatus(asrStatus.status)}</span>
                 </p>
                 {(asrStatus.status === 'Pending' || asrStatus.status === 'Failed') && (
                   <p className="text-xs text-slate-400 mt-1">

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { TrendingUp } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
@@ -24,112 +25,93 @@ const chartConfig = {
     label: "Assigned",
     color: "#fbbf24", // Amber 400
   },
-  accepted: {
-    label: "Accepted",
+  outForDelivery: {
+    label: "Out For Delivery",
     color: "#f59e0b", // Amber 500
   },
-  rejected: {
-    label: "Rejected",
-    color: "#78350f", // Amber 900
+  delivered: {
+    label: "Delivered",
+    color: "#10b981", // Emerald 500
+  },
+  attempted: {
+    label: "Attempted",
+    color: "#ef4444", // Red 500
   },
 }
 
-export default function DriverBarChart({ data = [] }) {
-  // Logic:
-  // 1. Filter last 7 days
-  // 2. Group by Day (e.g. "Mon", "Tue")
-  // 3. Calculate Assigned, Accepted, Rejected for each day
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#1a1f29] border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-2 min-w-[150px]">
+        <div className="text-slate-300 font-medium text-sm border-b border-white/10 pb-2 mb-1">
+          {payload[0].payload.tooltipLabel || label}
+        </div>
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center gap-3">
+            <div 
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: entry.color || entry.fill }}
+            />
+            <span className="text-gray-400 font-medium text-xs capitalized">
+              {entry.name}
+            </span>
+            <span className="text-white font-black ml-auto text-sm">
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
-  // Helper to get day name
-  const getDayName = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { weekday: 'long' });
-  };
+// ...
 
-  const processData = () => {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-      const weeklyOrders = data.filter(o => new Date(o.scheduledDate) >= oneWeekAgo);
-      
-      // Initialize map for last 7 days
-      const daysMap = {};
-      for (let i = 0; i < 7; i++) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-          daysMap[dayName] = { day: dayName, assigned: 0, accepted: 0, rejected: 0 };
-      }
-
-      weeklyOrders.forEach(order => {
-          const dayName = getDayName(order.scheduledDate);
-          if (daysMap[dayName]) {
-              const status = order.status;
-              
-
-              
-              if (status === 'Delivered' || status === 'OutForDelivery') {
-                  daysMap[dayName].accepted += 1;
-              } else {
-                  daysMap[dayName].rejected += 1;
-              }
-          }
-      });
-
-      // Calculate Assigned as the total
-      Object.keys(daysMap).forEach(key => {
-          daysMap[key].assigned = daysMap[key].accepted + daysMap[key].rejected;
-      });
-
-
-      const result = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-        if (daysMap[dayName]) {
-            result.push(daysMap[dayName]);
-        }
-      }
-      return result;
-  };
-
-  const chartData = processData();
+export default function DriverBarChart({ data = [], filterType = "1W" }) {
+  // Data is now pre-processed by backend
+  // Just render it.
 
   return (
     <Card className="flex flex-col bg-[#0b0f14] border-[#1f2937]">
       <CardHeader>
         <CardTitle className="text-white">Order Status History</CardTitle>
-        <CardDescription className="text-gray-400">Assigned vs Accepted vs Rejected (Last 7 Days)</CardDescription>
+        <CardDescription className="text-gray-400">
+           {filterType === "1Y" ? "Last 12 Months" : 
+            filterType === "3M" ? "Last 90 Days" : 
+            filterType === "1M" ? "Last 30 Days" : "Last 7 Days"}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="max-h-[250px] w-full">
-          <BarChart accessibilityLayer data={chartData}>
+          <BarChart accessibilityLayer data={data} barSize={40}>
             <CartesianGrid vertical={false} stroke="#374151" />
             <XAxis
-              dataKey="day"
+              dataKey="label"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
-              stroke="#9ca3af"
+              interval={0}
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
             />
             <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent indicator="dashed" className="bg-[#1a1f29] border-[#374151] text-white" />}
+              cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              content={<CustomTooltip />}
             />
-            <Bar dataKey="assigned" fill="var(--color-assigned)" radius={4} name="Assigned" />
-            <Bar dataKey="accepted" fill="var(--color-accepted)" radius={4} name="Accepted" />
-            <Bar dataKey="rejected" fill="var(--color-rejected)" radius={4} name="Rejected" />
+            <Bar dataKey="assigned" fill="var(--color-assigned)" radius={[4, 4, 0, 0]} name="Total Assigned" stackId="a" />
+            <Bar dataKey="outForDelivery" fill="var(--color-outForDelivery)" radius={[4, 4, 0, 0]} name="Out For Delivery" stackId="b" />
+            <Bar dataKey="delivered" fill="var(--color-delivered)" radius={[0, 0, 4, 4]} name="Delivered" stackId="c" />
+            <Bar dataKey="attempted" fill="var(--color-attempted)" radius={[4, 4, 0, 0]} name="Attempted" stackId="c" />
           </BarChart>
+
         </ChartContainer>
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm text-gray-400">
         <div className="flex gap-2 leading-none font-medium text-white">
-          Weekly Overview <TrendingUp className="h-4 w-4 text-emerald-500" />
+          Overview <TrendingUp className="h-4 w-4 text-emerald-500" />
         </div>
         <div className="leading-none">
-          Comparison of order outcomes
+          Comparison of order outcomes over time
         </div>
       </CardFooter>
     </Card>

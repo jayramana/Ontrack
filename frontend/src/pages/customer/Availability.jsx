@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import CustomerSidebar from "./CustomerSidebar";
 
 function Availability() {
@@ -16,7 +17,7 @@ function Availability() {
   };
 
   const handleSave = () => {
-    alert("Availability saved!");
+    toast.success("Availability saved!");
   };
 
   return (

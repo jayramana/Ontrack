@@ -24,3 +24,13 @@ body {
     --chart-5: oklch(0.645 0.246 16.439);
   }
 }
+
+@layer utilities {
+  .custom-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

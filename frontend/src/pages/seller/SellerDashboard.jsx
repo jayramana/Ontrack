@@ -56,7 +56,7 @@ function SenderDashboard() {
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="md:pl-0 pl-12">
                 <h1 className="text-3xl font-bold text-white">
-                  Sender Dashboard
+                  Seller Dashboard
                 </h1>
               </div>
             </div>

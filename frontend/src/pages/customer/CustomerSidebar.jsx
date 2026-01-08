@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Truck, LayoutDashboard, Package, MapPin, Bell, User, Menu, X } from "lucide-react";
+import { Truck, LayoutDashboard, Package, MapPin, Bell, User, Menu, X, Radar } from "lucide-react";
 import NotificationBell from "../../components/NotificationBell";
 
 export default function CustomerSidebar({ active }) {
@@ -11,7 +11,7 @@ export default function CustomerSidebar({ active }) {
     { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/customer/dashboard" },
     { label: "My Orders", icon: <Package size={20} />, key: "orders", path: "/customer/orders" },
     { label: "Track Package", icon: <MapPin size={20} />, key: "track", path: "/tracking" },
-    { label: "Geofence Alerts", icon: <Bell size={20} />, key: "alerts", path: "/customer/geofencealerts" },
+    { label: "Geofence Alerts", icon: <Radar size={20} />, key: "alerts", path: "/customer/geofencealerts" },
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);

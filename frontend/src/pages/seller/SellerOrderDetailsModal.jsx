@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../services/api";
+
 import { formatStatus, formatDate, formatDateTime } from "@/lib/utils";
 import { 
   Package, 
@@ -16,8 +17,9 @@ import {
   Calendar
 } from "lucide-react";
 
-const OrderDetailsModal = ({ orderId, onClose }) => {
+const SellerOrderDetailsModal = ({ orderId, onClose }) => {
   const [order, setOrder] = useState(null);
+  const [driverLoc, setDriverLoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,8 +27,10 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/admin/order/${orderId}`);
-        setOrder(res.data);
+        // Using the new endpoint specific for Sellers
+        const res = await api.get(`/orders/sent-orders/${orderId}`);
+        setOrder(res.data.order);
+        setDriverLoc(res.data.latestDriverLocation);
       } catch (err) {
         console.error(err);
         setError("Failed to load order details");
@@ -54,7 +58,7 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
       <div className="bg-[#141922] rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-white/10 custom-scrollbar">
 
         {/* HEADER */}
-        <div className="sticky top-0 bg-[#0f141c] px-6 py-4 flex justify-between items-center border-b border-white/10 rounded-t-xl">
+        <div className="sticky top-0 bg-[#0f141c] px-6 py-4 flex justify-between items-center border-b border-white/10 rounded-t-xl z-10">
           <div>
             <h2 className="text-2xl font-bold text-white">Order Details</h2>
             {order && (
@@ -65,7 +69,7 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-3xl leading-none"
+            className="text-gray-400 hover:text-white text-3xl leading-none font-bold"
           >
             &times;
           </button>
@@ -89,18 +93,11 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                 <span className="text-sm text-gray-400">Order #{order.id}</span>
               </div>
 
-              {/* SENDER */}
-              <Section title="Sender Details" icon={<User className="w-5 h-5 text-blue-400" />}>
-                <Info label="Name" value={order.senderName} icon={<User className="w-4 h-4 text-slate-400" />} />
-                <Info label="Email" value={order.senderEmail} icon={<Mail className="w-4 h-4 text-slate-400" />} />
-                <Info label="Phone" value={order.senderPhone} icon={<Phone className="w-4 h-4 text-slate-400" />} />
-              </Section>
-
               {/* RECEIVER */}
               <Section title="Receiver Details" icon={<User className="w-5 h-5 text-orange-400" />}>
-                <Info label="Name" value={order.receiverName} icon={<User className="w-4 h-4 text-slate-400" />} />
-                <Info label="Email" value={order.receiverEmail} icon={<Mail className="w-4 h-4 text-slate-400" />} />
-                <Info label="Phone" value={order.receiverPhone} icon={<Phone className="w-4 h-4 text-slate-400" />} />
+                <Info label="Name" value={order.receiverName} />
+                <Info label="Email" value={order.receiverEmail} />
+                <Info label="Phone" value={order.receiverPhone} />
               </Section>
 
               {/* ADDRESSES */}
@@ -109,14 +106,15 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                   <p className="text-gray-300">{order.pickupAddress}</p>
                 </Card>
                 <Card title="Delivery Address" icon={<Navigation className="w-5 h-5 text-green-400" />}>
-                  <p className="text-gray-300">{order.deliveryAddress}</p>
+                  <p className="text-gray-300">{order.receiverAddress}</p>
                 </Card>
               </div>
 
               {/* PARCEL */}
               <Section title="Parcel Details" icon={<Package className="w-5 h-5 text-purple-400" />}>
-                <Info label="Size" value={order.parcelSize} icon={<Box className="w-4 h-4 text-slate-400" />} />
-                <Info label="Weight" value={order.weight ? `${order.weight} kg` : "N/A"} icon={<Scale className="w-4 h-4 text-slate-400" />} />
+                <Info label="Size" value={order.parcelSize} />
+                <Info label="Weight" value={order.weight ? `${order.weight} kg` : "N/A"} />
+                <Info label="Price" value={`₹${order.price}`} highlight="green" />
               </Section>
 
               {/* DRIVER */}
@@ -125,14 +123,21 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
                   <Info
                     label="Name"
                     value={`${order.driver.userFName} ${order.driver.userLName}`}
-                    icon={<User className="w-4 h-4 text-slate-400" />}
                   />
-                  <Info label="Email" value={order.driver.userEmail} icon={<Mail className="w-4 h-4 text-slate-400" />} />
-                  <Info
-                    label="Status"
-                    value={order.driver.isAvailable ? "Available" : "Busy"}
-                    highlight={order.driver.isAvailable ? "green" : "red"}
-                  />
+                  <Info label="Email" value={order.driver.userEmail} />
+                  {driverLoc && (
+                    <div className="col-span-1 md:col-span-3 mt-2 bg-white/5 p-3 rounded-lg border border-white/10 flex justify-between items-center">
+                       <div>
+                         <p className="text-xs text-gray-400">Last Known Location</p>
+                         <p className="text-sm font-mono text-orange-200">
+                           {driverLoc.latitude.toFixed(4)}, {driverLoc.longitude.toFixed(4)}
+                         </p>
+                       </div>
+                       <p className="text-xs text-slate-500">
+                         {new Date(driverLoc.updatedAt).toLocaleTimeString()}
+                       </p>
+                    </div>
+                  )}
                 </Section>
               )}
 
@@ -156,10 +161,10 @@ const OrderDetailsModal = ({ orderId, onClose }) => {
         </div>
 
         {/* FOOTER */}
-        <div className="sticky bottom-0 bg-[#0f141c] px-6 py-4 border-t border-white/10 rounded-b-xl flex justify-end">
+        <div className="sticky bottom-0 bg-[#0f141c] px-6 py-4 border-t border-white/10 rounded-b-xl flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="bg-orange-500 hover:bg-orange-600 text-black px-6 py-2 rounded-lg font-semibold"
+            className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg font-semibold transition"
           >
             Close
           </button>
@@ -191,12 +196,9 @@ const Card = ({ title, icon, children }) => (
   </div>
 );
 
-const Info = ({ label, value, highlight, icon }) => (
+const Info = ({ label, value, highlight }) => (
   <div>
-   <div className="flex items-center gap-2 mb-1">
-       {icon}
-       <p className="text-sm text-gray-400">{label}</p>
-    </div>
+    <p className="text-sm text-gray-400">{label}</p>
     <p
       className={`font-medium ${
         highlight === "green"
@@ -235,4 +237,4 @@ const Timeline = ({ label, date, success }) =>
     </div>
   ) : null;
 
-export default OrderDetailsModal;
+export default SellerOrderDetailsModal;

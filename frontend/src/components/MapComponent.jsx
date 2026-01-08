@@ -20,21 +20,38 @@ L.Marker.prototype.options.icon = DefaultIcon;
 /* ===========================
    COLORED DRIVER ICON
 =========================== */
-const coloredIcon = (color) =>
+const coloredIcon = (color, label) =>
   L.divIcon({
     html: `
-      <div style="
-        background:${color};
-        width:14px;
-        height:14px;
-        border-radius:50%;
-        border:2px solid white;
-        box-shadow:0 0 6px rgba(0,0,0,0.6);
-      "></div>
+      <div style="position: relative; width: 30px; height: 50px;">
+         <svg viewBox="0 0 30 50" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));">
+            <!-- Needle -->
+            <path d="M15 30 L15 50" stroke="${color}" stroke-width="3" stroke-linecap="round" />
+            <!-- Circle Body -->
+            <circle cx="15" cy="15" r="14" fill="${color}" stroke="white" stroke-width="2"/>
+         </svg>
+         <div style="
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            font-family: sans-serif;
+         ">
+            ${label || ''}
+         </div>
+      </div>
     `,
     className: "",
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    iconSize: [30, 50],
+    iconAnchor: [15, 50],
+    popupAnchor: [0, -50],
   });
 
 /* ===========================
@@ -63,7 +80,7 @@ function MapComponent({
         <Marker
           key={idx}
           position={m.position}
-          icon={m.color ? coloredIcon(m.color) : DefaultIcon}
+          icon={m.color ? coloredIcon(m.color, m.label) : DefaultIcon}
         >
           {m.popup && <Popup>{m.popup}</Popup>}
         </Marker>

@@ -5,7 +5,7 @@ import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
 import DriverASRVerification from "./DriverASRVerification";
 import { ArrowRight } from "lucide-react";
-import { formatStatus } from "@/lib/utils";
+import { formatStatus, formatDate } from "@/lib/utils";
 
 export default function DriverDeliveries() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function DriverDeliveries() {
   const fetchTodaysOrders = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/driver/orders/today/analytics");
+      const res = await api.get("/driver/orders/all");
       const sorted = (res.data || []).sort((a, b) => b.id - a.id);
       setOrders(sorted);
     } catch (err) {
@@ -107,7 +107,7 @@ export default function DriverDeliveries() {
         </p>
 
         <p className="text-xs text-slate-500 mt-2">
-          Scheduled: {new Date(order.scheduledDate).toLocaleDateString()}
+          Scheduled: {formatDate(order.scheduledDate)}
         </p>
       </div>
 

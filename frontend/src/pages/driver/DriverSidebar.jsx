@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Truck, LayoutDashboard, Package, Map, Bell, AlertTriangle, CheckCircle, User, LogOut, Menu, X } from "lucide-react";
+import { Truck, LayoutDashboard, Package, Map, Bell, AlertTriangle, CheckCircle, User, LogOut, Menu, X, Radar } from "lucide-react";
 import NotificationBell from "../../components/NotificationBell";
 
 export default function DriverSidebar({ active }) {
@@ -13,7 +13,7 @@ export default function DriverSidebar({ active }) {
     { label: "Dashboard", icon: <LayoutDashboard size={20} />, key: "dashboard", path: "/driver/dashboard" },
     { label: "My Deliveries", icon: <Package size={20} />, key: "deliveries", path: "/driver/deliveries" },
     { label: "Route Planner", icon: <Map size={20} />, key: "route", path: "/driver/route" },
-    { label: "Geofence Alerts", icon: <Bell size={20} />, key: "geofence", path: "/driver/geofencealerts" },
+    { label: "Geofence Alerts", icon: <Radar size={20} />, key: "geofence", path: "/driver/geofencealerts" },
     { label: "Report Issue", icon: <AlertTriangle size={20} />, key: "issues", path: "/driver/report-issue" },
   ];
 

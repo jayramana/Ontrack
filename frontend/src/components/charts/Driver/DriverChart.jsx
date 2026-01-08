@@ -42,14 +42,55 @@ const chartConfig = {
     label: "Pending",
     color: COLORS.pending,
   },
+  assigned: {
+    label: "Assigned",
+    color: COLORS.pending,
+  },
+  outfordelivery: {
+    label: "Out for Delivery",
+    color: COLORS.pending,
+  },
+  active: {
+    label: "Active",
+    color: COLORS.pending,
+  },
   exceptions: {
     label: "Exceptions",
+    color: COLORS.exceptions,
+  },
+  deliveryattempted: {
+    label: "Delivery Attempted",
+    color: COLORS.exceptions,
+  },
+  returnedtowarehouse: {
+    label: "Returned",
     color: COLORS.exceptions,
   },
   cancelled: {
       label: "Cancelled",
       color: COLORS.cancelled
   }
+};
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const config = chartConfig[data.status] || { label: data.status, color: data.fill };
+    
+    return (
+      <div className="bg-[#1a1f29] border border-white/10 rounded-xl p-3 shadow-2xl min-w-[150px]">
+         <div className="flex items-center gap-2 mb-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config.color }} />
+            <span className="text-white font-bold text-sm">{config.label}</span>
+         </div>
+         <div className="flex justify-between items-center">
+            <span className="text-gray-400 text-xs">Count</span>
+            <span className="text-white font-mono font-bold">{data.count}</span>
+         </div>
+      </div>
+    );
+  }
+  return null;
 };
 
 const DriverChart = ({ data = [] }) => {
@@ -69,12 +110,13 @@ const DriverChart = ({ data = [] }) => {
           // Map backend status to color keys
           let color = COLORS.pending; // default
           if (key === 'delivered') color = COLORS.delivered;
-          else if (key === 'pending') color = COLORS.pending;
-          else if (key === 'deliveryattempted' || key === 'exceptions') color = COLORS.exceptions;
+          else if (key === 'assigned' || key === 'outfordelivery' || key === 'pending' || key === 'active') color = COLORS.pending;
+          else if (key === 'deliveryattempted' || key === 'returnedtowarehouse' || key === 'exceptions') color = COLORS.exceptions;
           else if (key === 'cancelled') color = COLORS.cancelled;
           
           return {
               ...item,
+              status: key, // Normalize to match config key
               fill: color
           }
       }).filter(item => item.count > 0);
@@ -95,7 +137,7 @@ const DriverChart = ({ data = [] }) => {
           <PieChart>
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel className="bg-[#1a1f29] border-[#374151] text-white" />}
+              content={<CustomTooltip />}
             />
             <Pie
               data={chartData}

@@ -1,8 +1,9 @@
-
 import React, { useEffect, useState } from "react";
+import { OrdersSpendingChart } from "../../components/charts/OrdersSpendingChart";
 import AdminSidebar from "./AdminSidebar";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { formatStatus, formatDate, formatDateTime } from "@/lib/utils";
 import * as signalR from "@microsoft/signalr";
 
 import { OrdersBarChart } from "../../components/charts/OrdersBarChart";
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
 
     const init = async () => {
       connection = new signalR.HubConnectionBuilder()
-        .withUrl(`http://localhost:5066/hubs/logistics`)
+        .withUrl(`${import.meta.env.VITE_API_URL}/hubs/logistics`)
         .withAutomaticReconnect()
         .build();
 
@@ -152,23 +153,23 @@ export default function AdminDashboard() {
         {/* METRICS CARDS */}
         <div className="p-4 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
           {[
-            { label: "Total Orders", value: stats.total, icon: <Package size={24} />, color: "text-[#ff8a3d]", bg: "bg-[#ff8a3d]/10", border: "border-[#ff8a3d]/20" },
-            { label: "Active Shipments", value: stats.active, icon: <Truck size={24} />, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
-            { label: "Delivered", value: stats.delivered, icon: <CheckCircle size={24} />, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
-            { label: "Exceptions", value: stats.exceptions, icon: <AlertTriangle size={24} />, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
-            { label: "ASR Pending", value: stats.asr, icon: <Lock size={24} />, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", onClick: navigateToASR },
+            { label: "Total Orders", value: stats.total, icon: <Package size={30} />, color: "text-[#ff8a3d]", bg: "bg-[#ff8a3d]/10", border: "border-[#ff8a3d]/20" },
+            { label: "Active Shipments", value: stats.active, icon: <Truck size={30} />, color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+            { label: "Delivered", value: stats.delivered, icon: <CheckCircle size={30} />, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20" },
+            { label: "Exceptions", value: stats.exceptions, icon: <AlertTriangle size={30} />, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
+            { label: "ASR Pending", value: stats.asr, icon: <Lock size={30} />, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", onClick: navigateToASR },
           ].map((item, i) => (
             <div
               key={i}
               onClick={item.onClick}
-              className={`bg-white/5 backdrop-blur-xl p-6 rounded-2xl border border-white/10 flex justify-between items-center group ${item.onClick ? "cursor-pointer hover:border-[#ff8a3d]/30 transition-all hover:bg-white/10" : ""
+              className={`bg-[#1a1f29] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center ${item.onClick ? "cursor-pointer hover:border-[#ff8a3d]/30 transition-all" : ""
                 }`}
             >
               <div>
-                <p className="text-slate-400 text-xs font-bold">{item.label}</p>
-                <p className="text-3xl font-black text-white mt-2 group-hover:scale-105 transition-transform origin-left">{item.value}</p>
+                <p className="text-gray-400 text-sm font-medium">{item.label}</p>
+                <p className="text-3xl font-bold text-white mt-2">{item.value}</p>
               </div>
-              <div className={`p-4 rounded-xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}>
+              <div className={`p-3 rounded-full ${item.bg} ${item.color}`}>
                 {item.icon}
               </div>
             </div>
@@ -282,7 +283,7 @@ export default function AdminDashboard() {
                         </div>
                         <p className="text-slate-300 mb-2">{r.reason || r.description}</p>
                         <p className="text-xs text-slate-500 flex items-center gap-1">
-                          <Calendar size={12} /> Reported: {new Date(r.reportedAt).toLocaleString()}
+                          <Calendar size={12} /> Reported: {formatDateTime(r.reportedAt)}
                         </p>
                       </div>
 

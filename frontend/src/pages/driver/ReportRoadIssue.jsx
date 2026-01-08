@@ -1,5 +1,6 @@
 // frontend/src/pages/driver/ReportRoadIssue.jsx
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
@@ -86,10 +87,10 @@ export default function ReportRoadIssue() {
   const handlePreSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.issueType) return alert("Select issue type");
-    if (!formData.description.trim()) return alert("Add description");
+    if (!formData.issueType) return toast.error("Select issue type");
+    if (!formData.description.trim()) return toast.error("Add description");
     if (!formData.latitude || !formData.longitude)
-      return alert("Location required");
+      return toast.error("Location required");
 
     setShowConfirm(true);
   };
@@ -99,10 +100,11 @@ export default function ReportRoadIssue() {
 
     try {
       await api.post("/roadissue/report", formData);
+      toast.success("Road issue reported successfully");
       setSuccessMessage("Road issue reported successfully");
       setTimeout(() => navigate("/driver/dashboard"), 2000);
     } catch {
-      alert("Failed to report issue");
+      toast.error("Failed to report issue");
     } finally {
       setLoading(false);
       setShowConfirm(false);

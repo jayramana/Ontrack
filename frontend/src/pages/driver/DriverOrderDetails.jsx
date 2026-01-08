@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import DriverSidebar from "./DriverSidebar";
 import api from "../../services/api";
 import DriverASRVerification from "./DriverASRVerification";
 import { Copy, Check, ShieldCheck } from "lucide-react";
-import { formatStatus } from "@/lib/utils";
+import { formatStatus, formatDate, formatDateTime } from "@/lib/utils";
 
 import {
   AlertDialog,
@@ -90,13 +91,13 @@ const DriverOrderDetails = () => {
   };
 
   const submitAttempted = async () => {
-    if (!attemptReason.trim()) return alert("Reason is required");
+    if (!attemptReason.trim()) return toast.error("Reason is required");
     try {
         await api.post(`/driver/mark-attempted/${id}`, { reason: attemptReason });
         setShowAttemptModal(false);
         fetchOrder();
     } catch(err) {
-        alert("Failed to update status");
+        toast.error("Failed to update status");
     }
   };
 
@@ -107,7 +108,7 @@ const DriverOrderDetails = () => {
         fetchOrder(); 
      } catch(err) {
         console.error(err);
-        alert("Failed to accept order");
+        toast.error("Failed to accept order");
      } finally {
         setBtnLoading(false);
      }
@@ -126,7 +127,7 @@ const DriverOrderDetails = () => {
                 fetchOrder();
              } catch(err) {
                 console.error(err);
-                alert("Failed to update status");
+                toast.error("Failed to update status");
              } finally {
                 setBtnLoading(false);
              }
@@ -154,6 +155,7 @@ const DriverOrderDetails = () => {
     InTransit: 40,
     AtDestinationWarehouse: 50,
     OutForDelivery: 60,
+    ReturnedToWarehouse: 65,
     Delivered: 70,
     Cancelled: 99,
   };
@@ -207,7 +209,7 @@ const DriverOrderDetails = () => {
                 <div>
                   <h3 className="font-bold text-yellow-500">Rescheduled Order</h3>
                   <p className="text-sm text-slate-300">
-                    New Date: <span className="text-white">{new Date(order.rescheduledAt).toLocaleString()}</span>
+                    New Date: <span className="text-white">{formatDateTime(order.rescheduledAt)}</span>
                   </p>
                 </div>
               </div>
@@ -286,34 +288,31 @@ const DriverOrderDetails = () => {
 
           <div className="border-t border-white/10" />
 
-            {/* ADDRESS INFO - Driver Specific View */}
+          {/* SHIPMENT INFO */}
           <div className="p-8 space-y-6">
-             <h2 className="text-xl font-bold">Addresses</h2>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div>
-                     <h4 className="font-semibold text-[#ff8a3d] mb-1 flex items-center gap-2">
-                        Receiver (Customer)
-                     </h4>
-                     <p className="text-white text-lg font-bold">{order.customerName}</p>
-                     <p className="text-slate-400 text-sm mb-4 leading-relaxed">{order.receiverAddress}</p>
-                </div>
+             <h2 className="text-xl font-bold">Shipment Information</h2>
+             
+             <div>
+                <h4 className="font-semibold text-slate-300">From</h4>
+                <p className="text-slate-400 text-lg font-medium">{order.senderName}</p>
+                <p className="text-slate-500 text-sm">{order.pickupAddress}</p>
+             </div>
 
-                <div>
-                     <h4 className="font-semibold text-blue-400 mb-1">Sender (Pickup)</h4>
-                     <p className="text-white text-lg font-bold">{order.senderName}</p>
-                     <p className="text-slate-400 text-sm mb-4 leading-relaxed">{order.pickupAddress}</p>
-                </div>
+             <div>
+                <h4 className="font-semibold text-slate-300">To</h4>
+                <p className="text-slate-400 text-lg font-medium">{order.customerName}</p>
+                <p className="text-slate-500 text-sm">{order.receiverAddress}</p>
              </div>
           </div>
 
 
-          <div className="border-t border-white/10" />
+          <div className="" />
 
           {/* ASR VERIFICATION SECTION */}
           {order.isASR && (
             <>
               <div className={`mx-8 mb-8 rounded-2xl border backdrop-blur-md overflow-hidden transition-all ${
-                 order.asrStatus === 'Success' 
+                 order.asrStatus === 'Success' || order.asrStatus === 'AdminOverride'
                  ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)]' 
                  : 'bg-orange-500/5 border-orange-500/20 shadow-[0_0_30px_rgba(255,138,61,0.1)]'
               }`}>
@@ -321,7 +320,7 @@ const DriverOrderDetails = () => {
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl flex items-center justify-center shrink-0 ${
-                            order.asrStatus === 'Success' ? 'bg-green-500/10 text-green-400' : 'bg-[#ff8a3d]/10 text-[#ff8a3d]'
+                            order.asrStatus === 'Success' || order.asrStatus === 'AdminOverride' ? 'bg-green-500/10 text-green-400' : 'bg-[#ff8a3d]/10 text-[#ff8a3d]'
                         }`}>
                             <ShieldCheck size={28} strokeWidth={1.5} />
                         </div>
@@ -329,7 +328,7 @@ const DriverOrderDetails = () => {
                              <h2 className="text-xl font-bold text-white flex items-center gap-3">
                                 ASR Verification Required
                                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
-                                    order.asrStatus === 'Success' 
+                                    order.asrStatus === 'Success' || order.asrStatus === 'AdminOverride'
                                     ? 'bg-green-500/10 text-green-400 border-green-500/20' 
                                     : (order.asrStatus === 'Failed' 
                                         ? 'bg-red-500/10 text-red-400 border-red-500/20' 
@@ -341,7 +340,7 @@ const DriverOrderDetails = () => {
                         </div>
                     </div>
 
-                  {order.asrStatus !== "Success" && (
+                  {(order.asrStatus !== "Success" && order.asrStatus !== "AdminOverride") && (
                     <button
                       onClick={() => setShowASRModal(true)}
                        className="hidden md:flex whitespace-nowrap px-6 py-2.5 rounded-xl bg-[#ff8a3d] text-black font-bold text-sm hover:bg-[#ff9f63] hover:shadow-[0_0_20px_rgba(255,138,61,0.3)] transition-all items-center gap-2 group"
@@ -358,7 +357,7 @@ const DriverOrderDetails = () => {
                     </p>
 
                     {/* Mobile Button */}
-                     {order.asrStatus !== "Success" && (
+                     {(order.asrStatus !== "Success" && order.asrStatus !== "AdminOverride") && (
                         <button
                           onClick={() => setShowASRModal(true)}
                           className="md:hidden w-full mb-6 py-3 rounded-xl bg-[#ff8a3d] text-black font-bold text-sm hover:bg-[#ff9f63] shadow-[0_0_10px_rgba(255,138,61,0.2)] flex justify-center items-center gap-2"
@@ -368,9 +367,12 @@ const DriverOrderDetails = () => {
                         </button>
                        )}
 
-                  {order.asrStatus === 'Success' ? (
+                  {(order.asrStatus === 'Success' || order.asrStatus === 'AdminOverride') ? (
                     <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm font-bold">
-                        <Check size={16} /> Verification successful. You can proceed with delivery.
+                        <Check size={16} /> 
+                        {order.asrStatus === 'AdminOverride' 
+                          ? "Verification overridden by Admin. You can proceed with delivery." 
+                          : "Verification successful. You can proceed with delivery."}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -407,14 +409,14 @@ const DriverOrderDetails = () => {
                   title="Order Assigned"
                   sub="You have been assigned this order"
                   active={currentRank >= 10}
-                  completed={currentRank >= 60}
+                  completed={currentRank >= 50}
                   isFirst={true}
                   color="orange"
-                  isCurrent={currentRank >= 10 && currentRank < 60}
+                  isCurrent={currentRank >= 10 && currentRank < 50}
                >
                    {/* ACTION BUTTON: Accept Assignment */}
                    {order.status === 'Assigned' && (
-                        <div className="mt-4">
+                        <div className="mt-4 mb-4">
                             <button 
                                 onClick={handleAcceptAssignment}
                                 disabled={btnLoading}
@@ -429,7 +431,7 @@ const DriverOrderDetails = () => {
                    )}
                </TimelineStep>
 
-               {/* Step 2: At Destination Warehouse */}
+               {/* Step 2: At Destination Warehouse (Pickup) */}
                <TimelineStep 
                   title="At Destination Warehouse"
                   sub="Order needs to be picked up"
@@ -440,7 +442,7 @@ const DriverOrderDetails = () => {
                >
                    {/* ACTION BUTTON: Picked from Warehouse */}
                    {order.status === 'AtDestinationWarehouse' && (
-                        <div className="mt-4">
+                        <div className="mt-4 mb-4">
                             <button 
                                 onClick={handlePickup}
                                 disabled={btnLoading}
@@ -455,7 +457,7 @@ const DriverOrderDetails = () => {
                    )}
                </TimelineStep>
 
-               {/* Step 2: Out For Delivery */}
+               {/* Step 3: Out For Delivery */}
                <TimelineStep 
                   title="Out For Delivery"
                   sub="You are on the way to the customer"
@@ -465,7 +467,7 @@ const DriverOrderDetails = () => {
                   isCurrent={currentRank >= 60 && currentRank < 65}
                />
 
-               {/* Step 3: Delivered / Attempted */}
+               {/* Step 4: Delivered / Attempted */}
                <TimelineStep 
                   title={order.status === "DeliveryAttempted" ? "Delivery Attempted" : "Delivered"}
                   sub={order.status === "DeliveryAttempted" ? "Delivery was attempted but failed" : "Package delivered successfully"}
@@ -491,9 +493,7 @@ const DriverOrderDetails = () => {
             </button>
           )}
 
-          <button className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm flex-1 md:flex-none">
-            Report Issue
-          </button>
+
         </div>
       </div>
 
@@ -625,81 +625,109 @@ export default DriverOrderDetails;
 
 /* ---------------- HELPERS ---------------- */
 
-function TimelineStep({ title, sub, active, completed, isFirst, isLast, color="green", hasExpand, expanded, onToggle, date, isCurrent, children }) {
-    
-    // Status Colors
-    const getColors = () => {
-        if (!active) return "bg-[#0b0f14] border-slate-600";
-        if (color === "red") return "bg-red-500 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
-        if (color === "orange") return "bg-[#ff8a3d] border-[#ff8a3d] shadow-[0_0_10px_rgba(255,138,61,0.5)]";
-        return "bg-green-500 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
-    };
+function TimelineStep({ title, sub, active, completed, isFirst, isLast, color = "green", hasExpand, expanded, onToggle, date, isCurrent, children }) {
 
-    const getLineColor = () => {
-         if (!completed) return "bg-white/10";
-         if (color === "red") return "bg-red-500";
-         if (color === "orange") return "bg-[#ff8a3d]"; 
-         return "bg-green-500";
-    }
+  // Status Colors
+  const getColors = () => {
+    if (!active) return "bg-[#0b0f14] border-slate-600";
+    if (color === "red") return "bg-red-500 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+    if (color === "orange") return "bg-[#ff8a3d] border-[#ff8a3d] shadow-[0_0_10px_rgba(255,138,61,0.5)]";
+    return "bg-green-500 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+  };
 
-    const getTextColor = () => {
-        if (!active) return "text-slate-500";
-        if (color === "red") return "text-red-400";
-        if (color === "orange") return "text-[#ff8a3d]";
-        return "text-white"; 
-    }
+  const getLineColor = () => {
+    if (!completed) return "bg-white/10";
+    if (color === "red") return "bg-red-500";
+    if (color === "orange") return "bg-[#ff8a3d]";
+    return "bg-green-500";
+  }
 
-    return (
-        <div className="relative flex gap-6 z-10 min-h-[80px]"> 
-            {/* Status Dot Column */}
-            <div className="flex flex-col items-center">
-                <div className="relative flex items-center justify-center">
-                    {/* Pulsing Effect for Current Step */}
-                    {isCurrent && active && (
-                        <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 ${
-                             color === "red" ? "bg-red-500" : (color === "orange" ? "bg-[#ff8a3d]" : "bg-green-500")
-                        }`} />
-                    )}
-                    
-                    <div
-                        className={`w-4 h-4 rounded-full border-2 z-20 flex-shrink-0 transition-all duration-500 ${getColors()}`}
-                        onClick={hasExpand ? onToggle : undefined}
-                    />
-                </div>
-                
-                {/* Connecting Line (Colored Segment) below */}
-                    {!isLast && (
-                    <div className={`w-[2px] flex-1 -my-1 transition-colors duration-500 ${getLineColor()}`} />
-                    )}
-            </div>
+  const getTextColor = () => {
+    if (!active) return "text-slate-500";
+    if (color === "red") return "text-red-400";
+    if (color === "orange") return "text-[#ff8a3d]";
+    return "text-white";
+  }
 
-            {/* Content Column */}
-            <div className={`-mt-1.5 flex-1 ${isLast ? '' : 'pb-10'}`}>
-                <div 
-                    className={`flex items-center gap-2 ${hasExpand ? "cursor-pointer group" : ""}`}
-                    onClick={hasExpand ? onToggle : undefined}
-                >
-                    <h4 className={`font-bold text-lg transition-colors duration-300 ${getTextColor()} ${hasExpand ? "group-hover:text-white" : ""}`}>
-                        {title}
-                    </h4>
-                    {hasExpand && (
-                        <span className={`text-slate-500 transition-transform duration-300 ${expanded ? "rotate-90" : ""}`}>
-                            ▶
-                        </span>
-                    )}
-                </div>
-                 {date && (
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    {new Date(date).toLocaleString()}
-                    </p>
-                )}
-                <p className={`text-sm mt-1 ${active ? "text-slate-300" : "text-slate-600"}`}>
-                    {sub}
-                </p>
+  return (
+    <div className="relative flex gap-6 z-10 min-h-[80px]">
+      {/* Status Dot Column */}
+      <div className="flex flex-col items-center">
+        <div className="relative flex items-center justify-center">
+          {/* Pulsing Effect for Current Step */}
+          {isCurrent && active && (
+            <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 ${color === "red" ? "bg-red-500" : (color === "orange" ? "bg-[#ff8a3d]" : "bg-green-500")
+              }`} />
+          )}
 
-                {/* Render Nested Children here so layout stretches and line continues */}
-                {children && <div className="mt-4">{children}</div>}
-            </div>
+          <div
+            className={`w-4 h-4 rounded-full border-2 z-20 flex-shrink-0 transition-all duration-500 ${getColors()}`}
+            onClick={hasExpand ? onToggle : undefined}
+          />
         </div>
-    );
+
+        {/* Connecting Line (Colored Segment) below */}
+        {!isLast && (
+          <div className={`w-[2px] flex-1 -my-1 transition-colors duration-500 ${getLineColor()}`} />
+        )}
+      </div>
+
+      {/* Content Column */}
+      <div className={`-mt-1.5 flex-1 ${isLast ? '' : 'pb-10'}`}>
+        <div
+          className={`flex items-center gap-2 ${hasExpand ? "cursor-pointer group" : ""}`}
+          onClick={hasExpand ? onToggle : undefined}
+        >
+          <h4 className={`font-bold text-lg transition-colors duration-300 ${getTextColor()} ${hasExpand ? "group-hover:text-white" : ""}`}>
+            {title}
+          </h4>
+          {hasExpand && (
+            <span className={`text-slate-500 transition-transform duration-300 ${expanded ? "rotate-90" : ""}`}>
+              ▶
+            </span>
+          )}
+        </div>
+        <TimelineParams date={date} isCompleted={completed} isCurrent={isCurrent} />
+        <p className={`text-sm mt-1 ${active ? "text-slate-300" : "text-slate-600"}`}>
+          {sub}
+        </p>
+
+        {/* Render Nested Children here so layout stretches and line continues */}
+        {children && <div className="mt-4">{children}</div>}
+      </div>
+    </div>
+  );
 };
+
+function NestedTimelineStep({ title, active, completed, isCurrent }) {
+  return (
+    <div className="relative flex gap-4 items-center">
+      <div className="relative flex items-center justify-center">
+        {isCurrent && active && (
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff8a3d] opacity-75 animate-ping"></span>
+        )}
+        <div className={`w-2.5 h-2.5 rounded-full border z-10 ${active ? "bg-[#ff8a3d] border-[#ff8a3d]" : "bg-transparent border-slate-600"
+          }`} />
+      </div>
+
+      <h5 className={`font-semibold text-sm ${active ? "text-white" : "text-slate-500"}`}>
+        {title}
+      </h5>
+    </div>
+  );
+}
+
+function TimelineParams({ date, isCompleted, isCurrent }) {
+    if (!date && !isCompleted && !isCurrent) return null;
+
+    if (date) {
+        return (
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1 font-mono">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                {formatDateTime(date)}
+            </p>
+        );
+    }
+    
+    return null;
+}

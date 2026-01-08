@@ -227,7 +227,9 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import SellerSidebar from "./SellerSidebar";
-import { formatStatus } from "@/lib/utils";
+import { formatStatus, formatDate } from "@/lib/utils";
+
+import SellerOrderDetailsModal from "./SellerOrderDetailsModal";
 
 export default function SenderOrders() {
   const [orders, setOrders] = useState([]);
@@ -235,6 +237,7 @@ export default function SenderOrders() {
 
   const [filterId, setFilterId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   const navigate = useNavigate();
 
@@ -287,7 +290,7 @@ export default function SenderOrders() {
   const renderOrderCard = (order) => (
     <div
       key={order.id}
-     
+      onClick={() => setSelectedOrderId(order.id)}
       className="
         bg-white/5 backdrop-blur-xl border border-white/10
         rounded-3xl p-6 mb-6
@@ -314,7 +317,7 @@ export default function SenderOrders() {
           </p>
 
           <p className="text-xs text-slate-500">
-            Created on {new Date(order.createdAt).toLocaleDateString()}
+            Created on {formatDate(order.createdAt)}
           </p>
         </div>
 
@@ -388,16 +391,16 @@ export default function SenderOrders() {
                 focus:outline-none focus:ring-2 focus:ring-[#ff8a3d]
               "
             >
-              <option value="" className="text-black">All Statuses</option>
-              <option value="PendingAssignment" className="text-black">Pending Assignment</option>
-              <option value="AtOriginWarehouse" className="text-black">At Origin Warehouse</option>
-              <option value="Assigned" className="text-black">Assigned</option>
-              <option value="InTransit" className="text-black">In Transit</option>
-              <option value="OutForDelivery" className="text-black">Out For Delivery</option>
-              <option value="AtDestinationWarehouse" className="text-black">At Destination Warehouse</option>
-              <option value="Delivered" className="text-black">Delivered</option>
-              <option value="DeliveryAttempted" className="text-black">Delivery Attempted</option>
-              <option value="Cancelled" className="text-black">Cancelled</option>
+              <option className="bg-[#0b0f14] text-white" value="">All Statuses</option>
+              <option className="bg-[#0b0f14] text-white" value="PendingAssignment">Pending Assignment</option>
+              <option className="bg-[#0b0f14] text-white" value="AtOriginWarehouse">At Origin Warehouse</option>
+              <option className="bg-[#0b0f14] text-white" value="Assigned">Assigned</option>
+              <option className="bg-[#0b0f14] text-white" value="InTransit">In Transit</option>
+              <option className="bg-[#0b0f14] text-white" value="OutForDelivery">Out For Delivery</option>
+              <option className="bg-[#0b0f14] text-white" value="AtDestinationWarehouse">At Destination Warehouse</option>
+              <option className="bg-[#0b0f14] text-white" value="Delivered">Delivered</option>
+              <option className="bg-[#0b0f14] text-white" value="DeliveryAttempted">Delivery Attempted</option>
+              <option className="bg-[#0b0f14] text-white" value="Cancelled">Cancelled</option>
             </select>
           </div>
         </div>
@@ -419,6 +422,14 @@ export default function SenderOrders() {
           <div>{filteredAndSortedOrders.map(renderOrderCard)}</div>
         )}
       </main>
+
+      {/* ORDER DETAILS MODAL */}
+      {selectedOrderId && (
+        <SellerOrderDetailsModal
+          orderId={selectedOrderId}
+          onClose={() => setSelectedOrderId(null)}
+        />
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import HomePage from "./HomePage";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import CustomerOrders from "./pages/customer/CustomerOrders"; // [NEW]
 import OrderDetails from "./pages/customer/OrderDetails"; // [NEW]
+import ReportIssue from "./pages/customer/ReportIssue"; // [NEW]
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
 import GeofenceDetails from "./pages/customer/GeofenceDetails"; // [NEW]
@@ -68,7 +69,7 @@ function App() {
       <AuthProvider>
         <GeofenceProvider>
           <GlobalGeofenceAlerts />
-          <Toaster />
+          <Toaster position="top-right" />
 
           <Routes>
             {/* ---------------- PUBLIC ROUTES ---------------- */}
@@ -115,6 +116,15 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="customer">
                   <OrderDetails />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/customer/report-issue/:id"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <ReportIssue />
                 </ProtectedRoute>
               }
             />

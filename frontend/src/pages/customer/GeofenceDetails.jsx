@@ -208,11 +208,11 @@ export default function GeofenceDetails() {
                             <h3 className="text-lg font-bold text-white">Geofence Details</h3>
                         </div>
                         <div className="space-y-0">
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Geofence Name</span>
                                 <span className="text-white text-xs">{geofence.name}</span>
                             </div>
-                             <div className="flex justify-between items-center py-2 border-b border-white/5">
+                             <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Radius</span>
                                 <span className="text-white text-xs">{geofence.radiusMeters} m</span>
                             </div>
@@ -226,21 +226,21 @@ export default function GeofenceDetails() {
                         </div>
                         
                         <div className="space-y-0">
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Order ID</span>
                                 <span className="text-white text-xs">#{geofence.orderId}</span>
                             </div>
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Type</span>
                                 <span className="text-white text-xs capitalize">{order?.deliveryType || "Normal"}</span>
                             </div>
-                            <div className="flex justify-between items-center py-2 border-b border-white/5">
+                            <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Status</span>
                                 <span className="bg-blue-500/20 text-blue-300 text-[10px] px-2 py-1 rounded font-bold">
                                     {order?.status ? formatStatus(order.status) : "Loading..."}
                                 </span>
                             </div>
-                             <div className="flex justify-between items-center py-2 border-b border-white/5">
+                             <div className="flex justify-between items-center py-2">
                                 <span className="text-gray-400 text-sm">Parcel</span>
                                 <span className="text-white text-xs">{order?.parcelSize || "-"}</span>
                             </div>
@@ -255,7 +255,7 @@ export default function GeofenceDetails() {
 
                          {driverProfile ? (
                             <div className="space-y-0">
-                                <div className="flex items-center gap-3 py-3 border-b border-white/5">
+                                <div className="flex items-center gap-3 py-3">
                                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-300">
                                          <User className="w-4 h-4" />
                                      </div>
@@ -263,11 +263,11 @@ export default function GeofenceDetails() {
                                          <p className="text-white font-bold text-sm">
                                              {driverProfile.userFName} {driverProfile.userLName}
                                          </p>
-                                         <p className="text-gray-500 text-[10px]">Verified Driver</p>
+                                         {/* <p className="text-gray-500 text-[10px]">Verified Driver</p> */}
                                      </div>
                                 </div>
 
-                                <div className="flex justify-between items-center py-2 border-b border-white/5">
+                                <div className="flex justify-between items-center py-2">
                                     <span className="text-gray-400 text-sm">Distance</span>
                                     <span className="text-white text-xs">
                                         {distance ? `${(distance/1000).toFixed(2)} km` : 'Calculating...'}

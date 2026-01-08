@@ -13,7 +13,6 @@ import {
   Tooltip,
   Legend
 } from "chart.js";
-import { Bar } from "react-chartjs-2";
 import DriverChart from "../../components/charts/Driver/DriverChart"; // Pie Chart
 import DriverBarChart from "../../components/charts/Driver/DriverBarChart"; // Bar Chart
 import { BsCheckCircleFill, BsExclamationTriangleFill } from "react-icons/bs";
@@ -31,71 +30,42 @@ ChartJS.register(
 export default function DriverDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  
+  // Dashboard State
+  const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState("1W");
+  
+  // Data State (Directly populated from Backend)
   const [stats, setStats] = useState({
     total: 0,
     delivered: 0,
-    pending: 0,
+    active: 0,
     exceptions: 0,
-    highPriority: 0,
-    normalPriority: 0,
+    completionRate: 0 
   });
-  const [weeklyStats, setWeeklyStats] = useState({
-    delivered: 0,
-    pending: 0,
-    exceptions: 0
-  });
-  const [orders, setOrders] = useState([]); // Store full orders for Bar Chart
-  const [loading, setLoading] = useState(true);
-  const [warehouse, setWarehouse] = useState(null);
+  const [chartData, setChartData] = useState([]);
+  const [pieData, setPieData] = useState([]);
+  const [warehouse, setWarehouse] = useState(null); // Assuming warehouse fetched separately or part of user context in future
+                                                    // For now, removing warehouse display or fetching if critical
   const [isScrolled, setIsScrolled] = useState(false);
-  const [dateFilter, setDateFilter] = useState("1W");
 
   useEffect(() => {
     const fetchAnalytics = async () => {
+      setLoading(true);
       try {
-        const response = await api.get("/driver/orders/today/analytics");
-        const fetchedOrders = response.data || [];
-        setOrders(fetchedOrders);
+        // New Endpoint with timeRange param AND timezone offset
+        const offset = new Date().getTimezoneOffset(); // Returns minutes like -330 for +05:30
+        const response = await api.get(`/driver/analytics?timeRange=${dateFilter}&timeZoneOffset=${offset}`);
+        const data = response.data;
+        console.log("Analytics Data DEBUG:", data);
 
-        if (fetchedOrders.length > 0) {
-          setWarehouse(fetchedOrders[0].currentWarehouse);
-        }
+        setStats(data.stats);
+        setChartData(data.chartData);
+        setPieData(data.pieData);
 
-        // Calculate Overall Stats
-        const delivered = fetchedOrders.filter((o) => o.status === "Delivered").length;
-        const pending = fetchedOrders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
-        const exceptions = fetchedOrders.filter((o) => o.status === "DeliveryAttempted" || o.status === "Cancelled").length;
-
-        const highPriority = fetchedOrders.filter((o) => o.priority === 1 && o.status === "Delivered").length;
-        const normalPriority = fetchedOrders.filter((o) => o.priority === 2 && o.status === "Delivered").length;
-
-        setStats({
-          total: fetchedOrders.length,
-          delivered,
-          pending,
-          exceptions,
-          highPriority,
-          normalPriority,
-        });
-
-        // Calculate Weekly Stats (Last 7 Days)
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-        const weeklyOrders = fetchedOrders.filter(o => {
-          const orderDate = new Date(o.scheduledDate);
-          return orderDate >= oneWeekAgo;
-        });
-
-        const weeklyDelivered = weeklyOrders.filter((o) => o.status === "Delivered").length;
-        const weeklyPending = weeklyOrders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
-        const weeklyExceptions = weeklyOrders.filter((o) => o.status === "DeliveryAttempted" || o.status === "Cancelled").length;
-
-        setWeeklyStats({
-          delivered: weeklyDelivered,
-          pending: weeklyPending,
-          exceptions: weeklyExceptions
-        });
+        // Warehouse info isn't in new analytics payload to keep it lean. 
+        // If needed, can fetch from user profile or separate endpoint.
+        // setWarehouse(...) 
 
       } catch (err) {
         console.error("Failed to load analytics", err);
@@ -105,38 +75,7 @@ export default function DriverDashboard() {
     };
 
     fetchAnalytics();
-  }, []);
-
-  const [filteredOrders, setFilteredOrders] = useState([]);
-
-  useEffect(() => {
-    const now = new Date();
-    const past = new Date();
-
-    if (dateFilter === "1Y") past.setDate(past.getDate() - 365);
-    else if (dateFilter === "3M") past.setDate(past.getDate() - 90);
-    else if (dateFilter === "1M") past.setDate(past.getDate() - 30);
-    else past.setDate(past.getDate() - 7);
-
-    const filtered = orders.filter(o => {
-      if (!o.scheduledDate) return false;
-      const d = new Date(o.scheduledDate);
-      return d >= past && d <= now;
-    });
-    setFilteredOrders(filtered);
-
-  }, [orders, dateFilter]);
-
-  // USING FILTERED ORDERS FOR CHARTS
-  const chartDelivered = filteredOrders.filter((o) => o.status === "Delivered").length;
-  const chartPending = filteredOrders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled").length;
-  const chartExceptions = filteredOrders.filter((o) => o.status === "DeliveryAttempted" || o.status === "Cancelled").length;
-
-  const pieData = [
-    { status: "Delivered", count: chartDelivered },
-    { status: "Pending", count: chartPending },
-    { status: "Exceptions", count: chartExceptions }
-  ];
+  }, [dateFilter]);
 
   return (
     <div className="min-h-screen flex bg-[#0b0f14]" style={{ backgroundImage: 'none', backgroundColor: '#0b0f14' }}>
@@ -162,13 +101,7 @@ export default function DriverDashboard() {
                   Performance Dashboard
                 </h1>
               </div>
-              {warehouse && (
-                <div className="text-right hidden md:block">
-                  <p className="text-xs text-gray-500 font-bold">Base Location</p>
-                  <p className="text-white font-bold">{warehouse.name}</p>
-                  <p className="text-xs text-orange-500 font-bold">{warehouse.city}</p>
-                </div>
-              )}
+              {/* Warehouse info removed temporarily as it requires separate fetch in new architecture */}
             </div>
           </div>
         </header>
@@ -204,12 +137,12 @@ export default function DriverDashboard() {
                 </div>
               </div>
 
-              {/* Pending */}
+              {/* Active (Pending) */}
               <div className="bg-[#1a1f29] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center">
                 <div>
-                  <p className="text-gray-400 text-sm font-medium">Pending</p>
+                  <p className="text-gray-400 text-sm font-medium">Active (Pending)</p>
                   <p className="text-3xl font-bold text-white mt-2">
-                    {stats.pending}
+                    {stats.active}
                   </p>
                 </div>
                 <div className="p-3 bg-amber-500/10 rounded-full">
@@ -259,18 +192,16 @@ export default function DriverDashboard() {
 
             {/* CHARTS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-
               {/* STATUS CHART - PIE */}
-              <div className="bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937]">
+              <div className="bg-[#0b0f14] rounded-xl shadow-sm">
                 <DriverChart data={pieData} />
               </div>
 
-              {/* STATUS HISTORY CHART - BAR */}
+              {/* HISTORY CHART - BAR */}
               <div className="bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937]">
-                {/* Pass filtered orders to bar chart */}
-                <DriverBarChart data={filteredOrders} />
+                {/* Simplified Bar Chart just needs to accept 'data' and render */}
+                <DriverBarChart data={chartData} filterType={dateFilter} />
               </div>
-
             </div>
           </div>
         </div>

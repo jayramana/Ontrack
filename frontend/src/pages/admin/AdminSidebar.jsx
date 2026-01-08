@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Truck, LayoutDashboard, Warehouse, Map, Menu, X, ShieldCheck, ClipboardList } from "lucide-react";
-import NotificationBell from "../../components/NotificationBell";
+
 
 export default function AdminSidebar({ active }) {
   const navigate = useNavigate();
@@ -87,9 +87,7 @@ export default function AdminSidebar({ active }) {
             );
           })}
 
-          <div className="pt-2 mt-2">
-            <NotificationBell showLabel={isOpen} active={active === "notifications"} navigationPath="/admin/notifications" />
-          </div>
+
         </nav>
       </div>
     </>

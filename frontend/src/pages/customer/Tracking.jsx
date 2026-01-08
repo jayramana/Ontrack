@@ -11,6 +11,8 @@ import {
   Clock,
   User,
   Box,
+  CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { formatStatus } from "@/lib/utils";
 
@@ -199,6 +201,12 @@ function Tracking() {
             <h1 className="text-3xl font-black text-white mb-1">
               {order?.status === "Delivered"
                 ? "Package Delivered"
+                : order?.status === "Cancelled"
+                ? "Order Cancelled"
+                : order?.status === "OutForDelivery"
+                ? "Out for Delivery"
+                : ["DeliveryAttempted", "ReturnedToWarehouse"].includes(order?.status)
+                ? "Delivery Unsuccessful"
                 : "In Transit"}
             </h1>
             <p className="text-slate-400 flex items-center gap-2">
@@ -207,108 +215,60 @@ function Tracking() {
             </p>
           </div>
 
-          <div className="bg-white/5 p-5 rounded-2xl border border-white/10 flex items-center gap-4 min-w-[200px]">
-            <div className="bg-[#ff8a3d]/20 p-3 rounded-full">
-              {order?.status === "Delivered" ? (
-                <Box className="h-6 w-6 text-[#ff8a3d]" />
-              ) : (
+          {!["Delivered", "DeliveryAttempted", "ReturnedToWarehouse", "Cancelled"].includes(order?.status) && (
+            <div className="bg-white/5 p-5 rounded-2xl border border-white/10 flex items-center gap-4 min-w-[200px]">
+              <div className="bg-[#ff8a3d]/20 p-3 rounded-full">
                 <Truck className="h-6 w-6 text-[#ff8a3d]" />
-              )}
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold">
+                  Estimated Arrival
+                </p>
+                <p className="text-xl font-bold text-white">
+                  {eta || "Measuring..."}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-400 font-bold">
-                Estimated Arrival
-              </p>
-              <p className="text-xl font-bold text-white">
-                {order?.status === "Delivered"
-                  ? "Delivered"
-                  : eta || "Measuring..."}
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Details */}
         <div className="space-y-6">
-          {/* Route Info */}
+          {/* Route Info - TIMELINE STYLE */}
           <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
             <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-2">
               <MapPin className="h-5 w-5 text-[#ff8a3d]" /> Shipment Route
             </h3>
 
-            <div className="relative pl-8 space-y-10 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-white/10">
+            <div className="space-y-8">
               {/* Origin */}
-              <div className="relative">
-                <span className="absolute -left-[41px] bg-[#0b0f14] border-2 border-[#ff8a3d] w-6 h-6 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-[#ff8a3d] rounded-full"></div>
-                </span>
-                <div>
-                  <p className="text-xs text-slate-500 font-bold mb-1">
-                    Origin
-                  </p>
-                  <h4 className="text-lg font-bold text-white">
-                    {order?.originCity ||
-                      order?.currentWarehouse?.city ||
-                      order?.pickupAddress?.split(",")[0] ||
-                      order?.senderName ||
-                      "Processing Center"}
-                  </h4>
-                  {localStorage.getItem("token") && order?.pickupAddress ? (
-                    <p className="text-slate-400 text-sm mt-1">
-                      {order.pickupAddress}
-                    </p>
-                  ) : (
-                    <p className="text-slate-600 text-xs italic mt-1">
-                      Full address protected
-                    </p>
-                  )}
-                </div>
+              <div>
+                <h2 className="text-slate-500 font-bold mb-1  tracking-wider">Origin</h2>
+                <h4 className="text-md font-bold text-white leading-tight">
+                    {order?.originCity || order?.currentWarehouse?.city || order?.pickupAddress?.split(",")[0] || order?.senderName || "Processing Center"}
+                </h4>
+                {localStorage.getItem("token") && order?.pickupAddress ? (
+                  <p className="text-slate-400 text-sm mt-1">{order.pickupAddress}</p>
+                ) : (
+                    <p className="text-slate-600 text-xs italic mt-1">Full address protected</p>
+                )}
               </div>
 
               {/* Destination */}
-              <div className="relative">
-                <span
-                  className={`absolute -left-[41px] ${
-                    order?.status === "Delivered"
-                      ? "bg-[#ff8a3d]"
-                      : "bg-[#0b0f14]"
-                  } border-2 border-[#ff8a3d] w-6 h-6 rounded-full flex items-center justify-center`}
-                >
-                  <div
-                    className={`w-2 h-2 ${
-                      order?.status === "Delivered" ? "bg-black" : "bg-white"
-                    } rounded-full`}
-                  ></div>
-                </span>
-                <div>
-                  <p className="text-xs text-slate-500 font-bold mb-1">
-                    Destination
-                  </p>
-                  <h4 className="text-lg font-bold text-white">
-                    {order?.destinationCity ||
-                      order?.receiverAddress?.split(",")[0] ||
-                      order?.receiverName ||
-                      "Destination"}
-                  </h4>
-                  {localStorage.getItem("token") && order?.receiverAddress ? (
-                    <>
-                      <p className="text-slate-400 text-sm mt-1">
-                        {order.receiverAddress}
-                      </p>
-                      {order?.price && (
-                        <div className="mt-3 inline-block bg-[#064e3b] text-[#34d399] px-2 py-1 rounded text-xs font-bold border border-[#065f46]">
-                          COD: ₹{order.price}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-slate-600 text-xs italic mt-1">
-                      Full address protected
-                    </p>
-                  )}
-                </div>
+              <div>
+                <h2 className=" text-slate-500 font-bold mb-1 tracking-wider">Destination</h2>
+                <h4 className="text-md font-bold text-white leading-tight">
+                  {order?.destinationCity || order?.receiverAddress?.split(",")[0] || order?.receiverName || "Destination"}
+                </h4>
+                {localStorage.getItem("token") && order?.receiverAddress ? (
+                  <>
+                    <p className="text-slate-400 text-sm mt-1">{order.receiverAddress}</p>
+                  </>
+                ) : (
+                  <p className="text-slate-600 text-xs italic mt-1">Full address protected</p>
+                )}
               </div>
             </div>
           </div>
@@ -365,9 +325,42 @@ function Tracking() {
           </div>
         </div>
 
-        {/* Right Column: Map */}
+        {/* Right Column: Map or Status Message */}
         <div className="lg:col-span-2 h-[600px] bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden relative">
-          {driverLocation ? (
+          {order?.status === "Delivered" ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0f14] text-center p-8">
+              <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.2)]">
+                <CheckCircle className="w-12 h-12 text-green-500" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-2">Order Delivered!</h2>
+              <p className="text-slate-400 max-w-md">
+                This package has been successfully delivered to the recipient.
+                Thank you for choosing Ontrack.
+              </p>
+              {order.deliveredAt && (
+                <p className="mt-8 text-sm font-bold text-green-400 bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20">
+                  Delivered on {new Date(order.deliveredAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+          ) : ["DeliveryAttempted", "ReturnedToWarehouse", "Cancelled"].includes(order?.status) ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0f14] text-center p-8">
+              <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.2)]">
+                <AlertTriangle className="w-12 h-12 text-red-500" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-2">
+                {order?.status === "Cancelled" ? "Order Cancelled" : "Delivery Attempted"}
+              </h2>
+              <p className="text-slate-400 max-w-md">
+                {order?.status === "Cancelled"
+                  ? "This order has been cancelled."
+                  : "We attempted to deliver your package but were unsuccessful. The detailed status has been updated."}
+              </p>
+              <p className="mt-8 text-sm font-bold text-orange-400 bg-orange-500/10 px-4 py-2 rounded-full border border-orange-500/20">
+                Returning to nearest warehouse
+              </p>
+            </div>
+          ) : driverLocation ? (
             <MapComponent
               center={[driverLocation.latitude, driverLocation.longitude]}
               zoom={13}

@@ -1,10 +1,21 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useParams, useNavigate } from "react-router-dom";
 import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
-import { Copy, Check, ShieldCheck } from "lucide-react";
-import { formatStatus } from "@/lib/utils";
+import { Copy, Check, ShieldCheck, Zap, Clock, Hourglass, CheckCircle } from "lucide-react";
+import { formatStatus, formatDate, formatDateTime } from "@/lib/utils";
 import CustomerASRUpload from "./CustomerASRUpload";
 
 const OrderDetails = () => {
@@ -35,6 +46,15 @@ const OrderDetails = () => {
   const [showASRModal, setShowASRModal] = useState(false);
 
   const [eta, setEta] = useState(null);
+
+  const [confirmData, setConfirmData] = useState({
+    open: false,
+    title: "",
+    desc: "",
+    action: null
+  });
+
+  const [requestingReverify, setRequestingReverify] = useState(null);
 
   /* ---------------- TIMELINE ---------------- */
   const statusRank = {
@@ -267,30 +287,52 @@ const OrderDetails = () => {
                 </p>
               </div>
 
-              {order.status === "Delivered" && order.deliveredAt && (
-                <div>
-                  <h4 className="font-bold text-slate-400 text-lg">Delivered On</h4>
-                  <p className="text-white font-medium text-base">
-                    {new Date(order.deliveredAt).toLocaleString()}
-                  </p>
+              {order.deliveredAt && (
+                <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <div>
+                    <h4 className="font-semibold text-green-400">Delivered Successfully</h4>
+                    <p className="text-sm text-green-300/80">
+                      Package was delivered on {formatDateTime(order.deliveredAt)}
+                    </p>
+                  </div>
                 </div>
               )}
-
               {eta && !["Delivered", "DeliveryAttempted"].includes(order.status) && (
-                <div className="col-span-2 mt-2">
-                  <h4 className="font-bold text-slate-400 text-lg mb-2">Estimated Arrival</h4>
-                  <div className="bg-white/5 rounded-xl border border-white/10 p-4 grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-500">Fastest</p>
-                      <p className="text-green-400 font-bold text-lg">{eta?.earliest || (typeof eta === 'string' ? eta : '--')}</p>
+                <div className="col-span-2 mt-4">
+                  <h4 className="font-bold text-slate-400 text-lg mb-3">Estimated Arrival</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Earliest */}
+                    <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="p-2 bg-green-500/20 rounded-full text-green-500">
+                        <Zap size={20} fill="currentColor" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-green-400/80  tracking-wider">Earliest</p>
+                        <p className="text-white font-bold text-lg">{eta?.earliest || (typeof eta === 'string' ? eta : '--')}</p>
+                      </div>
                     </div>
-                    <div className="border-x border-white/10">
-                      <p className="text-[10px] font-bold text-slate-500">Expected</p>
-                      <p className="text-[#ff8a3d] font-bold text-lg">{eta?.average || (typeof eta === 'string' ? eta : '--')}</p>
+
+                    {/* Likely */}
+                    <div className="bg-[#ff8a3d]/10 border border-[#ff8a3d]/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="p-2 bg-[#ff8a3d]/20 rounded-full text-[#ff8a3d]">
+                        <Clock size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-orange-400/80  tracking-wider">Likely</p>
+                        <p className="text-white font-bold text-lg">{eta?.average || (typeof eta === 'string' ? eta : '--')}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-500">Latest</p>
-                      <p className="text-red-400 font-bold text-lg">{eta?.latest || (typeof eta === 'string' ? eta : '--')}</p>
+
+                    {/* Latest */}
+                    <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="p-2 bg-red-500/20 rounded-full text-red-500">
+                        <Hourglass size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-red-400/80  tracking-wider">Latest</p>
+                        <p className="text-white font-bold text-lg">{eta?.latest || (typeof eta === 'string' ? eta : '--')}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -360,8 +402,50 @@ const OrderDetails = () => {
                   </div>
                 )}
                 {order.asrStatus === 'Failed' && (
-                  <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm font-bold">
-                    <span className="text-lg">!</span> Verification Failed. Please try uploading clearer documents.
+                  <div className="flex flex-col gap-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 font-bold">
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-lg">!</span> Verification Failed. Please try uploading clearer documents.
+                    </div>
+
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (order.customerReverifyRequested) return;
+                        
+                        setConfirmData({
+                          open: true,
+                          title: "Request Re-verification?",
+                          desc: "This will notify the admin to manually review your failed verification. Continue?",
+                          action: async () => {
+                            try {
+                              if (!order.asrVerificationId) {
+                                toast.error("Verification ID missing. Cannot request.");
+                                return;
+                              }
+                              setRequestingReverify(order.id); // Optimistic UI
+                              await api.post(`/asr/customer/request-reverify/${order.asrVerificationId}`);
+                              toast.success("Request sent! Admin will review.");
+                              
+                              // safe reload to sync
+                              window.location.reload(); 
+                            } catch (err) { 
+                                console.error(err);
+                                toast.error(err.response?.data?.message || err.message); 
+                                setRequestingReverify(null); // Reset on error
+                            }
+                          }
+                        });
+                      }}
+                      disabled={order.customerReverifyRequested || (requestingReverify === order.id)}
+                      className={`
+                        px-6 py-2 rounded-xl border font-bold text-sm w-full lg:w-auto transition self-start
+                        ${order.customerReverifyRequested
+                          ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500 cursor-not-allowed"
+                          : "bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500/20"}
+                      `}
+                    >
+                      {order.customerReverifyRequested ? "Re-verification Requested" : (requestingReverify === order.id ? "Requesting..." : "Request Re-verification")}
+                    </button>
                   </div>
                 )}
               </div>
@@ -484,9 +568,14 @@ const OrderDetails = () => {
               Reschedule Delivery
             </button>
           )}
-          <button className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300">
-            Report Issue
-          </button>
+          {["Delivered", "DeliveryAttempted", "AtDestinationWarehouse"].includes(order.status) && (
+            <button
+              onClick={() => navigate(`/customer/report-issue/${id}`)}
+              className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300"
+            >
+              Report Issue
+            </button>
+          )}
         </div>
       </div>
 
@@ -545,6 +634,25 @@ const OrderDetails = () => {
           }}
         />
       )}
+      <AlertDialog open={confirmData.open} onOpenChange={(open) => setConfirmData(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-[#1a1f29] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">{confirmData.title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {confirmData.desc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#ff8a3d] text-black hover:bg-[#ff8a3d]/90 font-bold border-none"
+              onClick={confirmData.action}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -615,11 +723,7 @@ function TimelineStep({ title, sub, active, completed, isFirst, isLast, color = 
             </span>
           )}
         </div>
-        {date && (
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            {new Date(date).toLocaleString()}
-          </p>
-        )}
+        <TimelineParams date={date} isCompleted={completed} isCurrent={isCurrent} />
         <p className={`text-sm mt-1 ${active ? "text-slate-300" : "text-slate-600"}`}>
           {sub}
         </p>
@@ -647,4 +751,19 @@ function NestedTimelineStep({ title, active, completed, isCurrent }) {
       </h5>
     </div>
   );
+}
+
+function TimelineParams({ date, isCompleted, isCurrent }) {
+    if (!date && !isCompleted && !isCurrent) return null;
+
+    if (date) {
+        return (
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1 font-mono">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                {formatDateTime(date)}
+            </p>
+        );
+    }
+    
+    return null;
 }

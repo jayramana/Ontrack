@@ -279,9 +279,10 @@ export default function LiveMap() {
   =========================== */
   const markers = drivers
     .filter(d => d.currentLatitude && d.currentLongitude)
-    .map(d => ({
+    .map((d, idx) => ({
       position: [d.currentLatitude, d.currentLongitude],
       color: d.color,
+      label: idx + 1,
       popup: `${d.userFName} ${d.userLName}`
     }));
 

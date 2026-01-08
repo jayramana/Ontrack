@@ -38,7 +38,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     return (
       <div className="bg-[#0b0f14] border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-2 min-w-[150px]">
         <div className="text-slate-300 font-medium text-sm border-b border-white/10 pb-2 mb-1">
-          {label}
+          {payload[0].payload.tooltipLabel || label}
         </div>
         {payload.map((entry, index) => (
           <div key={index} className="flex items-center gap-3">
@@ -92,22 +92,33 @@ export function OrdersBarChart({ data: orders = [], filterType = "1W" }) {
         });
     } else {
          // Generate last N days
+         let lastMonth = -1;
          bucketData = Array.from({ length: days }, (_, i) => {
             const d = new Date();
             d.setDate(d.getDate() - (days - 1 - i));
+            
+            let label = "";
+            let tooltipLabel = "";
+            const currentMonth = d.getMonth();
 
             // LABEL LOGIC:
             // 1W -> Show Day Name (Mon, Tue)
-            // 1M/3M -> Show Date (1, 2, 29)
-            let label = "";
+            // 1M/3M -> Show Month Name (Jan) only when it changes
             if (filterType === "1W") {
                  label = d.toLocaleDateString("en-US", { weekday: "short" }); // "Mon"
+                 tooltipLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
             } else {
-                 label = d.getDate().toString(); // "29"
+                 if (i === 0 || currentMonth !== lastMonth) {
+                     label = d.toLocaleDateString("en-US", { month: "short" }); // "Jan"
+                 }
+                 tooltipLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
             }
+            
+            lastMonth = currentMonth;
 
             return {
                 label: label,
+                tooltipLabel: tooltipLabel,
                 key: d.toISOString().split("T")[0],
                 normal: 0,
                 asr: 0
@@ -154,25 +165,12 @@ export function OrdersBarChart({ data: orders = [], filterType = "1W" }) {
           <BarChart accessibilityLayer data={chartData}>
             <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.1)" />
             <XAxis
-              dataKey="date"
+              dataKey="label"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value, index) => {
-                  // If viewing Yearly, value is "Jan", "Feb" -> Correct.
-                  // If viewing Daily (1W, 1M), value is "Mon 1". User wants "Month".
-                  // Showing "Jan" for 7 consecutive days is redundant.
-                  // Maybe they specifically meant the 1Y chart? 
-                  // I'll stick to 'value' (which comes from 'label') but for 1Y it IS just month.
-                  // If they want "only month" on daily chart, I'll return the month of that date?
-                  // Let's assume they are looking at specific views.
-                  // I will stick to returning 'value' (label) which is "Jan" for 1Y.
-                  // For daily, I will format it to simple Day number to avoid "Date + Month" clutter if that's the issue?
-                  // Re-reading: "not date + month". "Mon 1" is Day + Date. Maybe they mean "Jan 12"?
-                  // I'll leave the tickFormatter as passing value, because my logic above sets label to "Jan" (Month) for Yearly.
-                  return chartData[index]?.label || value;
-              }}
-              tick={{ fill: 'white' }}
+              interval={0}
+              tick={{ fill: 'white', fontSize: 12 }}
             />
             <ChartTooltip
               cursor={{ fill: 'rgba(255,255,255,0.1)' }}

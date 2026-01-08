@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
 import { X, MapPin, Package, CheckCircle, Clock } from "lucide-react";
-import { formatStatus } from "@/lib/utils";
+import { formatStatus, formatDate } from "@/lib/utils";
 
 const DriverDetailsModal = ({ driverId, onClose }) => {
   const [driverInfo, setDriverInfo] = useState(null);
@@ -199,7 +199,7 @@ const DriverDetailsModal = ({ driverId, onClose }) => {
                                         </td>
                                         <td className="px-5 py-3 text-slate-300 truncate max-w-[150px]">{order.pickupAddress}</td>
                                         <td className="px-5 py-3 text-slate-300 truncate max-w-[150px]">{order.receiverAddress}</td>
-                                        <td className="px-5 py-3 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-5 py-3 text-slate-500">{formatDate(order.createdAt)}</td>
                                     </tr>
                                 ))}
                              </tbody>

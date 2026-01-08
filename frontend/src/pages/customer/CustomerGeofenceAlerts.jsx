@@ -80,15 +80,9 @@ export default function CustomerGeofenceAlerts() {
     return () => clearInterval(interval);
   }, [user]);
 
-  const activeGeofences = geofences.filter((g) => {
-    const o = ordersMap[g.orderId];
-    return o && o.status !== "Delivered";
-  });
+  const activeGeofences = geofences.filter((g) => g.isActive);
 
-  const expiredGeofences = geofences.filter((g) => {
-    const o = ordersMap[g.orderId];
-    return o && o.status === "Delivered";
-  });
+  const expiredGeofences = geofences.filter((g) => !g.isActive);
 
   const renderGeofenceRow = (gf) => {
     const status = driverStatuses[gf.geofenceId];

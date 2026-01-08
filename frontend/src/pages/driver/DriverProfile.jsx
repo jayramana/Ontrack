@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import DriverSidebar from "./DriverSidebar";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
@@ -8,10 +9,11 @@ export default function DriverProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ================= TRACKING STATE ================= */
+  /* ================= TRACKING & AVAILABILITY STATE ================= */
   const [isTracking, setIsTracking] = useState(
     () => localStorage.getItem("driver_tracking_enabled") === "true"
   );
+  const [isAvailable, setIsAvailable] = useState(true);
 
   /* ================= FETCH PROFILE ================= */
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function DriverProfile() {
     if (profile) {
       // If backend says sharing=true, we are tracking.
       setIsTracking(profile.isSharingLocation);
+      setIsAvailable(profile.isAvailable);
     }
   }, [profile]);
 
@@ -65,7 +68,7 @@ export default function DriverProfile() {
           navigator.geolocation.getCurrentPosition(sendLocationUpdate, handleError);
         }, 30000);
       } else {
-        alert("Geolocation not supported");
+        toast.error("Geolocation not supported");
         setIsTracking(false);
       }
     }
@@ -86,7 +89,21 @@ export default function DriverProfile() {
       console.error("Failed to update tracking status:", error);
       // Revert on failure
       setIsTracking(!newState);
-      alert("Failed to update tracking status. Please try again.");
+      toast.error("Failed to update tracking status. Please try again.");
+    }
+  };
+
+  const toggleAvailability = async () => {
+    const newState = !isAvailable;
+    setIsAvailable(newState); // Optimistic
+
+    try {
+        await api.post("/driver/availability", { isAvailable: newState });
+        toast.success(newState ? "You are now Available" : "You are now Unavailable");
+    } catch (err) {
+        console.error("Failed to update availability", err);
+        setIsAvailable(!newState); // Revert
+        toast.error("Failed to update status");
     }
   };
 
@@ -202,6 +219,29 @@ export default function DriverProfile() {
                     />
                   </button>
                 </div>
+
+                {/* AVAILABILITY STATUS (NEW) */}
+                <div className="mt-4 flex items-center gap-4">
+                  <div
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold
+                      ${isAvailable
+                        ? "bg-blue-500/10 text-blue-400"
+                        : "bg-slate-500/10 text-slate-400"}`}
+                  >
+                    ● {isAvailable ? "Status: Available" : "Status: Unavailable"}
+                  </div>
+
+                  <button
+                    onClick={toggleAvailability}
+                    className={`relative w-14 h-8 rounded-full transition
+                      ${isAvailable ? "bg-blue-500" : "bg-white/20"}`}
+                  >
+                    <span
+                      className={`absolute top-1 h-6 w-6 rounded-full bg-black transition
+                        ${isAvailable ? "left-7" : "left-1"}`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -228,25 +268,7 @@ export default function DriverProfile() {
           </div>
 
           {/* ================= ADDRESS ================= */}
-          <InfoCard
-            title="Home Address"
-            description="Registered residence"
-          >
-            <Field
-              label="Street Address"
-              value={`${profile.addressLine1 || ""}${
-                profile.addressLine2 ? "\n" + profile.addressLine2 : ""
-              }`}
-              isAddress
-            />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-4">
-              <Field label="City" value={profile.city} />
-              <Field label="Postal Code" value={profile.postalCode} />
-              <Field label="State" value={profile.state} />
-              <Field label="Country" value={profile.country} />
-            </div>
-          </InfoCard>
 
           {/* ================= DANGER ZONE ================= */}
           <div className="pt-6 border-t border-white/10">

@@ -68,7 +68,7 @@ const SenderRevenueChart = ({ data = [] }) => {
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent hideLabel className="bg-[#1f2937] border-[#374151] text-white" />}
+              content={<ChartTooltipContent hideLabel className="bg-[#1a1f29] border-white/10 text-white shadow-xl" />}
             />
             <Line
               dataKey="amount"
@@ -91,9 +91,9 @@ const SenderRevenueChart = ({ data = [] }) => {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm mt-auto">
         <div className="flex text-white  gap-2 leading-none font-medium">
-          Daily revenue trends <TrendingUp className="h-4 w-4" />
+          Daily revenue trends <TrendingUp className="h-4 w-4 text-[#ffb500]" />
         </div>
-        <div className="text-white text-muted-foreground leading-none">
+        <div className="text-slate-400 leading-none">
           Showing total revenue for the last 7 days
         </div>
       </CardFooter>

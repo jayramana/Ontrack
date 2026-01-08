@@ -6,6 +6,7 @@ import DriverSidebar from "./driver/DriverSidebar";
 import CustomerSidebar from "./customer/CustomerSidebar";
 import SellerSidebar from "./seller/SellerSidebar";
 import AdminSidebar from "./admin/AdminSidebar";
+import { formatDate, formatDateTime } from "@/lib/utils"; // Added this line
 
 export default function NotificationsPage() {
     const { user } = useAuth();
@@ -170,7 +171,7 @@ export default function NotificationsPage() {
                                                     {notif.heading || "Notification"}
                                                 </h4>
                                                 <span className="text-xs text-gray-500 font-mono whitespace-nowrap ml-4">
-                                                    {new Date(notif.createdAt).toLocaleDateString()} • {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {formatDateTime(notif.createdAt)}
                                                 </span>
                                             </div>
                                             <p className={`text-base leading-relaxed ${notif.isRead ? "text-gray-500" : "text-gray-300"}`}>

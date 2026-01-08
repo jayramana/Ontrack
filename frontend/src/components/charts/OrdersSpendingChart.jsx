@@ -22,15 +22,41 @@ import {
 const chartConfig = {
   amount: {
     label: "Spending",
-    color: "#10b981", // Emerald 500
+    color: "#ff8a3d", // Orange
   },
 }
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#0b0f14] border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-2 min-w-[150px]">
+        <div className="text-slate-300 font-medium text-sm border-b border-white/10 pb-2 mb-1">
+          {payload[0].payload.tooltipLabel || label}
+        </div>
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-3 h-3 rounded-sm bg-[#ff8a3d]"
+          />
+          <span className="text-gray-400 font-medium text-xs">
+            Spending
+          </span>
+          <span className="text-white font-black ml-auto text-sm">
+            ₹{payload[0].value.toLocaleString()}
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
   const [chartData, setChartData] = useState([])
 
   useEffect(() => {
     if (!orders) return;
+    
+    // ... (rest of logic unchanged)
     
     const getDays = () => {
       if (filterType === "1Y") return 365;
@@ -57,11 +83,31 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
         });
     } else {
         // Last N Days
+        let lastMonth = -1;
         bucketData = Array.from({ length: days }, (_, i) => {
             const d = new Date();
             d.setDate(d.getDate() - (days - 1 - i));
+            
+            let label = "";
+            let tooltipLabel = "";
+            const currentMonth = d.getMonth();
+
+            if (filterType === "1W") {
+                 label = d.toLocaleDateString("en-US", { weekday: "short" }); // "Mon"
+                 tooltipLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            } else {
+                 // For 1M/3M: Show month only at start or when month changes
+                 if (i === 0 || currentMonth !== lastMonth) {
+                     label = d.toLocaleDateString("en-US", { month: "short" }); // "Jan"
+                 }
+                 tooltipLabel = d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); // "Jan 29"
+            }
+            
+            lastMonth = currentMonth;
+
             return {
-                label: d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" }),
+                label: label,         // Show on X-Axis
+                tooltipLabel: tooltipLabel, // Show in Tooltip
                 key: d.toISOString().split("T")[0],
                 amount: 0
             };
@@ -93,7 +139,7 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
     <Card className="flex flex-col border-0 bg-linear-to-br from-[#1a1f29] to-[#0f141c]">
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
-           <IndianRupee className="w-5 h-5 text-emerald-400" /> Spending History
+           <IndianRupee className="w-5 h-5 text-[#ff8a3d]" /> Spending History
         </CardTitle>
         <CardDescription className="text-gray-400">
             {filterType === "1Y" ? "Last 12 Months" : 
@@ -117,22 +163,16 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value}
-              tick={{ fill: 'white' }}
+              interval={0}
+              tick={{ fill: 'white', fontSize: 12 }}
             />
             <ChartTooltip
               cursor={{ fill: 'rgba(255,255,255,0.1)' }}
-              content={
-                <ChartTooltipContent 
-                    indicator="line" 
-                    hideLabel 
-                    formatter={(value) => `₹${value.toLocaleString()}`}
-                />
-              }
+              content={<CustomTooltip />}
             />
             <Area
               dataKey="amount"
-              type="natural"
+              type="monotone"
               fill="var(--color-amount)"
               fillOpacity={0.4}
               stroke="var(--color-amount)"
@@ -144,7 +184,7 @@ export function OrdersSpendingChart({ data: orders = [], filterType = "1W" }) {
         <div className="flex w-full items-start gap-2 text-sm">
           <div className="grid gap-2">
             <div className="flex items-center gap-2 leading-none font-medium text-white">
-              Total Spending in this period: <span className="text-emerald-400">₹{chartData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
+              Total Spending in this period: <span className="text-[#ff8a3d]">₹{chartData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString()}</span>
             </div>
             <div className="text-muted-foreground flex items-center gap-2 leading-none text-gray-400">
                Track your expenses

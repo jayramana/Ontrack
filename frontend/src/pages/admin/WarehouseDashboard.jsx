@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { AlertTriangle, Package, Truck, CheckCircle, Search, Filter } from "lucide-react";
 import api from "../../services/api";
 import AdminSidebar from "./AdminSidebar";
-import { formatStatus } from "@/lib/utils";
+import { formatStatus, formatDate } from "@/lib/utils";
 
 const WarehouseDashboard = () => {
   const [warehouses, setWarehouses] = useState([]);
@@ -195,7 +196,7 @@ const WarehouseDashboard = () => {
                         Order #{order.id}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {formatDate(order.createdAt)}
                       </p>
                     </div>
 

@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { formatStatus } from "@/lib/utils";
 
 export default function DriverASRVerification({ orderId, onClose }) {
   const [order, setOrder] = useState(null);
@@ -324,7 +325,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await api.post("/uploads/files", formData, {
+    const res = await api.post("/aws/files", formData, {
       headers: { "Content-Type": "multipart/form-data" }
     });
     return res.data.key;
@@ -394,7 +395,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
     <div className="fixed inset-0 z-[45] flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
       <div
         className="
-        bg-white/5 backdrop-blur-xl
+        bg-[#0b0f14]
         border border-white/10
         rounded-3xl
         max-w-4xl w-full
@@ -404,7 +405,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
       "
       >
         {/* HEADER */}
-        <div className="sticky top-0 z-10 px-6 py-5 border-b border-white/10 bg-black/30 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 px-6 py-5 border-b border-white/10 bg-[#0b0f14]/80 backdrop-blur-md">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-black text-white">
@@ -443,7 +444,7 @@ export default function DriverASRVerification({ orderId, onClose }) {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-lg font-bold">
-                    Status: {asrStatus.status}
+                    Status: {formatStatus(asrStatus.status)}
                   </h3>
                   {asrStatus.score && (
                     <p className="text-sm text-slate-400">

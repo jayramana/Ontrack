@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import api from "../../services/api";
 import { formatStatus } from "@/lib/utils";
 import AdminSidebar from "./AdminSidebar";
@@ -45,7 +46,7 @@ export default function AdminASRPanel() {
 
   const handleAdminOverride = async () => {
     if (!overrideReason.trim()) {
-      alert("Please provide a reason for override");
+      toast.error("Please provide a reason for override");
       return;
     }
 
@@ -61,20 +62,20 @@ export default function AdminASRPanel() {
       // Force refresh dashboard if present
       if (window.opener) window.opener.location.reload();
       
-      alert("Override successful");
+      toast.success("Override successful");
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
   const handleReverify = async (asrId) => {
     try {
       const res = await api.post(`/asr/admin/reverify/${asrId}`);
-      alert(res.data?.message || "Re-verification initiated");
+      toast.info(res.data?.message || "Re-verification initiated");
       loadASRDetails(asrId);
       loadASRList(); // Refresh list to show updated status
     } catch (err) {
-      alert(err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
@@ -166,7 +167,7 @@ export default function AdminASRPanel() {
                     Driver: {asr.driverName}
                   </p>
 
-                  {typeof asr.aiVerifyScore === 'number' && asr.aiVerifyScore > 0 && (
+                  {typeof asr.aiVerifyScore === 'number' && asr.aiVerifyScore > 0 && asr.aiVerifyStatus !== 'Failed' && (
                     <p className="text-xs text-slate-500 mt-2">
                       AI Score: {(asr.aiVerifyScore * 100).toFixed(1)}%
                     </p>
@@ -200,7 +201,7 @@ export default function AdminASRPanel() {
                     <span className={`px-4 py-2 rounded-full font-bold ${getStatusStyle(selectedASR.aiVerifyStatus)}`}>
                       {formatStatus(selectedASR.aiVerifyStatus)}
                     </span>
-                    {selectedASR.aiVerifyScore && (
+                    {selectedASR.aiVerifyScore && selectedASR.aiVerifyStatus !== 'Failed' && (
                       <span className="text-sm text-slate-400">
                         Score: <b>{(selectedASR.aiVerifyScore * 100).toFixed(1)}%</b>
                       </span>
