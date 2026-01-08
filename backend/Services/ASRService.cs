@@ -422,12 +422,14 @@ namespace Backend.Services
         private readonly IConfiguration _config;
         private readonly HttpClient _http;
         private readonly NotificationService _notificationService;
+        private readonly Amazon.S3.IAmazonS3 _s3;
 
-        public ASRService(AppDbContext context, IConfiguration config, NotificationService notificationService)
+        public ASRService(AppDbContext context, IConfiguration config, NotificationService notificationService, Amazon.S3.IAmazonS3 s3)
         {
             _context = context;
             _config = config;
             _notificationService = notificationService;
+            _s3 = s3;
             _http = new HttpClient();
         }
 
@@ -466,6 +468,7 @@ namespace Backend.Services
             _context.ASRVerifications.Add(asr);
             await _context.SaveChangesAsync();
 
+            order.ASRVerificationId = asr.Id;
             order.ASRStatus = "Pending";
             await _context.SaveChangesAsync();
 
@@ -675,6 +678,15 @@ namespace Backend.Services
             }
         }
 
+        public async Task<ASRVerification?> GetASRVerificationByIdAsync(int asrId)
+        {
+            return await _context.ASRVerifications
+                .Include(a => a.Order)
+                .Include(a => a.Customer)
+                .Include(a => a.Driver)
+                .FirstOrDefaultAsync(a => a.Id == asrId);
+        }
+
         public async Task<ASRVerification?> GetASRVerificationAsync(int orderId)
         {
             return await _context.ASRVerifications
@@ -716,6 +728,14 @@ namespace Backend.Services
             if (asr.Order != null)
             {
                 asr.Order.ASRStatus = "AdminOverride";
+                // Restore order status to OutForDelivery so driver can complete it
+                asr.Order.Status = "OutForDelivery";
+
+                // Ensure Driver is assigned (restore from ASR record if needed)
+                if (asr.Order.DriverId == null && asr.DriverId.HasValue)
+                {
+                    asr.Order.DriverId = asr.DriverId;
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -807,42 +827,58 @@ namespace Backend.Services
         }
 
         // =====================================================
-        // HELPER: Get Base64 from Local Storage
+        // HELPER: Get Base64 from AWS S3
         // =====================================================
-        private async Task<string> GetImageBase64Async(string input)
+        private async Task<string> GetImageBase64Async(string key)
         {
-            if (string.IsNullOrEmpty(input)) return "";
+            if (string.IsNullOrEmpty(key)) return "";
 
-            // If it's a local path (uploads/...), read from disk
-            if (input.StartsWith("uploads/"))
+            try
             {
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", input);
-                if (File.Exists(filePath))
+                var bucket = _config["AWS:BucketName"];
+                var request = new Amazon.S3.Model.GetObjectRequest
                 {
-                    var bytes = await File.ReadAllBytesAsync(filePath);
-                    return Convert.ToBase64String(bytes);
-                }
-            }
+                    BucketName = bucket,
+                    Key = key
+                };
 
-            // Fallback (might be already base64 or legacy)
-            return input;
+                using var response = await _s3.GetObjectAsync(request);
+                using var ms = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(ms);
+                return Convert.ToBase64String(ms.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error fetching from S3: {ex.Message}");
+                return "";
+            }
         }
 
         // =====================================================
-        // HELPER: Get Public URL for Local Key
+        // HELPER: Get Public URL for S3 Key (Presigned)
         // =====================================================
         public string GetPresignedUrl(string? key)
         {
             if (string.IsNullOrEmpty(key)) return "";
 
-            // If it's a local path, return fully qualified URL
-            if (key.StartsWith("uploads/"))
+            try
             {
-                var baseUrl = _config["ApiBaseUrl"] ?? "http://localhost:5066";
-                return $"{baseUrl}/{key}";
-            }
+                var bucket = _config["AWS:BucketName"];
+                var request = new Amazon.S3.Model.GetPreSignedUrlRequest
+                {
+                    BucketName = bucket,
+                    Key = key,
+                    Verb = Amazon.S3.HttpVerb.GET,
+                    Expires = DateTime.UtcNow.AddMinutes(60)
+                };
 
-            return key;
+                return _s3.GetPreSignedURL(request);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generating presigned URL for key '{key}': {ex.Message}");
+                return key;
+            }
         }
     }
 }

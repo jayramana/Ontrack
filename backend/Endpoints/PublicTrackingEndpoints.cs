@@ -82,6 +82,7 @@ namespace Backend.Endpoints
                     eta
                 });
             });
+
             return group;
         }
     }

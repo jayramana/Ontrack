@@ -55,6 +55,8 @@ namespace Backend.Services
                 var simulatingDrivers = await context.Users
                     .Where(u => u.IsSimulating && u.IsSharingLocation == false)
                     .ToListAsync();
+                
+
 
                 foreach (var driver in simulatingDrivers)
                 {
@@ -65,9 +67,16 @@ namespace Backend.Services
                         .OrderByDescending(o => o.AiPriority)
                         .FirstOrDefaultAsync();
 
-                    if (activeOrder == null || activeOrder.DeliveryLatitude == 0 || activeOrder.DeliveryLongitude == 0)
+                    if (activeOrder == null)
                     {
-                        continue; // Nothing to simulate towards
+                        _logger.LogWarning($"⚠️ [Sim] Driver {driver.UserId} is simulating but has NO active orders (OutForDelivery/Assigned).");
+                        continue; 
+                    }
+
+                    if (activeOrder.DeliveryLatitude == 0 || activeOrder.DeliveryLongitude == 0)
+                    {
+                        _logger.LogWarning($"⚠️ [Sim] Order {activeOrder.Id} has invalid coordinates (0,0). Skipping.");
+                        continue;
                     }
 
                     // Current Position (Start from last known or Warehouse if null)

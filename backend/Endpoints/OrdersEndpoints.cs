@@ -29,7 +29,8 @@ public static class OrdersEndpoints
             CreateOrderDto dto,
             AppDbContext context,
             IEmailService emailService,
-            WarehouseAssignmentService warehouseService
+            WarehouseAssignmentService warehouseService,
+            NotificationService notificationService
         ) =>
         {
             try
@@ -131,6 +132,16 @@ public static class OrdersEndpoints
                 // Update counters
                 await warehouseService.AssignOrderToWarehousesAsync(order);
 
+                // 🔔 NOTIFICATIONS
+                // 1. Notify Seller
+                await notificationService.AddNotificationAsync(order.SenderId, $"Order #{order.TrackingId} created successfully.", "Success");
+
+                // 2. Notify Customer (if registered)
+                if (order.CustomerId.HasValue)
+                {
+                    await notificationService.AddNotificationAsync(order.CustomerId.Value, $"You have a new package incoming! Tracking ID: {order.TrackingId}", "Info");
+                }
+
                 await emailService.SendOrderPlacedEmailAsync(new OrderEmailDto
                 {
                     OrderId = order.Id,
@@ -231,8 +242,13 @@ public static class OrdersEndpoints
                 // FUTURE DATE: Unassign Driver + Reset Status
                 order.DriverId = null;
                 order.Status = "AtDestinationWarehouse"; // Back to warehouse pool
-                // We do NOT notify the driver via specialized "Reschedule" event since they are removed
                 // But we might want to refresh their list to remove it
+
+                var geofence = await context.Geofences.FirstOrDefaultAsync(g => g.OrderId == order.Id && g.IsActive);
+                if (geofence != null)
+                {
+                    geofence.IsActive = false;
+                }
             }
             else
             {
@@ -379,6 +395,7 @@ public static class OrdersEndpoints
                     o.ReceiverAddress,
                     o.CreatedAt,
                     o.EstimatedDeliveryDate,
+                    o.ScheduledDate,
                     o.AiPriority,
                     o.IsASR,
                     o.ASRStatus,
@@ -505,7 +522,7 @@ public static class OrdersEndpoints
                     o.AiPriorityJustification,
                     o.IsASR,
                     o.ASRStatus,
-                    asrVerificationId = o.ASRVerificationId, // 🆕 Added for Frontend
+                    asrVerificationId = o.ASRVerification != null ? o.ASRVerification.Id : o.ASRVerificationId, // 🆕 Robust fetch
                     customerReverifyRequested = o.ASRVerification != null ? o.ASRVerification.CustomerReverifyRequested : false, // 🆕 Mapped
                     o.DriverId,
                     driver = o.Driver != null ? new { o.Driver.UserId, DriverName = o.Driver.UserFName + " " + o.Driver.UserLName } : null,
@@ -554,6 +571,34 @@ public static class OrdersEndpoints
                 .ToListAsync();
 
             return Results.Ok(orders);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_SENDER });
+
+        group.MapGet("/sent-orders/{id}", async (int id, HttpContext http, AppDbContext db) =>
+        {
+            var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+            int userId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var order = await db.Orders
+                .Include(o => o.Driver)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .FirstOrDefaultAsync(o => o.Id == id && o.SenderId == userId);
+
+            if (order == null) return Results.NotFound(new { message = "Order not found or unauthorized" });
+
+            // Fetch latest driver location if assigned
+            Backend.Domain.Entity.DriverLocation? latestLoc = null;
+            if (order.DriverId.HasValue)
+            {
+                latestLoc = await db.DriverLocations
+                    .Where(d => d.DriverId == order.DriverId.Value)
+                    .OrderByDescending(d => d.UpdatedAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            return Results.Ok(new { order, latestDriverLocation = latestLoc });
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_SENDER });
 

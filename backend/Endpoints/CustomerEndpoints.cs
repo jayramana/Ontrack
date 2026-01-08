@@ -181,6 +181,21 @@ public static class CustomerEndpoints
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
 
+            // Populate ASR fields
+            var orderIds = orders.Select(o => o.Id).ToList();
+            var asrInfos = await context.ASRVerifications
+                .Where(a => orderIds.Contains(a.OrderId))
+                .ToDictionaryAsync(a => a.OrderId, a => new { a.Id, a.CustomerReverifyRequested });
+
+            foreach (var o in orders)
+            {
+                if (asrInfos.TryGetValue(o.Id, out var info))
+                {
+                    o.ASRVerificationId = info.Id;
+                    o.CustomerReverifyRequested = info.CustomerReverifyRequested;
+                }
+            }
+
             return Results.Ok(orders);
         });
 
@@ -227,10 +242,26 @@ public static class CustomerEndpoints
                 }
             }
 
+            // Fetch ASR info if applicable
+            if (order.IsASR)
+            {
+                var asrInfo = await context.ASRVerifications
+                    .Where(a => a.OrderId == order.Id)
+                    .Select(a => new { a.Id, a.CustomerReverifyRequested })
+                    .FirstOrDefaultAsync();
+
+                if (asrInfo != null)
+                {
+                    order.ASRVerificationId = asrInfo.Id;
+                    order.CustomerReverifyRequested = asrInfo.CustomerReverifyRequested;
+                }
+            }
+
+            // Return response
             return Results.Ok(new
             {
                 order,
-                driver = order.Driver, // Explicitly return driver since it is [JsonIgnore] in Order entity
+                driver = order.Driver, 
                 driverLocation,
                 estimatedDelivery = order.EstimatedDeliveryDate,
                 scheduledDate = order.ScheduledDate,

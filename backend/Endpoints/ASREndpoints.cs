@@ -546,6 +546,8 @@ public static class ASREndpoints
                 var customerIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
                 if (customerIdClaim == null) return Results.Unauthorized();
                 var customerId = int.Parse(customerIdClaim.Value);
+                
+                Console.WriteLine($"[DEBUG] Requesting reverification for ASR {asrId} by Customer {customerId}");
 
                 var asr = await asrService.RequestReverificationAsync(asrId, customerId);
 
@@ -593,9 +595,9 @@ public static class ASREndpoints
 
                 return Results.Ok(asrList);
             }
-            catch
+            catch (Exception ex)
             {
-                return Results.Ok(new List<object>());
+                return Results.Problem(ex.Message);
             }
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" });
@@ -610,19 +612,20 @@ public static class ASREndpoints
         {
             try
             {
-                var asr = await asrService.GetASRVerificationAsync(asrId);
+                var asr = await asrService.GetASRVerificationByIdAsync(asrId);
                 if (asr == null)
                     return Results.NotFound(new { message = "ASR verification not found" });
 
-                var keys = JsonSerializer.Deserialize<List<string>>(asr.DocumentUrls ?? "[]") 
-                    ?? new List<string>();
+                var docJson = string.IsNullOrEmpty(asr.DocumentUrls) ? "[]" : asr.DocumentUrls;
+                var keys = JsonSerializer.Deserialize<List<string>>(docJson) ?? new List<string>();
                 
                 var documentUrls = keys.Select(k => asrService.GetPresignedUrl(k)).ToList();
                 var customerPhotoUrl = asrService.GetPresignedUrl(asr.CustomerPhotoUrl);
                 var signatureUrl = asrService.GetPresignedUrl(asr.SignatureUrl);
 
-                var reasons = JsonSerializer.Deserialize<List<string>>(asr.AIVerifyReasons ?? "[]") 
-                    ?? new List<string>();
+                var reasonJson = string.IsNullOrEmpty(asr.AIVerifyReasons) ? "[]" : asr.AIVerifyReasons;
+                var reasons = JsonSerializer.Deserialize<List<string>>(reasonJson) ?? new List<string>();
+
                 var metadata = string.IsNullOrEmpty(asr.VerificationMetadata) 
                     ? null 
                     : JsonSerializer.Deserialize<object>(asr.VerificationMetadata);
@@ -644,7 +647,8 @@ public static class ASREndpoints
                     asr.VerifiedAt,
                     asr.IsAdminOverride,
                     asr.OverrideReason,
-                    asr.RetryCount
+                    asr.RetryCount,
+                    asr.CustomerReverifyRequested
                 });
             }
             catch (Exception ex)

@@ -534,7 +534,7 @@ public static class DriverEndpoints
 
             var orders = await context.Orders
                 .Where(o => o.DriverId == driverId)
-                .Where(o => o.Status != "Delivered" && o.Status != "Cancelled")
+                .Where(o => o.Status == "OutForDelivery")
                 .Include(o => o.Sender)
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.DestinationWarehouse)
@@ -589,66 +589,193 @@ public static class DriverEndpoints
             return Results.Ok(orders);
         });
 
-        group.MapGet("/orders/today/analytics", async (HttpContext http, AppDbContext context) =>
+        group.MapGet("/analytics", async (HttpContext http, AppDbContext context, string timeRange = "1W", int timeZoneOffset = 0) =>
         {
+            Console.WriteLine($"[Analytics] Request: Range={timeRange}, Offset={timeZoneOffset}");
+
             var claim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
             int driverId = int.Parse(claim?.Value ?? "0");
 
-            var orders = await context.Orders
+            // 1. Fetch Orders separately to ensure clean SQL translation for each condition
+            var directOrders = await context.Orders
                 .Where(o => o.DriverId == driverId || o.PreviousDriverId == driverId)
-                 // No status filter: Returns Delivered, Cancelled, Pending for analytics
-                .Include(o => o.Sender)
-                .Include(o => o.OriginWarehouse)
-                .Include(o => o.DestinationWarehouse)
-                .Include(o => o.CurrentWarehouse)
-                .OrderByDescending(o => o.AiPriority ?? o.Priority)
-                .Select(o => new
-                {
-                    o.Id,
-                    o.DriverId,
-                    o.TrackingId,
-                    o.Status,
-                    ReceiverName = o.ReceiverName,
-                    ReceiverAddress = o.ReceiverAddress,
-                    ReceiverEmail = o.ReceiverEmail,
-                    ReceiverPhone = o.ReceiverPhone,
-                    PickupAddress = o.PickupAddress,
-                    o.PickupLatitude,
-                    o.PickupLongitude,
-                    o.DeliveryLatitude,
-                    o.DeliveryLongitude,
-                    o.Priority,
-                    o.AiPriority,
-                    o.AiPriorityJustification,
-                    o.ScheduledDate,
-                    o.DeliveryNotes,
-                    RescheduledAt = o.RescheduledAt,
-                    RescheduleReason = o.RescheduleReason,
-                    PreviousDriverId = o.PreviousDriverId,
-                    
-                    isASR = o.IsASR,
-                    asrStatus = o.ASRStatus,
-
-                    CurrentWarehouse = o.CurrentWarehouse != null
-                        ? new
-                        {
-                            o.CurrentWarehouse.Id,
-                            o.CurrentWarehouse.Name,
-                            o.CurrentWarehouse.City
-                        }
-                        : null,
-                    DestinationWarehouse = o.DestinationWarehouse != null
-                        ? new
-                        {
-                            o.DestinationWarehouse.Id,
-                            o.DestinationWarehouse.Name,
-                            o.DestinationWarehouse.City
-                        }
-                        : null
-                })
+                .Select(o => new { o.Id, o.Status, o.ScheduledDate, o.CreatedAt, o.Priority })
                 .ToListAsync();
 
-            return Results.Ok(orders);
+            var asrValues = await context.ASRVerifications
+                .Where(a => a.DriverId == driverId)
+                .Select(a => a.OrderId)
+                .Distinct()
+                .ToListAsync();
+
+            var asrOrders = await context.Orders
+                .Where(o => asrValues.Contains(o.Id))
+                .Select(o => new { o.Id, o.Status, o.ScheduledDate, o.CreatedAt, o.Priority })
+                .ToListAsync();
+
+            // Union in memory
+            var allOrders = directOrders
+                .Union(asrOrders)
+                .GroupBy(o => o.Id) // Deduplicate
+                .Select(g => g.First())
+                .ToList();
+
+            Console.WriteLine($"[Analytics] Direct: {directOrders.Count}, ASR: {asrOrders.Count}, Total Unique: {allOrders.Count}");
+
+            Console.WriteLine($"[Analytics] Total Orders Fetched (Global): {allOrders.Count}");
+
+            // 2. Global Stats (KPIs - Lifetime)
+            int total = allOrders.Count;
+            int delivered = allOrders.Count(o => o.Status == "Delivered");
+            
+            var exceptionStatuses = new[] { "DeliveryAttempted", "ReturnedToWarehouse", "Cancelled" };
+            int exceptions = allOrders.Count(o => exceptionStatuses.Contains(o.Status));
+            int active = allOrders.Count(o => o.Status != "Delivered" && !exceptionStatuses.Contains(o.Status));
+            // Note: "Active" usually means current backlog, so lifetime check is correct (assuming old delivered are delivered)
+
+            int highPriorityDelivered = allOrders.Count(o => o.Priority == 1 && o.Status == "Delivered");
+            int normalPriorityDelivered = allOrders.Count(o => o.Priority == 2 && o.Status == "Delivered");
+
+            // 3. Filter for Charts (Time-Bound)
+            DateTime utcNow = DateTime.UtcNow;
+            DateTime clientNow = utcNow.AddMinutes(-timeZoneOffset);
+            DateTime startDate = clientNow.AddDays(-7); // Default
+
+            if (timeRange == "1M") startDate = clientNow.AddDays(-30);
+            else if (timeRange == "3M") startDate = clientNow.AddDays(-90);
+            else if (timeRange == "1Y") startDate = clientNow.AddDays(-365);
+
+            Console.WriteLine($"[Analytics] Filtering for Charts. ClientNow={clientNow}, StartDate={startDate}");
+
+            var chartOrders = allOrders.Where(o => 
+            {
+                 var oUtc = o.CreatedAt;
+                 var oLocal = oUtc.AddMinutes(-timeZoneOffset);
+                 bool kept = oLocal >= startDate;
+                 if (!kept && oLocal > startDate.AddDays(-2)) // Log near misses
+                     Console.WriteLine($"[Analytics] Filtered OUT: ID={o.Id} Local={oLocal} Start={startDate}");
+                 return kept; 
+            }).ToList();
+
+            Console.WriteLine($"[Analytics] Orders in Range ({timeRange}): {chartOrders.Count}");
+
+            // 4. Generate Chart Data (Bar)
+            var chartData = new List<object>();
+            
+            if (timeRange == "1Y")
+            {
+                for (int i = 11; i >= 0; i--)
+                {
+                    var d = clientNow.AddMonths(-i);
+                    var monthKey = d.ToString("yyyy-MM");
+                    var label = d.ToString("MMM"); 
+
+                    var monthOrders = chartOrders.Where(o => 
+                    {
+                        var oUtc = o.CreatedAt;
+                        var oLocal = oUtc.AddMinutes(-timeZoneOffset);
+                        return oLocal.ToString("yyyy-MM") == monthKey;
+                    }).ToList();
+                    
+                    chartData.Add(new {
+                        label,
+                        key = monthKey,
+                        assigned = monthOrders.Count(o => o.Status == "Assigned" || o.Status == "OutForDelivery" || o.Status == "DeliveryAttempted" || o.Status == "AtDestinationWarehouse" || o.Status == "Delivered" || o.Status == "Pending" || o.Status == "ReturnedToWarehouse"),
+                        outForDelivery = monthOrders.Count(o => o.Status == "OutForDelivery"),
+                        delivered = monthOrders.Count(o => o.Status == "Delivered"),
+                        attempted = monthOrders.Count(o => o.Status == "DeliveryAttempted")
+                    });
+                }
+            }
+            else 
+            {
+                int daysToShow = 7;
+                if (timeRange == "1M") daysToShow = 30;
+                else if (timeRange == "3M") daysToShow = 90;
+                
+                for (int i = daysToShow - 1; i >= 0; i--)
+                {
+                    var d = clientNow.AddDays(-i);
+                    var dayKey = d.ToString("yyyy-MM-dd");
+                    
+                    string label;
+                    string tooltipLabel = d.ToString("MMM d");
+
+                    if (timeRange == "1W") label = d.ToString("ddd"); 
+                    else label = d.Day == 1 ? d.ToString("MMM") : ""; 
+
+                    var dayOrders = chartOrders.Where(o => 
+                    {
+                        var oUtc = o.CreatedAt;
+                        var oLocal = oUtc.AddMinutes(-timeZoneOffset);
+                        // DEBUG
+                        if (dayKey == clientNow.ToString("yyyy-MM-dd") && oLocal.ToString("yyyy-MM-dd") == dayKey) {
+                             Console.WriteLine($"   -> Matched TODAY: ID={o.Id} Status={o.Status}");
+                        }
+                        return oLocal.ToString("yyyy-MM-dd") == dayKey;
+                    }).ToList();
+
+
+                    chartData.Add(new {
+                        label,
+                        tooltipLabel,
+                        key = dayKey,
+                        assigned = dayOrders.Count(o => o.Status == "Assigned" || o.Status == "OutForDelivery" || o.Status == "DeliveryAttempted" || o.Status == "AtDestinationWarehouse" || o.Status == "Delivered" || o.Status == "Pending" || o.Status == "ReturnedToWarehouse"),
+                        outForDelivery = dayOrders.Count(o => o.Status == "OutForDelivery"),
+                        delivered = dayOrders.Count(o => o.Status == "Delivered"),
+                        attempted = dayOrders.Count(o => o.Status == "DeliveryAttempted")
+                    });
+                }
+            }
+
+            // 5. Pie Data (Filtered)
+            // 5. Pie Data (Filtered & Granular) - Returns actual statuses
+            var pieData = chartOrders
+                .GroupBy(o => o.Status)
+                .Select(g => new { status = g.Key, count = g.Count() })
+                .ToList();
+
+            // DEBUG DATA
+            var debugOrders = allOrders.Take(10).Select(o => {
+                 var oUtc = o.ScheduledDate ?? o.CreatedAt;
+                 var oLocal = oUtc.AddMinutes(-timeZoneOffset);
+                 return new { 
+                    id = o.Id, 
+                    utc = oUtc, 
+                    local = oLocal, 
+                    status = o.Status,
+                    scheduled = o.ScheduledDate,
+                    created = o.CreatedAt
+                 };
+            }).ToList();
+
+            var debugOrder30 = await context.Orders
+                .Where(o => o.Id == 30)
+                .Select(o => new {
+                    id = o.Id,
+                    driverId = o.DriverId,
+                    previousDriverId = o.PreviousDriverId,
+                    status = o.Status,
+                    asrRecords = context.ASRVerifications
+                        .Where(a => a.OrderId == o.Id)
+                        .Select(a => new { a.Id, a.DriverId, a.AIVerifyStatus })
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            return Results.Ok(new
+            {
+                stats = new {
+                    total,
+                    delivered,
+                    active,
+                    exceptions,
+                    highPriorityDelivered,
+                    normalPriorityDelivered
+                },
+                chartData,
+                pieData
+            });
         });
 
         group.MapGet("/orders/all", async (HttpContext http, AppDbContext context) =>
@@ -656,8 +783,24 @@ public static class DriverEndpoints
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
             var driverId = int.Parse(userIdClaim?.Value ?? "0");
 
-            var orders = await context.Orders
+            // 1. Get IDs for Direct Assignment
+            var directIds = await context.Orders
                 .Where(o => o.DriverId == driverId || o.PreviousDriverId == driverId)
+                .Select(o => o.Id)
+                .ToListAsync();
+
+            // 2. Get IDs for ASR Verification history
+            var asrIds = await context.ASRVerifications
+                .Where(a => a.DriverId == driverId)
+                .Select(a => a.OrderId)
+                .ToListAsync();
+
+            // 3. Union Unique IDs
+            var allIds = directIds.Union(asrIds).Distinct().ToList();
+
+            // 4. Fetch Full Order Details
+            var orders = await context.Orders
+                .Where(o => allIds.Contains(o.Id))
                 .Include(o => o.Sender)
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.DestinationWarehouse)
@@ -676,7 +819,7 @@ public static class DriverEndpoints
             try
             {
                 var orders = await context.Orders
-                    .Where(o => o.DriverId == driverId && o.Status != "Delivered" && o.Status != "Cancelled")
+                    .Where(o => o.DriverId == driverId && o.Status == "OutForDelivery")
                     .ToListAsync();
 
                 var validOrders = orders
@@ -760,7 +903,7 @@ public static class DriverEndpoints
             return Results.Ok(new { message = "Location updated successfully" });
         });
 
-        group.MapPost("/mark-delivered/{orderId}", async (int orderId, AppDbContext context) =>
+        group.MapPost("/mark-delivered/{orderId}", async (int orderId, AppDbContext context, NotificationService notificationService) =>
         {
             var order = await context.Orders.FindAsync(orderId);
             if (order == null)
@@ -768,6 +911,19 @@ public static class DriverEndpoints
 
             order.Status = "Delivered";
             order.DeliveredAt = DateTime.UtcNow;
+
+            var geofence = await context.Geofences.FirstOrDefaultAsync(g => g.OrderId == orderId && g.IsActive);
+            if (geofence != null)
+            {
+                geofence.IsActive = false;
+            }
+
+            // 🔔 NOTIFICATIONS
+            await notificationService.AddNotificationAsync(order.SenderId, $"Order #{order.TrackingId} has been delivered successfully!", "Success");
+            
+            if (order.CustomerId.HasValue)
+                await notificationService.AddNotificationAsync(order.CustomerId.Value, $"Your order #{order.TrackingId} has been delivered!", "Success");
+
             await context.SaveChangesAsync();
 
             return Results.Ok(new { message = "Order marked as delivered" });
@@ -776,7 +932,8 @@ public static class DriverEndpoints
         group.MapPost("/mark-attempted/{orderId}", async (
             int orderId,
             DeliveryAttemptDto attempt,
-            AppDbContext context) =>
+            AppDbContext context,
+            NotificationService notificationService) =>
         {
             var order = await context.Orders.FindAsync(orderId);
             if (order == null)
@@ -793,6 +950,12 @@ public static class DriverEndpoints
             }
 
             await context.SaveChangesAsync();
+
+            // 🔔 NOTIFICATIONS
+            await notificationService.AddNotificationAsync(order.SenderId, $"Delivery attempted for Order #{order.TrackingId}. Reason: {attempt.Reason}", "Warning");
+            
+            if (order.CustomerId.HasValue)
+                await notificationService.AddNotificationAsync(order.CustomerId.Value, $"Delivery attempted for your order #{order.TrackingId}. We will try again.", "Warning");
 
             return Results.Ok(new { message = "Delivery attempt recorded" });
         });
@@ -812,7 +975,7 @@ public static class DriverEndpoints
             return Results.Ok(new { message = "Order accepted. Now At Destination Warehouse." });
         });
 
-        group.MapPost("/pickup/{orderId}", async (int orderId, AppDbContext context) =>
+        group.MapPost("/pickup/{orderId}", async (int orderId, AppDbContext context, NotificationService notificationService) =>
         {
             var order = await context.Orders.FindAsync(orderId);
             if (order == null) return Results.NotFound();
@@ -823,6 +986,12 @@ public static class DriverEndpoints
 
             order.Status = "OutForDelivery";
             await context.SaveChangesAsync();
+
+            // 🔔 NOTIFICATIONS
+            await notificationService.AddNotificationAsync(order.SenderId, $"Driver has picked up Order #{order.TrackingId}. Out for Delivery.", "Info");
+            
+            if (order.CustomerId.HasValue)
+                await notificationService.AddNotificationAsync(order.CustomerId.Value, $"Your order #{order.TrackingId} is out for delivery!", "Info");
 
             return Results.Ok(new { message = "Order picked up. Now Out for Delivery." });
         });
@@ -837,9 +1006,19 @@ public static class DriverEndpoints
                 return Results.BadRequest(new { message = "Order cannot be rejected at this stage." });
 
             // Unassign logic
+            if (order.DriverId.HasValue)
+            {
+                order.PreviousDriverId = order.DriverId;
+            }
             order.DriverId = null;
             order.Status = "AtDestinationWarehouse"; // Revert to unassigned state at hub
             // Or 'PendingAssignment' if you prefer global pool, but usually it's at the warehouse waiting for a driver
+            
+            var geofence = await context.Geofences.FirstOrDefaultAsync(g => g.OrderId == orderId && g.IsActive);
+            if (geofence != null)
+            {
+                geofence.IsActive = false;
+            }
             
             await context.SaveChangesAsync();
             return Results.Ok(new { message = "Order rejected and unassigned." });

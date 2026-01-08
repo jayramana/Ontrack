@@ -95,11 +95,11 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddHostedService<SimulationService>();
-// builder.Services.AddAWSService<Amazon.S3.IAmazonS3>();
-// var awsOptions = builder.Configuration.GetSection("AWS");
-// var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsOptions["AccessKey"], awsOptions["SecretKey"]);
-// var awsConfig = new Amazon.S3.AmazonS3Config { RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsOptions["Region"]) };
-// builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, awsConfig));
+// AWS Configuration
+var awsOptions = builder.Configuration.GetSection("AWS");
+var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(awsOptions["AccessKey"], awsOptions["SecretKey"]);
+var awsConfig = new Amazon.S3.AmazonS3Config { RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsOptions["Region"]) };
+builder.Services.AddSingleton<Amazon.S3.IAmazonS3>(new Amazon.S3.AmazonS3Client(awsCredentials, awsConfig));
 
 
 builder.Services.AddHttpClient();
@@ -140,7 +140,8 @@ app.UseAuthorization();
 app.UseStaticFiles(); // Enable serving files from wwwroot
 app.MapControllers().RequireCors("AllowFrontend");
 
-app.MapFileUploadEndpoints().RequireCors("AllowFrontend"); // 🆕 Local Uploads
+// app.MapFileUploadEndpoints().RequireCors("AllowFrontend"); // REMOVED: Replaced by AWS S3
+app.MapAWSEndpoints().RequireCors("AllowFrontend"); // 🆕 AWS S3 Uploads
 app.MapASREndpoints().RequireCors("AllowFrontend");
 app.MapAuthEndpoints().RequireCors("AllowFrontend");
 app.MapCustomerEndpoints().RequireCors("AllowFrontend");
@@ -164,5 +165,20 @@ app.MapHub<EtaHub>("/etahub").RequireCors("AllowFrontend");
 app.MapHub<Backend.Hubs.LogisticsHub>("/hubs/logistics").RequireCors("AllowFrontend");
 
 app.MapGet("/", () => "Ontrack Backend Running ");
+
+app.MapGet("/fix-db-schema", async (AppDbContext db) => {
+    try {
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS customer_reverify_requested BOOLEAN DEFAULT FALSE;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS aadhaar_number VARCHAR(12) DEFAULT '';");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS verification_metadata TEXT;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS is_admin_override BOOLEAN DEFAULT FALSE;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS overridden_by_admin_id INT;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE a_s_r_verifications ADD COLUMN IF NOT EXISTS override_reason TEXT;");
+        return Results.Ok("Schema updated successfully");
+    } catch (Exception ex) {
+        return Results.Problem(ex.Message);
+    }
+});
 
 app.Run();

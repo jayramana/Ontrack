@@ -251,9 +251,11 @@ namespace Backend.Domain.Entity
         /// Foreign key to ASRVerification table
         /// </summary>
         public int? ASRVerificationId { get; set; }
-
-        [ForeignKey("ASRVerificationId")]
+        
         [JsonIgnore]
         public ASRVerification? ASRVerification { get; set; }
+
+        [NotMapped]
+        public bool CustomerReverifyRequested { get; set; }
     }
 }

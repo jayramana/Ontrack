@@ -363,6 +363,11 @@ public static class AdminEndpoints
             if (order == null)
                 return Results.NotFound(new { message = "Order not found" });
 
+            if (order.DriverId.HasValue && order.DriverId != driverId)
+            {
+                order.PreviousDriverId = order.DriverId;
+            }
+
             order.DriverId = driverId;
             order.Status = "Assigned";
             await context.SaveChangesAsync();
