@@ -9,7 +9,7 @@ export default function SignatureCapture() {
       <DriverSidebar active="signature" />
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 p-10">
+      <div className="flex-1 p-10 transition-all duration-300">
 
         {/* Page Title */}
         <h1 className="text-3xl font-extrabold text-[#351c15] mb-1">

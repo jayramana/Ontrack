@@ -3,14 +3,16 @@ using System.Net.Http.Headers;
 
 public static class GeocodingEndpoints
 {
-    public static void MapGeocodingEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapGeocodingEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/geocode/reverse", async (
+        var group = app.MapGroup("/api/geocode");
+
+        group.MapGet("/reverse", async (
             double lat,
-            double lon
+            double lon,
+            HttpClient client
         ) =>
         {
-            var client = new HttpClient();
             client.DefaultRequestHeaders.UserAgent.ParseAdd("OnTrackLogistics/1.0 (contact@ontrack.com)");
 
             var url =
@@ -27,5 +29,22 @@ public static class GeocodingEndpoints
             var json = await response.Content.ReadAsStringAsync();
             return Results.Content(json, "application/json");
         });
+
+        group.MapGet("/search", async (string q) =>
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("OnTrackLogistics/1.0 (contact@ontrack.com)");
+
+            var url = $"https://nominatim.openstreetmap.org/search?format=json&q={Uri.EscapeDataString(q)}&addressdetails=1";
+
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                return Results.Problem("Failed to search location");
+
+            var json = await response.Content.ReadAsStringAsync();
+            return Results.Content(json, "application/json");
+        });
+
+        return group;
     }
 }

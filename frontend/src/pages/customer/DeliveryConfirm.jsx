@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import CustomerSidebar from "./CustomerSidebar";
 import SignaturePad from "signature_pad";
 import { useNavigate } from "react-router-dom";
@@ -30,7 +31,7 @@ export default function DeliveryConfirm() {
   };
 
   const handleVerifyOtp = () => {
-    console.log("OTP Entered:", otp.join(""));
+    
   };
 
   const handleClearSignature = () => {
@@ -39,12 +40,12 @@ export default function DeliveryConfirm() {
 
   const handleSubmitSignature = () => {
     if (signaturePadRef.current.isEmpty()) {
-      alert("Please provide a signature before submitting.");
+      toast.error("Please provide a signature before submitting.");
       return;
     }
 
     const signatureImage = signaturePadRef.current.toDataURL();
-    console.log("Signature submitted:", signatureImage);
+    
   };
 
   return (

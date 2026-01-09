@@ -10,7 +10,7 @@ using System.Security.Claims;
 
 public static class OrdersEndpoints
 {
-    public static void MapOrdersEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapOrdersEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/orders").WithTags("Orders");
 
@@ -29,7 +29,8 @@ public static class OrdersEndpoints
             CreateOrderDto dto,
             AppDbContext context,
             IEmailService emailService,
-            WarehouseAssignmentService warehouseService
+            WarehouseAssignmentService warehouseService,
+            NotificationService notificationService
         ) =>
         {
             try
@@ -131,7 +132,36 @@ public static class OrdersEndpoints
                 // Update counters
                 await warehouseService.AssignOrderToWarehousesAsync(order);
 
-                await emailService.SendOrderEmailsAsync(order);
+                // 🔔 NOTIFICATIONS
+                // 1. Notify Seller
+                await notificationService.AddNotificationAsync(order.SenderId, $"Order #{order.TrackingId} created successfully.", "Success");
+
+                // 2. Notify Customer (if registered)
+                if (order.CustomerId.HasValue)
+                {
+                    await notificationService.AddNotificationAsync(order.CustomerId.Value, $"You have a new package incoming! Tracking ID: {order.TrackingId}", "Info");
+                }
+
+                await emailService.SendOrderPlacedEmailAsync(new OrderEmailDto
+                {
+                    OrderId = order.Id,
+                    TrackingId = order.TrackingId,
+
+                    SellerName = order.SenderName,
+                    SellerPhone = order.SenderPhone,
+                    SellerEmail = order.SenderEmail,
+
+                    CustomerName = order.ReceiverName,
+                    CustomerEmail = order.ReceiverEmail,
+                    CustomerPhone = order.ReceiverPhone,
+
+                    PickupAddress = order.PickupAddress,
+                    DeliveryAddress = order.ReceiverAddress,
+
+                    Price = order.Price,
+                    IsASR = order.IsASR
+                });
+
 
                 return Results.Ok(order);
             }
@@ -195,7 +225,7 @@ public static class OrdersEndpoints
                 orderAgeHours
             );
 
-            // Update
+            // Update Dates
             order.RescheduledAt = DateTime.UtcNow;
             order.RescheduledDate = dto.NewDate.ToUniversalTime();
             order.EstimatedDeliveryDate = dto.NewDate.ToUniversalTime();
@@ -204,8 +234,35 @@ public static class OrdersEndpoints
             order.AiPriorityJustification = ai.Justification;
             order.Priority = ai.AiPriority;
 
+            // CHECK: Future vs Today
+            bool isFutureDate = order.EstimatedDeliveryDate.Value.Date > DateTime.UtcNow.Date;
+
+            if (isFutureDate)
+            {
+                // FUTURE DATE: Unassign Driver + Reset Status
+                order.DriverId = null;
+                order.Status = "AtDestinationWarehouse"; // Back to warehouse pool
+                // But we might want to refresh their list to remove it
+
+                var geofence = await context.Geofences.FirstOrDefaultAsync(g => g.OrderId == order.Id && g.IsActive);
+                if (geofence != null)
+                {
+                    geofence.IsActive = false;
+                }
+            }
+            else
+            {
+                // SAME DAY: Ensure it is Active
+                // If it was "DeliveryAttempted" (failed), reset to "Assigned" so it appears in "Today" list
+                if (order.Status == "DeliveryAttempted")
+                {
+                    order.Status = "Assigned";
+                }
+            }
+
             await context.SaveChangesAsync();
 
+            // NOTIFY DRIVER (Only if still assigned)
             if (order.DriverId.HasValue)
             {
                 await hubContext.Clients
@@ -220,7 +277,8 @@ public static class OrdersEndpoints
                         order.ReceiverEmail,
                         order.ReceiverPhone,
                         aiPriority = order.AiPriority,
-                        aiJustification = order.AiPriorityJustification
+                        aiJustification = order.AiPriorityJustification,
+                        status = order.Status // Send updated status
                     });
 
                 await driverRouteService.OptimizeRouteAfterReschedule(order.DriverId.Value);
@@ -318,6 +376,38 @@ public static class OrdersEndpoints
             });
         });
 
+        group.MapGet("/admin/all", async (AppDbContext context) =>
+        {
+            var orders = await context.Orders
+                .Include(o => o.Driver)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .OrderByDescending(o => o.CreatedAt)
+                .Select(o => new
+                {
+                    o.Id,
+                    o.TrackingId,
+                    o.Status,
+                    o.SenderName,
+                    o.PickupAddress,
+                    o.ReceiverName,
+                    o.ReceiverAddress,
+                    o.CreatedAt,
+                    o.EstimatedDeliveryDate,
+                    o.ScheduledDate,
+                    o.AiPriority,
+                    o.IsASR,
+                    o.ASRStatus,
+                    driverId = o.DriverId,
+                    driverName = o.Driver != null ? o.Driver.UserFName + " " + o.Driver.UserLName : null
+                })
+                .ToListAsync();
+
+            return Results.Ok(orders);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_ADMIN });
+
         group.MapGet("/pending", async (AppDbContext context) =>
         {
             var orders = await context.Orders
@@ -384,6 +474,21 @@ public static class OrdersEndpoints
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_ADMIN });
 
+        group.MapGet("/my-status-counts", async (HttpContext http, AppDbContext context) =>
+        {
+            var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+            int userId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var statusCounts = await context.Orders
+                .Where(o => o.CustomerId == userId)
+                .GroupBy(o => o.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(g => g.Status ?? "Unknown", g => g.Count);
+
+            return Results.Ok(statusCounts);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_CUSTOMER });
+
         group.MapGet("/my-orders", async (HttpContext http, AppDbContext context) =>
         {
             var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
@@ -396,12 +501,14 @@ public static class OrdersEndpoints
                 .Include(o => o.OriginWarehouse)
                 .Include(o => o.CurrentWarehouse)
                 .Include(o => o.DestinationWarehouse)
+                .Include(o => o.ASRVerification) // 🆕 Include ASR data
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new
                 {
                     o.Id,
                     o.TrackingId,
                     o.Status,
+                    o.DeliveryType,
                     o.Price,
                     o.SenderName,
                     o.PickupAddress,
@@ -415,6 +522,8 @@ public static class OrdersEndpoints
                     o.AiPriorityJustification,
                     o.IsASR,
                     o.ASRStatus,
+                    asrVerificationId = o.ASRVerification != null ? o.ASRVerification.Id : o.ASRVerificationId, // 🆕 Robust fetch
+                    customerReverifyRequested = o.ASRVerification != null ? o.ASRVerification.CustomerReverifyRequested : false, // 🆕 Mapped
                     o.DriverId,
                     driver = o.Driver != null ? new { o.Driver.UserId, DriverName = o.Driver.UserFName + " " + o.Driver.UserLName } : null,
                     originWarehouse = o.OriginWarehouse != null ? new { o.OriginWarehouse.Id, o.OriginWarehouse.Name, o.OriginWarehouse.City } : null,
@@ -444,6 +553,7 @@ public static class OrdersEndpoints
                     o.Id,
                     o.TrackingId,
                     o.Status,
+                    o.DeliveryType,
                     o.Price,
                     o.SenderName,
                     o.PickupAddress,
@@ -461,6 +571,34 @@ public static class OrdersEndpoints
                 .ToListAsync();
 
             return Results.Ok(orders);
+        })
+        .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_SENDER });
+
+        group.MapGet("/sent-orders/{id}", async (int id, HttpContext http, AppDbContext db) =>
+        {
+            var userIdClaim = http.User.FindFirst("id") ?? http.User.FindFirst(ClaimTypes.NameIdentifier);
+            int userId = int.Parse(userIdClaim?.Value ?? "0");
+
+            var order = await db.Orders
+                .Include(o => o.Driver)
+                .Include(o => o.OriginWarehouse)
+                .Include(o => o.CurrentWarehouse)
+                .Include(o => o.DestinationWarehouse)
+                .FirstOrDefaultAsync(o => o.Id == id && o.SenderId == userId);
+
+            if (order == null) return Results.NotFound(new { message = "Order not found or unauthorized" });
+
+            // Fetch latest driver location if assigned
+            Backend.Domain.Entity.DriverLocation? latestLoc = null;
+            if (order.DriverId.HasValue)
+            {
+                latestLoc = await db.DriverLocations
+                    .Where(d => d.DriverId == order.DriverId.Value)
+                    .OrderByDescending(d => d.UpdatedAt)
+                    .FirstOrDefaultAsync();
+            }
+
+            return Results.Ok(new { order, latestDriverLocation = latestLoc });
         })
         .RequireAuthorization(new AuthorizeAttribute { Roles = ROLE_SENDER });
 
@@ -560,5 +698,6 @@ public static class OrdersEndpoints
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
             return R * c;
         }
+        return group;
     }
 }

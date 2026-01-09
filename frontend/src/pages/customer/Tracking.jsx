@@ -2,64 +2,120 @@ import { useState, useEffect } from "react";
 import MapComponent from "../../components/MapComponent";
 import * as signalR from "@microsoft/signalr";
 import { useParams, useNavigate } from "react-router-dom";
-import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
+import {
+  Package,
+  MapPin,
+  Truck,
+  ArrowRight,
+  Clock,
+  User,
+  Box,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
+import { formatStatus } from "@/lib/utils";
+
+import CustomerSidebar from "./CustomerSidebar";
 
 function Tracking() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [driverLocation, setDriverLocation] = useState(null);
   const [order, setOrder] = useState(null);
+  const [eta, setEta] = useState(null); // ETA state
   const [loading, setLoading] = useState(false);
   const [connection, setConnection] = useState(null);
   const [searchId, setSearchId] = useState("");
+  const isPublic = !localStorage.getItem("token");
 
   useEffect(() => {
     if (id) {
-        fetchOrderAndTrack(id);
+      fetchOrderAndTrack(id);
     }
-    
+
     return () => {
-       if (connection) connection.stop();
+      if (connection) connection.stop();
     };
   }, [id]);
 
   const fetchOrderAndTrack = async (orderId) => {
-    setLoading(true);
-    try {
-        const response = await api.get(`/customer/track/${orderId}`);
-        setOrder(response.data.order);
-        if (response.data.driverLocation) {
-            setDriverLocation(response.data.driverLocation);
-        }
-        if (response.data.order?.driverId) {
-             setupSignalR(response.data.order.id);
-        }
+    // Only show loading on initial load, not polling updates
+    if (!order) setLoading(true);
 
+    try {
+      const token = localStorage.getItem("token");
+      const url = token
+        ? `/customer/track/${orderId}`
+        : `/public/tracking/${orderId}`;
+
+      const response = await api.get(url);
+
+      // Public endpoint returns structure { order: {...}, driverLocation: ..., eta: ... }
+      const data = response.data;
+      const orderData = data.order;
+
+      // If driver is returned separately (authenticated endpoint), merge it into order
+      if (data.driver && !orderData.driver) {
+        orderData.driver = data.driver;
+      }
+
+      setOrder(orderData);
+
+      if (data.driverLocation) {
+        setDriverLocation(data.driverLocation);
+      }
+
+      if (response.data.eta) {
+        setEta(response.data.eta);
+      } else {
+        setEta(null);
+      }
+
+      // SignalR setup (only if authenticated)
+      if (response.data.order?.driverId && token) {
+        setupSignalR(response.data.order.id);
+      }
     } catch (error) {
-        console.error("Error fetching tracking info:", error);
-        setOrder(null);
+      console.error("Error fetching tracking info:", error);
+      // Don't clear order on polling error to avoid flickering
+      if (!order) setOrder(null);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
+
+  // POLLING LOGIC
+  useEffect(() => {
+    if (!id) return;
+
+    const token = localStorage.getItem("token");
+    // Poll every 5s if logged in (or rely on SignalR, but polling ensures sync), 15s if public
+    const intervalMs = token ? 30000 : 30000;
+
+    const intervalId = setInterval(() => {
+      fetchOrderAndTrack(id);
+    }, intervalMs);
+
+    return () => clearInterval(intervalId);
+  }, [id]);
 
   const setupSignalR = async (currentOrderId) => {
     if (connection) return;
 
     const newConnection = new signalR.HubConnectionBuilder()
       .withUrl(API_BASE_URL.replace("/api", "/hubs/logistics"), {
-        accessTokenFactory: () => localStorage.getItem("token") || ""
+        accessTokenFactory: () => localStorage.getItem("token") || "",
       })
       .withAutomaticReconnect()
       .build();
 
     newConnection.on("ReceiveDriverLocation", (payload) => {
-        setDriverLocation({
-             latitude: payload.latitude, 
-             longitude: payload.longitude 
-        });
+      setDriverLocation({
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+      });
     });
 
     try {
@@ -67,101 +123,322 @@ function Tracking() {
       await newConnection.invoke("JoinOrderGroup", Number(currentOrderId));
       setConnection(newConnection);
     } catch (err) {
-      console.error('SignalR Connection Error: ', err);
+      console.error("SignalR Connection Error: ", err);
     }
   };
 
   const handleSearch = (e) => {
-      e.preventDefault();
-      if(searchId) {
-          navigate(`/customer/track/${searchId}`);
-      }
+    e.preventDefault();
+    if (searchId) {
+      navigate(
+        isPublic ? `/tracking/${searchId}` : `/customer/track/${searchId}`
+      );
+    }
   };
 
-  
   const renderInputForm = () => (
-      <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md border border-[#e6ddc5] mt-10">
-          <h3 className="text-2xl font-bold text-[#351c15] mb-6 text-center">Track Your Package</h3>
-          <form onSubmit={handleSearch} className="space-y-4">
-              <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Order ID / Tracking Number</label>
-                  <input 
-                      type="text" 
-                      value={searchId}
-                      onChange={(e) => setSearchId(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f9b400] focus:border-transparent outline-none"
-                      placeholder="e.g. 1024"
-                      required
-                  />
+    <div className="min-h-[80vh] flex items-center justify-center p-4 md:p-10">
+      <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16">
+
+
+        <div className="md:col-span-12">
+          <div className="space-y-8 pl-4">
+              {/* Header & Explanation */}
+              <div className="space-y-4">
+                <h2 className="text-3xl font-bold text-[#ff8a3d]">
+                  Track Your Package
+                </h2>
+                <p className="text-slate-400 text-md leading-relaxed">
+                  Enter your internal Order ID or the Reference Tracking Number
+                  provided to you to see the current status of your shipment.
+                </p>
               </div>
-              <button 
-                  type="submit"
-                  className="w-full bg-[#351c15] text-white font-bold py-3 rounded-lg hover:bg-[#2b160f] transition-all"
-              >
-                  Track Now
-              </button>
-          </form>
+
+              {/* Inputs */}
+              <form onSubmit={handleSearch} className="space-y-6 max-w-xl">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-300">
+                    Order ID / Tracking Number
+                  </label>
+                  <input
+                    type="text"
+                    value={searchId}
+                    onChange={(e) => setSearchId(e.target.value)}
+                    className="w-full bg-transparent border-b border-white/20 p-4 text-white placeholder-slate-600 focus:border-[#ff8a3d] focus:outline-none transition-all rounded-none"
+                    placeholder="e.g. #12345 or TRK-9876"
+                  />
+                </div>
+
+                <div className="flex justify-start">
+                  <button
+                    type="submit"
+                    className="bg-transparent border border-[#ff8a3d] text-[#ff8a3d] hover:bg-[#ff8a3d] hover:text-black font-bold py-3 px-8 rounded-none transition-all duration-300 tracking-wide text-sm flex items-center gap-2"
+                  >
+                    Track Package <ArrowRight className="w-4 h-4"/>
+                  </button>
+                </div>
+              </form>
+          </div>
+        </div>
       </div>
+    </div>
   );
 
   const renderTrackingView = () => (
-      <div className="space-y-6">
-          {/* Header Info */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-[#e6ddc5] flex justify-between items-center">
-              <div>
-                  <h2 className="text-xl font-bold text-[#351c15]">Order #{id}</h2>
-                  <p className="text-gray-500">{order?.status}</p>
-              </div>
-              <div className="text-right">
-                   <p className="text-sm text-gray-400">ETA</p>
-                   <p className="text-lg font-bold text-[#f9b400]">
-                       {order?.status === 'Delivered' ? 'Delivered' : 'Calculating...'}
-                   </p>
-              </div>
+    <div className="max-w-7xl mx-auto space-y-8">
+      {/* Header Card */}
+      <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
+        <div className="p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="bg-[#ff8a3d]/20 text-[#ff8a3d] px-3 py-1 rounded-full text-xs font-bold tracking-wide">
+                {formatStatus(order?.status)}
+              </span>
+              <span className="text-slate-500 text-sm">
+                #{order?.trackingId || id}
+              </span>
+            </div>
+            <h1 className="text-3xl font-black text-white mb-1">
+              {order?.status === "Delivered"
+                ? "Package Delivered"
+                : order?.status === "Cancelled"
+                ? "Order Cancelled"
+                : order?.status === "OutForDelivery"
+                ? "Out for Delivery"
+                : ["DeliveryAttempted", "ReturnedToWarehouse"].includes(order?.status)
+                ? "Delivery Unsuccessful"
+                : "In Transit"}
+            </h1>
+            <p className="text-slate-400 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Last updated: {new Date().toLocaleTimeString()}
+            </p>
           </div>
 
-          {/* Map */}
-          <div className="bg-[#fff8e7] border border-[#e6ddc5] rounded-xl shadow p-4 h-[600px]">
-             {driverLocation ? (
-                  <MapComponent
-                    center={[driverLocation.latitude, driverLocation.longitude]}
-                    zoom={13}
-                    markers={[{
-                        position: [driverLocation.latitude, driverLocation.longitude],
-                        popup: "Driver Location"
-                    }, {
-                        position: [order?.deliveryLatitude || 13.0827, order?.deliveryLongitude || 80.2707],
-                        popup: "Data Delivery Location"
-                    }]}
-                    // Passes the driver location to update the view
-                    driverLocation={driverLocation} 
-                  />
-             ) : (
-                 <div className="h-full flex items-center justify-center text-gray-500">
-                     {order?.status === 'PendingAssignment' ? 'Waiting for driver assignment...' : 'Waiting for location signal...'}
-                 </div>
-             )}
-          </div>
+          {!["Delivered", "DeliveryAttempted", "ReturnedToWarehouse", "Cancelled"].includes(order?.status) && (
+            <div className="bg-white/5 p-5 rounded-2xl border border-white/10 flex items-center gap-4 min-w-[200px]">
+              <div className="bg-[#ff8a3d]/20 p-3 rounded-full">
+                <Truck className="h-6 w-6 text-[#ff8a3d]" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 font-bold">
+                  Estimated Arrival
+                </p>
+                <p className="text-xl font-bold text-white">
+                  {eta || "Measuring..."}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Details */}
+        <div className="space-y-6">
+          {/* Route Info - TIMELINE STYLE */}
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
+            <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-[#ff8a3d]" /> Shipment Route
+            </h3>
+
+            <div className="space-y-8">
+              {/* Origin */}
+              <div>
+                <h2 className="text-slate-500 font-bold mb-1  tracking-wider">Origin</h2>
+                <h4 className="text-md font-bold text-white leading-tight">
+                    {order?.originCity || order?.currentWarehouse?.city || order?.pickupAddress?.split(",")[0] || order?.senderName || "Processing Center"}
+                </h4>
+                {localStorage.getItem("token") && order?.pickupAddress ? (
+                  <p className="text-slate-400 text-sm mt-1">{order.pickupAddress}</p>
+                ) : (
+                    <p className="text-slate-600 text-xs italic mt-1">Full address protected</p>
+                )}
+              </div>
+
+              {/* Destination */}
+              <div>
+                <h2 className=" text-slate-500 font-bold mb-1 tracking-wider">Destination</h2>
+                <h4 className="text-md font-bold text-white leading-tight">
+                  {order?.destinationCity || order?.receiverAddress?.split(",")[0] || order?.receiverName || "Destination"}
+                </h4>
+                {localStorage.getItem("token") && order?.receiverAddress ? (
+                  <>
+                    <p className="text-slate-400 text-sm mt-1">{order.receiverAddress}</p>
+                  </>
+                ) : (
+                  <p className="text-slate-600 text-xs italic mt-1">Full address protected</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Driver & Details */}
+          <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
+            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <User className="h-5 w-5 text-[#ff8a3d]" /> Delivery Agent
+            </h3>
+
+            <div className="flex items-center gap-4 mb-8">
+              <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center border border-white/10">
+                <User className="h-6 w-6 text-slate-400" />
+              </div>
+              <div>
+                <p className="font-bold text-white text-lg">
+                  {order?.driverName ||
+                    (order?.driver
+                      ? `${
+                          order.driver.userFName || order.driver.UserFName || ""
+                        } ${
+                          order.driver.userLName || order.driver.UserLName || ""
+                        }`
+                      : "Unassigned")}
+                </p>
+                <p className="text-sm text-slate-500">
+                  Ontrack Certified Driver
+                </p>
+              </div>
+            </div>
+
+            {localStorage.getItem("token") && (
+              <div className="border-t border-white/10 pt-6 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 font-bold mb-1">
+                    Receiver
+                  </p>
+                  <p className="text-white font-medium">
+                    {order?.receiverName}
+                  </p>
+                  <p className="text-slate-500 text-xs">
+                    {order?.receiverPhone}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-bold mb-1">
+                    Package
+                  </p>
+                  <p className="text-white font-medium">{order?.parcelSize}</p>
+                  <p className="text-slate-500 text-xs">{order?.weight} kg</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Map or Status Message */}
+        <div className="lg:col-span-2 h-[600px] bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden relative">
+          {order?.status === "Delivered" ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0f14] text-center p-8">
+              <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mb-6 border border-green-500/20 shadow-[0_0_40px_rgba(34,197,94,0.2)]">
+                <CheckCircle className="w-12 h-12 text-green-500" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-2">Order Delivered!</h2>
+              <p className="text-slate-400 max-w-md">
+                This package has been successfully delivered to the recipient.
+                Thank you for choosing Ontrack.
+              </p>
+              {order.deliveredAt && (
+                <p className="mt-8 text-sm font-bold text-green-400 bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20">
+                  Delivered on {new Date(order.deliveredAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+          ) : ["DeliveryAttempted", "ReturnedToWarehouse", "Cancelled"].includes(order?.status) ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0f14] text-center p-8">
+              <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6 border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.2)]">
+                <AlertTriangle className="w-12 h-12 text-red-500" />
+              </div>
+              <h2 className="text-3xl font-black text-white mb-2">
+                {order?.status === "Cancelled" ? "Order Cancelled" : "Delivery Attempted"}
+              </h2>
+              <p className="text-slate-400 max-w-md">
+                {order?.status === "Cancelled"
+                  ? "This order has been cancelled."
+                  : "We attempted to deliver your package but were unsuccessful. The detailed status has been updated."}
+              </p>
+              <p className="mt-8 text-sm font-bold text-orange-400 bg-orange-500/10 px-4 py-2 rounded-full border border-orange-500/20">
+                Returning to nearest warehouse
+              </p>
+            </div>
+          ) : driverLocation ? (
+            <MapComponent
+              center={[driverLocation.latitude, driverLocation.longitude]}
+              zoom={13}
+              markers={[
+                {
+                  position: [driverLocation.latitude, driverLocation.longitude],
+                  popup: "Driver Location",
+                },
+                {
+                  position: [
+                    order?.deliveryLatitude || 13.0827,
+                    order?.deliveryLongitude || 80.2707,
+                  ],
+                  popup: "Delivery Location",
+                },
+              ]}
+              driverLocation={driverLocation}
+            />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 bg-[#0b0f14]/50 backdrop-blur-sm">
+              <div className="bg-white/10 p-4 rounded-full mb-4 animate-pulse">
+                <MapPin className="h-8 w-8 text-slate-400" />
+              </div>
+              <p className="font-medium">
+                {order?.status === "PendingAssignment"
+                  ? "Searching for nearby drivers..."
+                  : "Waiting for location signal..."}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 
   return (
-    <div className="min-h-screen flex bg-[#f7f3ef]">
-      <CustomerSidebar active="track" />
-
-      <div className="flex-1 p-10 overflow-y-auto">
-        {!id ? (
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100 font-sans">
+      {!isPublic && <CustomerSidebar active="track" />}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300">
+        <header className="border-b border-white/10 px-8 py-4 flex items-center shadow-lg z-10">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-white">
+              Tracking
+            </h1>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto p-6 md:p-10">
+          {!id ? (
             renderInputForm()
-        ) : loading ? (
-            <div className="flex justify-center items-center h-full">Loading tracking info...</div>
-        ) : !order ? (
-            <div className="text-center mt-10">
-                <p className="text-red-500 font-bold mb-4">Order not found</p>
-                <button onClick={() => navigate('/customer/tracking')} className="text-blue-600 hover:underline">Try another ID</button>
+          ) : loading ? (
+            <div className="flex flex-col items-center justify-center h-[80vh]">
+              <div className="w-16 h-16 border-4 border-white/10 border-t-[#ff8a3d] rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-400 animate-pulse">Retrieving data...</p>
             </div>
-        ) : (
+          ) : !order ? (
+            <div className="text-center mt-20 max-w-md mx-auto">
+              <div className="bg-red-500/10 p-6 rounded-2xl border border-red-500/20">
+                <h3 className="text-xl font-bold text-red-500 mb-2">
+                  Tracking Failed
+                </h3>
+                <p className="text-slate-400 mb-6">
+                  We couldn't find a package with that ID. Please check your
+                  tracking number and try again.
+                </p>
+                <button
+                  onClick={() =>
+                    navigate(isPublic ? "/tracking" : "/customer/tracking")
+                  }
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-lg transition-colors"
+                >
+                  Try Another ID
+                </button>
+              </div>
+            </div>
+          ) : (
             renderTrackingView()
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,3 @@
-namespace Backend.DTO;
-
 public sealed record StopDto(
     double lat,
     double lng,
@@ -11,12 +9,12 @@ public sealed record StopDto(
 public sealed record RoadIssueDto(
     double latitude,
     double longitude,
-    string severity // Critical / High / Medium / Low
+    string severity 
 );
 
 public sealed record OptimizeRouteRequest(
     List<StopDto> stops,
     List<RoadIssueDto>? roadIssues,
     StopDto? driverLocation,
-    string optimizationMode // NEW
+    string optimizationMode
 );

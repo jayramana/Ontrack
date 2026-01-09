@@ -1,93 +1,90 @@
 using Backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
-public static class VerificationEndpoints
+namespace Backend.Endpoints
 {
-    public static void MapVerificationEndpoints(this IEndpointRouteBuilder app)
+    public static class VerificationEndpoints
     {
-        var group = app.MapGroup("/api/verification").WithTags("Verification");
-
-        /// <summary>
-        /// Test endpoint - Verify Aadhaar QR code only
-        /// </summary>
-        group.MapPost("/aadhaar", async (
-            [FromBody] AadhaarVerifyRequest request,
-            VerificationService verificationService
-        ) =>
+        public static RouteGroupBuilder MapVerificationEndpoints(this IEndpointRouteBuilder app)
         {
-            try
-            {
-                var result = await verificationService.VerifyAadhaarAsync(request.AadhaarImage);
-                return Results.Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Verification failed: {ex.Message}");
-            }
-        });
+            var group = app.MapGroup("/api/verification").WithTags("Verification");
 
-        /// <summary>
-        /// Test endpoint - Verify face match
-        /// </summary>
-        group.MapPost("/face-match", async (
-            [FromBody] FaceMatchRequest request,
-            VerificationService verificationService
-        ) =>
-        {
-            try
+            /// <summary>
+            /// Health check for Python verification service
+            /// </summary>
+            group.MapGet("/health", async () =>
             {
-                var result = await verificationService.VerifyFaceMatchAsync(
-                    request.IdPhoto,
-                    request.CapturedPhoto
-                );
-                return Results.Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return Results.Problem($"Face verification failed: {ex.Message}");
-            }
-        });
-
-        /// <summary>
-        /// Health check for Python service
-        /// </summary>
-        group.MapGet("/health", async (VerificationService verificationService) =>
-        {
-            try
-            {
-                var httpClient = new HttpClient();
-                var response = await httpClient.GetAsync("http://localhost:5001/health");
-                
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    return Results.Ok(new
+                    var httpClient = new HttpClient();
+                    httpClient.Timeout = TimeSpan.FromSeconds(5);
+                    var response = await httpClient.GetAsync("http://localhost:5001/health");
+                    
+                    if (response.IsSuccessStatusCode)
                     {
-                        status = "OK",
-                        message = "Python verification service is running",
-                        pythonService = "http://localhost:5001"
-                    });
+                        var content = await response.Content.ReadAsStringAsync();
+                        return Results.Ok(new
+                        {
+                            status = "OK",
+                            message = "Python verification service is running",
+                            pythonService = "http://localhost:5001",
+                            details = content
+                        });
+                    }
+                    else
+                    {
+                        return Results.Ok(new
+                        {
+                            status = "ERROR",
+                            message = "Python verification service returned error",
+                            statusCode = (int)response.StatusCode
+                        });
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
                     return Results.Ok(new
                     {
                         status = "ERROR",
-                        message = "Python verification service is not responding"
+                        message = "Cannot connect to Python verification service",
+                        error = ex.Message
                     });
                 }
-            }
-            catch
-            {
-                return Results.Ok(new
-                {
-                    status = "ERROR",
-                    message = "Cannot connect to Python verification service"
-                });
-            }
-        });
-    }
-}
+            });
 
-// Request DTOs
-public record AadhaarVerifyRequest(string AadhaarImage);
-public record FaceMatchRequest(string IdPhoto, string CapturedPhoto);
+            /// <summary>
+            /// Test face matching service directly
+            /// </summary>
+            group.MapPost("/test-face-match", async (
+                [FromBody] TestFaceMatchRequest request,
+                VerificationService verificationService
+            ) =>
+            {
+                try
+                {
+                    var result = await verificationService.FaceMatchAsync(
+                        request.IdPhotoBase64,
+                        request.CapturedPhotoBase64
+                    );
+                    
+                    return Results.Ok(new
+                    {
+                        success = true,
+                        result = result
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Results.Ok(new
+                    {
+                        success = false,
+                        error = ex.Message
+                    });
+                }
+            });
+            return group;
+        }
+    }
+
+    public record TestFaceMatchRequest(string IdPhotoBase64, string CapturedPhotoBase64);
+}

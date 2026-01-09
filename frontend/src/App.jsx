@@ -14,21 +14,28 @@ import GlobalGeofenceAlerts from "./components/GlobalGeofenceAlerts";
 // Auth
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import HomePage from "./HomePage";
 
 // --- CUSTOMER PAGES ---
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import CustomerOrders from "./pages/customer/CustomerOrders"; // [NEW]
 import OrderDetails from "./pages/customer/OrderDetails"; // [NEW]
+import ReportIssue from "./pages/customer/ReportIssue"; // [NEW]
 import Tracking from "./pages/customer/Tracking";
 import CustomerGeofenceAlerts from "./pages/customer/CustomerGeofenceAlerts";
+import GeofenceDetails from "./pages/customer/GeofenceDetails"; // [NEW]
+import NotificationsPage from "./pages/NotificationsPage"; // [NEW]
+
 import Availability from "./pages/customer/Availability";
 
 // --- DRIVER PAGES ---
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import ReportRoadIssue from "./pages/driver/ReportRoadIssue";
 import DriverGeofenceAlerts from "./pages/driver/DriverGeofenceAlerts";
+import DriverGeofenceDetails from "./pages/driver/DriverGeofenceDetails";
 import DriverRoutePage from "./pages/driver/DriverRoutePage";
 import DriverDeliveries from "./pages/driver/DriverDeliveries";
+import DriverOrderDetails from "./pages/driver/DriverOrderDetails"; // [NEW]
 import CustomerProfile from "./pages/customer/CustomerProfile";
 import DriverProfile from "./pages/driver/DriverProfile";
 
@@ -39,6 +46,7 @@ import DeliveryInsights from "./pages/admin/DeliveryInsights";
 import LiveMap from "./pages/admin/LiveMap";
 import WarehouseDashboard from "./pages/admin/WarehouseDashboard";
 import AdminASRPanel from "./pages/admin/AdminASRPanel";
+import ManageOrders from "./pages/admin/ManageOrders"; // [NEW]
 //import TransportScheduler from "./pages/admin/TransportScheduler";
 //import CapacityDashboard from "./pages/admin/CapacityDashboard";
 
@@ -49,7 +57,11 @@ import ShipmentList from "./pages/seller/ShipmentList";
 import PlaceOrder from "./pages/seller/PlaceOrder";
 import SenderOrders from "./pages/seller/SenderOrders";
 
+import SenderChart from "./components/charts/Sender/SenderChart";
+
 import "./index.css";
+
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
   return (
@@ -57,33 +69,20 @@ function App() {
       <AuthProvider>
         <GeofenceProvider>
           <GlobalGeofenceAlerts />
+          <Toaster position="top-right" />
 
           <Routes>
             {/* ---------------- PUBLIC ROUTES ---------------- */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/" element={<HomePage />} />
 
             {/* ---------------- CUSTOMER ROUTES ---------------- */}
+            <Route path="/customer/notifications" element={<ProtectedRoute requiredRole="customer"><NotificationsPage /></ProtectedRoute>} />
 
-
-
-            <Route
-              path="/customer/tracking"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <Tracking />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customer/track/:id"
-              element={
-                <ProtectedRoute requiredRole="customer">
-                  <Tracking />
-                </ProtectedRoute>
-              }
-            />
-
+            <Route path="/tracking" element={<Tracking />} />
+            <Route path="/tracking/:id" element={<Tracking />} />
+            <Route path="/customer/track/:id" element={<Tracking />} />
 
             <Route
               path="/customer/availability"
@@ -122,6 +121,15 @@ function App() {
             />
 
             <Route
+              path="/customer/report-issue/:id"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <ReportIssue />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/customer/geofencealerts"
               element={
                 <ProtectedRoute requiredRole="customer">
@@ -130,13 +138,23 @@ function App() {
               }
             />
 
+            <Route
+              path="/customer/geofence-details/:geofenceId"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <GeofenceDetails />
+                </ProtectedRoute>
+              }
+            />
+
+
             {/* ---------------- DRIVER ROUTES ---------------- */}
 
             <Route path="/driver/report-issue" element={<ReportRoadIssue />} />
             <Route path="/driver/issues" element={<ReportRoadIssue />} />
+            <Route path="/driver/notifications" element={<ProtectedRoute requiredRole="driver"><NotificationsPage /></ProtectedRoute>} />
 
             <Route path="/driver/route" element={<DriverRoutePage />} />
-
 
             <Route
               path="/customer/profile"
@@ -146,7 +164,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             <Route
               path="/driver/dashboard"
               element={
@@ -166,8 +184,22 @@ function App() {
             />
 
             <Route
+              path="/driver/orders/:id"
+              element={
+                <ProtectedRoute requiredRole="driver">
+                  <DriverOrderDetails />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/driver/geofencealerts"
               element={<DriverGeofenceAlerts />}
+            />
+
+            <Route
+              path="/driver/geofence-details/:geofenceId"
+              element={<DriverGeofenceDetails />}
             />
 
             <Route
@@ -182,7 +214,9 @@ function App() {
             {/* ---------------- ADMIN ROUTES ---------------- */}
             <Route path="/admin/queries" element={<CustomerQueries />} />
             <Route path="/admin/insights" element={<DeliveryInsights />} />
+            <Route path="/admin/manage-orders" element={<ProtectedRoute requiredRole="admin"><ManageOrders /></ProtectedRoute>} />
             <Route path="/admin/asr" element={<AdminASRPanel />} />
+            <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="admin"><NotificationsPage /></ProtectedRoute>} />
 
             <Route
               path="/admin/dashboard"
@@ -227,6 +261,7 @@ function App() {
             />/*}
 
             {/* ---------------- SELLER ROUTES ---------------- */}
+            <Route path="/seller/notifications" element={<ProtectedRoute requiredRole="seller"><NotificationsPage /></ProtectedRoute>} />
             <Route
               path="/seller/dashboard"
               element={
@@ -278,6 +313,8 @@ function App() {
 
             {/* ---------------- FALLBACK ROUTE ---------------- */}
             <Route path="*" element={<FallbackRedirect />} />
+            {/* // Test Routes */}
+            <Route path="/test" element={<SenderChart />} />
           </Routes>
         </GeofenceProvider>
       </AuthProvider>
@@ -286,8 +323,8 @@ function App() {
 }
 
 function FallbackRedirect() {
-    console.log("Fallback route hit. No matching route found. Redirecting to login...");
-    return <Navigate to="/login" replace />;
+
+  return <Navigate to="/login" replace />;
 }
 
 export default App;

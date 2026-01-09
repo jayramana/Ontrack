@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class AdminEndpoints
 {
-    public static void MapAdminEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapAdminEndpoints(this IEndpointRouteBuilder app)
     {
         var admin = app.MapGroup("/api/admin")
                        .RequireAuthorization(new AuthorizeAttribute { Roles = "admin" }).WithTags("Admin");
@@ -355,16 +355,28 @@ public static class AdminEndpoints
             DriverRouteOptimizationService driverRouteService,
             RouteOptimizationService persistenceService,
             GeofenceService geofenceService,
-            IHubContext<LogisticsHub> hubContext
+            IHubContext<LogisticsHub> hubContext,
+            NotificationService notificationService
         ) =>
         {
             var order = await context.Orders.FindAsync(orderId);
             if (order == null)
                 return Results.NotFound(new { message = "Order not found" });
 
+            if (order.DriverId.HasValue && order.DriverId != driverId)
+            {
+                order.PreviousDriverId = order.DriverId;
+            }
+
             order.DriverId = driverId;
             order.Status = "Assigned";
             await context.SaveChangesAsync();
+
+            await notificationService.AddNotificationAsync(driverId, $"You have been assigned to Order #{orderId}", "Info");
+            if (order.CustomerId.HasValue)
+            {
+                await notificationService.AddNotificationAsync(order.CustomerId.Value, $"Driver has been assigned to your Order #{orderId}", "Info");
+            }
 
             // 1. Create Geofence if missing (Prioritize tracking)
 // 1. Create Geofence if missing
@@ -460,5 +472,6 @@ public static class AdminEndpoints
 
 
 
+        return admin;
     }
 }

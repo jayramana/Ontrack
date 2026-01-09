@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { toast } from 'sonner';
 import api from '../services/api';
 
 const PricingCalculator = ({ onPriceCalculated }) => {
@@ -27,7 +28,7 @@ const PricingCalculator = ({ onPriceCalculated }) => {
                 onPriceCalculated(res.data.totalPrice);
             }
         } catch (error) {
-            alert('Error calculating price: ' + error.message);
+            toast.error('Error calculating price: ' + error.message);
         } finally {
             setLoading(false);
         }

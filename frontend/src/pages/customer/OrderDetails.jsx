@@ -1,494 +1,769 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useParams, useNavigate } from "react-router-dom";
 import CustomerSidebar from "./CustomerSidebar";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
+import { Copy, Check, ShieldCheck, Zap, Clock, Hourglass, CheckCircle } from "lucide-react";
+import { formatStatus, formatDate, formatDateTime } from "@/lib/utils";
+import CustomerASRUpload from "./CustomerASRUpload";
 
 const OrderDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [order, setOrder] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState(null);
-  // Reschedule state
+
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (order?.trackingId) {
+      navigator.clipboard.writeText(order.trackingId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const [rescheduleForm, setRescheduleForm] = useState({
     newDate: "",
     reason: "",
   });
 
-  const [eta, setEta] = useState(null);
-  const [etaDistance, setEtaDistance] = useState(null);
+  const [showASRModal, setShowASRModal] = useState(false);
 
+  const [eta, setEta] = useState(null);
+
+  const [confirmData, setConfirmData] = useState({
+    open: false,
+    title: "",
+    desc: "",
+    action: null
+  });
+
+  const [requestingReverify, setRequestingReverify] = useState(null);
+
+  /* ---------------- TIMELINE ---------------- */
+  const statusRank = {
+    PendingAssignment: 0,
+    Pending: 0,
+    Assigned: 10,
+    Picked: 20,
+    AtOriginWarehouse: 30,
+    InTransit: 40,
+    AtDestinationWarehouse: 50,
+    OutForDelivery: 60,
+    DeliveryAttempted: 65,
+    ReturnedToWarehouse: 65,
+    Delivered: 70,
+  };
+
+  const [expandedAssigned, setExpandedAssigned] = useState(false);
+
+  // Auto-expand if current status is within the nested group
+  useEffect(() => {
+    if (order && ["AtOriginWarehouse", "InTransit", "AtDestinationWarehouse", "Picked"].includes(order.status)) {
+      setExpandedAssigned(true);
+    }
+  }, [order?.status]);
+
+  /* ---------------- ETA ---------------- */
   const calculateEta = async (currentOrder, locHistory) => {
     if (!currentOrder || !currentOrder.driverId) return;
 
     try {
-        let driverLat, driverLon;
-        const driverProfile = currentOrder.driver;
-        const driverHistory = locHistory;
+      let driverLat, driverLon;
+      const driverProfile = currentOrder.driver;
 
-        const now = new Date();
-        const staleThreshold = 5 * 60 * 1000; // 5 minutes
+      if (driverProfile?.currentLatitude && driverProfile?.currentLongitude) {
+        driverLat = driverProfile.currentLatitude;
+        driverLon = driverProfile.currentLongitude;
+      } else if (locHistory?.latitude && locHistory?.longitude) {
+        driverLat = locHistory.latitude;
+        driverLon = locHistory.longitude;
+      } else return;
 
-        let isProfileFresh = false;
-        if (driverProfile?.updatedAt) {
-          const profileTime = new Date(driverProfile.updatedAt).getTime();
-          if (now.getTime() - profileTime < staleThreshold) {
-            isProfileFresh = true;
-          }
-        }
+      const res = await api.post("/loc/calculate-eta", {
+        driverLat,
+        driverLon,
+        customerLat: currentOrder.deliveryLatitude,
+        customerLon: currentOrder.deliveryLongitude,
+        speedKmph: 40,
+      });
 
-        if (isProfileFresh && driverProfile.currentLatitude && driverProfile.currentLongitude) {
-           driverLat = driverProfile.currentLatitude;
-           driverLon = driverProfile.currentLongitude;
-        } 
-        else if (driverHistory && driverHistory.latitude && driverHistory.longitude) {
-           driverLat = driverHistory.latitude;
-           driverLon = driverHistory.longitude;
-        } 
-        else if (driverProfile?.currentLatitude && driverProfile?.currentLongitude) {
-           driverLat = driverProfile.currentLatitude;
-           driverLon = driverProfile.currentLongitude;
-        }
-        else {
-           return; // Cannot calculate
-        }
-
-        const etaRes = await api.post("/loc/calculate-eta", {
-            driverLat,
-            driverLon,
-            customerLat: currentOrder.deliveryLatitude,
-            customerLon: currentOrder.deliveryLongitude,
-            speedKmph: 40,
-        });
-
-        setEta(etaRes.data.eta);
-        setEtaDistance(etaRes.data.distance_km);
-
-    } catch (error) {
-        console.error("ETA Calc Error:", error);
+      setEta(res.data.eta);
+    } catch (err) {
+      console.error(err);
     }
   };
 
+  /* ---------------- EFFECTS ---------------- */
   useEffect(() => {
     fetchOrderDetails();
     setupSignalR();
-
-    return () => {
-      if (connection) connection.stop().catch(() => {});
-    };
+    return () => connection?.stop();
   }, [id]);
 
-  // ETA Update Interval (1 minute)
   useEffect(() => {
-    let intervalId;
-    if (order && order.status !== 'Delivered' && order.status !== 'Cancelled') {
-        intervalId = setInterval(() => {
-            calculateEta(order, driverLocation);
-        }, 60 * 1000);
-    }
-    return () => {
-        if(intervalId) clearInterval(intervalId);
-    }
+    if (!order) return;
+    const i = setInterval(() => calculateEta(order, driverLocation), 60000);
+    return () => clearInterval(i);
   }, [order, driverLocation]);
 
   const fetchOrderDetails = async () => {
     try {
-      const response = await api.get(`/customer/track/${id}`);
-      setOrder(response.data.order);
-      if (response.data.driverLocation) {
-        setDriverLocation(response.data.driverLocation);
-      }
-      // Initial ETA calc
-      calculateEta(response.data.order, response.data.driverLocation);
-    } catch (error) {
-      console.error("Error fetching order details:", error);
+      const res = await api.get(`/customer/track/${id}`);
+      setOrder({
+        ...res.data.order,
+        scheduledDate: res.data.scheduledDate || res.data.order.scheduledDate
+      });
+      setDriverLocation(res.data.driverLocation);
+      calculateEta(res.data.order, res.data.driverLocation);
     } finally {
       setLoading(false);
     }
   };
 
   const setupSignalR = async () => {
-    try {
-      const hubUrl = API_BASE_URL.replace("/api", "/hubs/logistics");
-      const conn = new signalR.HubConnectionBuilder()
-        .withUrl(hubUrl)
-        .withAutomaticReconnect()
-        .build();
+    const conn = new signalR.HubConnectionBuilder()
+      .withUrl(API_BASE_URL.replace("/api", "/hubs/logistics"))
+      .withAutomaticReconnect()
+      .build();
 
-      conn.on("ReceiveDriverLocation", (payload) => {
-        if (order && payload?.driverId === order.driverId) {
-             setDriverLocation({
-              latitude: payload.latitude,
-              longitude: payload.longitude,
-              updatedAt: payload.updatedAt || new Date().toISOString(),
-              speed: payload.speed || 0,
-            });
+    conn.on("ReceiveDriverLocation", (p) => {
+      if (order && p.driverId === order.driverId) {
+        setDriverLocation(p);
+      }
+    });
+
+    // Listen for any ASR status changes to refresh the UI
+    const refreshEvents = [
+      "ASRRetryRequested",
+      "ASRResetRequested",
+      "ASRVerificationCompleted",
+      "ASRVerificationFailed",
+      "ASRRequestInitiated"
+    ];
+
+    refreshEvents.forEach(evt => {
+      conn.on(evt, (data) => {
+        // If we have an order loaded and this event is for us (typically these events contain orderId)
+        // We can just bluntly refresh if we are on this page.
+        // Or check data.orderId if available.
+        if (data && data.orderId == id) {
+          fetchOrderDetails();
+        } else {
+          // Fallback refresh for robustness
+          fetchOrderDetails();
         }
       });
+    });
 
-      await conn.start();
-      setConnection(conn);
-    } catch (err) {
-      console.error("SignalR Error:", err);
+    await conn.start();
+
+    // Join Customer Group
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.userId) {
+      await conn.invoke("JoinCustomerGroup", user.userId);
     }
+
+    setConnection(conn);
   };
 
   const handleReschedule = async (e) => {
     e.preventDefault();
-    try {
-      await api.post(`/orders/${id}/reschedule`, {
-        newDate: rescheduleForm.newDate,
-        reason: rescheduleForm.reason,
-      });
-      alert("Delivery rescheduled!");
-      setShowRescheduleDialog(false);
-      fetchOrderDetails();
-    } catch {
-      alert("Error updating schedule");
-    }
+    await api.post(`/customer/reschedule/${id}`, rescheduleForm);
+    setShowRescheduleDialog(false);
+    fetchOrderDetails();
   };
 
-  const getStatusColor = (status) => {
-     return {
-      PendingAssignment: "bg-yellow-100 text-yellow-800",
-      AtOriginWarehouse: "bg-yellow-100 text-yellow-800",
-      Assigned: "bg-blue-100 text-blue-800",
-      InTransit: "bg-blue-50 text-blue-600",
-      OutForDelivery: "bg-purple-100 text-purple-800",
-      AtDestinationWarehouse: "bg-orange-100 text-orange-800",
-      Delivered: "bg-green-100 text-green-800",
-      DeliveryAttempted: "bg-red-100 text-red-800",
-      Cancelled: "bg-red-100 text-red-800",
-    }[status] || "bg-gray-200 text-gray-700";
-  };
-
-  if (loading) return (
-       <div className="min-h-screen flex bg-[#f7f3ef]">
-         <CustomerSidebar active="orders" />
-         <div className="flex-1 flex justify-center items-center text-[#351c15]">Loading...</div>
-       </div>
-  );
-
-  if (!order) return (
-      <div className="min-h-screen flex bg-[#f7f3ef]">
+  if (loading) {
+    return (
+      <div className="min-h-screen flex bg-[#0b0f14] text-slate-400">
         <CustomerSidebar active="orders" />
-        <div className="flex-1 flex justify-center items-center text-[#351c15]">Order not found</div>
+        <div className="flex-1 flex items-center justify-center">Loading…</div>
       </div>
-  );
+    );
+  }
+
+  if (!order) return null;
+
+  /* ---------------- TIMELINE ---------------- */
+  const currentRank = statusRank[order.status] ?? 0;
+
+  const showASRButton = order.isASR && ["NotStarted", "Pending"].includes(order.asrStatus);
 
   return (
-    <div className="min-h-screen flex bg-[#f7f3ef]">
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
       <CustomerSidebar active="orders" />
-      
-      <div className="flex-1 overflow-y-auto max-h-screen">
-        <header className="bg-[#351c15] text-[#f9b400] sticky top-0 z-40 shadow-md">
-            <div className="max-w-7xl mx-auto px-8 py-5 flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate('/customer/orders')} 
-                        className="text-[#f9b400] hover:text-white font-medium transition-colors text-sm flex items-center gap-1"
-                    >
-                        <span>← Back</span>
-                    </button>
-                    <h1 className="text-xl font-bold tracking-wide text-[#fca311]">ORDER DETAILS</h1>
-                </div>
-                {/* ALTERNATIVE: Status in Header */}
-                <div className="flex items-center gap-4">
-                    <span className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider ${getStatusColor(order.status)} border border-current shadow-sm`}>
-                {order.status}
-                </span>
-                </div>
-            </div>
+
+      <div className="flex-1 overflow-y-auto px-10 py-8 space-y-10">
+
+        {/* HEADER */}
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/customer/orders")}
+              className="text-slate-400 hover:text-[#ff8a3d]"
+            >
+              ← Back
+            </button>
+            <h1 className="text-2xl font-black">
+              Order Details
+            </h1>
+          </div>
+
         </header>
 
-        <div className="max-w-7xl mx-auto px-8 py-8">
-            <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-[#e6ddc5] overflow-hidden">
-                <div>
-                    <div className="bg-[#f4ebd0] px-8 py-4 border-b border-[#e6ddc5] flex justify-between items-center">
-                        <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Shipment Information</h3>
-                        <span className="text-xs text-[#6f4e37] opacity-60 font-mono">
-                            Updated: {new Date(order.updatedAt || order.createdAt).toLocaleDateString()}
-                        </span>
-                    </div>
-                    <div className="p-8 space-y-8">
-                        {/* Status Field Alternative */}
-                        <div>
-                             <h4 className="text-lg font-bold text-[#351c15] mb-1">Current Status</h4>
-                             <p className="text-gray-600 text-base">{order.status}</p>
-                        </div>
-                        
-                        <div className="h-px bg-[#f1e6d6] w-full"></div>
+        {/* MAIN CARD */}
+        <div className="max-w-4xl bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
 
-                        <div>
-                            <h4 className="text-lg font-bold text-[#351c15] mb-1">Package Details</h4>
-                            <p className="text-gray-600 text-base">{order.packageDescription || "Standard Package"}</p>
-                            <p className="text-sm text-gray-500 mt-0.5">Weight: {order.weight} kg</p>
-                        </div>
-                        
-                        <div className="h-px bg-[#f1e6d6] w-full"></div>
+          {/* ORDER DETAILS */}
+          <div className="p-8 space-y-6">
+            <h2 className="text-xl font-bold">Order Details</h2>
+            <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+              <div>
+                <h4 className="font-bold text-slate-400 text-lg">Order Name</h4>
+                <p className="text-white font-medium text-base">Order-{order.id}</p>
+              </div>
 
-                        <div>
-                            <h4 className="text-lg font-bold text-[#351c15] mb-1">
-                                {order.status === "Delivered" ? "Delivered On" : "Estimated Delivery"}
-                            </h4>
-                            <p className="text-gray-600 text-base">
-                                {order.status === "Delivered"
-                                    ? new Date(order.deliveredAt || order.createdAt).toLocaleDateString()
-                                    : order.deliveryDate 
-                                        ? new Date(order.deliveryDate).toLocaleDateString() 
-                                        : "Pending"}
-                            </p>
-                            {/* ETA Display */}
-                            {eta && order.status !== "Delivered" && (
-                                <div className="mt-2 inline-flex items-center gap-2 bg-[#f4ebd0] px-3 py-1 rounded text-sm text-[#351c15]">
-                                     <span className="font-bold">ETA:</span> {eta}
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="h-px bg-[#f1e6d6] w-full"></div>
-
-                        <div>
-                            <h4 className="text-lg font-bold text-[#351c15] mb-1">From</h4>
-                            <p className="text-gray-600 text-base font-medium">{order.senderName}</p>
-                            <p className="text-gray-500 text-sm mt-0.5">{order.pickupAddress}</p>
-                        </div>
-
-                        <div className="h-px bg-[#f1e6d6] w-full"></div>
-
-                        <div>
-                            <h4 className="text-lg font-bold text-[#351c15] mb-1">To</h4>
-                            <p className="text-gray-600 text-base font-medium">{order.receiverName}</p>
-                            <p className="text-gray-500 text-sm mt-0.5">{order.receiverAddress}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-[#e6ddc5]"></div>
-
-                {/* 2. Detailed Tracking Timeline */}
-                <div>
-                    <div className="bg-[#f4ebd0] px-8 py-4 border-b border-[#e6ddc5]">
-                        <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm">Tracking Timeline</h3>
-                    </div>
-                    <div className="p-8">
-                        <div className="relative pl-2 space-y-0">
-                            {(() => {
-                                // LOGIC TO DETERMINE STEPS
-                                // User Request: 'InTransit' -> Arrived at Origin, 'Assigned' -> Arrived at Destination
-                                
-                                const statusRank = {
-                                  PendingAssignment: 0,        // Order confirmed
-                                  Picked: 20,                 // NEW explicit status
-                                  AtOriginWarehouse: 30,
-                                  'In Transit': 40,
-                                  AtDestinationWarehouse: 50,
-                                  Assigned: 55,
-                                  'OutForDelivery': 60,
-                                  'Out for delivery': 60,
-                                  DeliveryAttempted: 65,
-                                  Delivered: 70
-                                };
-
-
-                                const currentRank = statusRank[order.status] || 0;
-                                
-                                const steps = [
-                                    { 
-                                        title: "Order Placed", 
-                                        date: order.createdAt, 
-                                        sub: "Your order has been placed.",
-                                        active: true,
-                                        rank: 0 
-                                    },
-                                    { 
-                                        title: "Order Confirmed", 
-                                        date: order.createdAt, 
-                                        sub: "Seller has processed your order.",
-                                        active: currentRank >= 10,
-                                        rank: 10
-                                    },
-                                    {
-                                        title: "Picked Up",
-                                        date: order.createdAt, 
-                                        sub: "Courier has picked up your package.",
-                                        active: currentRank >= 20,
-                                        rank: 20
-                                    },
-                                    { 
-                                        title: `Arrived at Origin (${order.originWarehouse?.city || 'Warehouse'})`, 
-                                        date: null, 
-                                        sub: "Package received at facility.",
-                                        active: currentRank >= 30 && !!order.originWarehouse,
-                                        visible: !!order.originWarehouse,
-                                        rank: 30
-                                    },
-                                    {
-                                        title: "Shipped",
-                                        date: null, 
-                                        sub: `En route to ${order.destinationWarehouse?.city || 'destination'}.`,
-                                        // Shows as active in transit
-                                        active: currentRank >= 30,
-                                        rank: 40
-                                    },
-                                    { 
-                                        title: `Arrived at Destination (${order.destinationWarehouse?.city || 'Hub'})`, 
-                                        date: null,
-                                        sub: "Package assigned to delivery partner.",
-                                        // Active if 'Assigned' or later
-                                        active: currentRank >= 50 && !!order.destinationWarehouse,
-                                        visible: !!order.destinationWarehouse,
-                                        rank: 50
-                                    },
-                                    { 
-                                        title: "Out for Delivery", 
-                                        date: null, 
-                                        sub: "Driver is on the way.",
-                                        active: currentRank >= 60,
-                                        rank: 60
-                                    },
-                                    { 
-                                        title: "Delivered", 
-                                        date: order.deliveredAt, 
-                                        sub: "Package delivered successfully.",
-                                        active: currentRank >= 70,
-                                        rank: 70
-                                    }
-                                ].filter(s => s.visible !== false);
-
-                                return steps.map((step, idx) => {
-                                    const isLast = idx === steps.length - 1;
-                                    const isCompleted = step.active;
-                                    const isCurrent = steps[idx].active && (!steps[idx+1]?.active);
-
-                                    return (
-                                        <div key={idx} className="flex gap-6 relative min-h-[80px]">
-                                            {/* Connecting Line */}
-                                            {!isLast && (
-                                                <div className={`absolute left-[7px] top-4 bottom-0 w-[2px] ${isCompleted && steps[idx+1]?.active ? 'bg-[#15803d]' : 'bg-gray-200'}`}></div>
-                                            )}
-                                            
-                                            {/* Status Dot */}
-                                            <div className={`relative z-10 w-4 h-4 rounded-full mt-1.5 flex-shrink-0 border-2 ${
-                                                isCompleted 
-                                                    ? 'bg-[#15803d] border-[#15803d]' 
-                                                    : 'bg-white border-gray-300'
-                                            }`}>
-                                                {isCurrent && <div className="absolute -inset-1 rounded-full border border-[#15803d] animate-ping"></div>}
-                                            </div>
-                                            
-                                            <div className={`-mt-1 pb-6 ${!isCompleted ? 'opacity-50 grayscale' : ''}`}>
-                                                <h4 className={`text-base font-bold ${isCompleted ? 'text-[#351c15]' : 'text-gray-500'}`}>
-                                                    {step.title}
-                                                </h4>
-                                                <p className="text-sm text-gray-500 mt-0.5">{step.sub}</p>
-                                                {step.date && isCompleted && (
-                                                    <p className="text-xs text-[#15803d] font-bold mt-1">
-                                                        {new Date(step.date).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                });
-                            })()}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-[#e6ddc5]"></div>
-
-                {/* 3. Actions / Manage Delivery */}
-                <div className="bg-gray-50 p-8">
-                    <h3 className="text-[#351c15] font-bold uppercase tracking-wide text-sm mb-6">Manage Delivery</h3>
-                    
-                    <div className="flex flex-col md:flex-row gap-4">
-                        {order.status !== "Delivered" && (
-                            <button
-                                onClick={() => setShowRescheduleDialog(true)}
-                                className="flex-1 border-2 border-[#351c15] text-[#351c15] hover:bg-[#351c15] hover:text-white font-bold py-3 rounded-lg transition-colors"
-                            >
-                                RESCHEDULE DELIVERY
-                            </button>
-                        )}
-                        <button className="flex-1 border border-gray-300 text-gray-600 hover:bg-white font-medium py-3 rounded-lg text-sm transition-colors">
-                            Report a Problem
-                        </button>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        {/* Reschedule Modal */}
-        {showRescheduleDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-[#fff8e7] rounded-xl p-6 max-w-md w-full shadow-xl border border-[#e6ddc5]">
-              <h3 className="text-xl font-bold text-[#351c15] mb-4">
-                Reschedule Delivery
-              </h3>
-
-              <form onSubmit={handleReschedule} className="space-y-4">
-                <div>
-                  <label className="text-sm text-[#6f4e37]">New Delivery Date</label>
-                  <input
-                    type="datetime-local"
-                    className="w-full p-3 border border-[#e6ddc5] rounded-xl mt-1 focus:ring-2 focus:ring-[#f9b400] focus:border-[#f9b400]"
-                    value={rescheduleForm.newDate}
-                    onChange={(e) =>
-                      setRescheduleForm({ ...rescheduleForm, newDate: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm text-[#6f4e37]">Reason (Optional)</label>
-                  <textarea
-                    rows="3"
-                    className="w-full p-3 border border-[#e6ddc5] rounded-xl mt-1 focus:ring-2 focus:ring-[#f9b400] focus:border-[#f9b400]"
-                    value={rescheduleForm.reason}
-                    onChange={(e) =>
-                      setRescheduleForm({ ...rescheduleForm, reason: e.target.value })
-                    }
-                  ></textarea>
-                </div>
-
-                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
-                  <p className="text-xs text-yellow-800">
-                    ⚠️ Rescheduling may delay the delivery.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
+              <div>
+                <h4 className="font-bold text-slate-400 text-lg">Tracking ID</h4>
+                <div className="flex items-center gap-2">
+                  <p className="text-white font-medium text-base">#{order.trackingId}</p>
                   <button
-                    type="button"
-                    onClick={() => setShowRescheduleDialog(false)}
-                    className="flex-1 bg-gray-400 hover:bg-gray-500 text-white py-2 rounded-xl transition-colors"
+                    onClick={handleCopy}
+                    className="p-1 hover:bg-white/10 rounded-md transition-colors text-slate-400 hover:text-white"
+                    title="Copy Tracking ID"
                   >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="flex-1 bg-[#351c15] hover:bg-[#2b160f] text-white py-2 rounded-xl transition-colors font-bold"
-                  >
-                    Confirm
+                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
-              </form>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-400 text-lg">Weight</h4>
+                <p className="text-white font-medium text-base">{order.weight} kg</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-400 text-lg">Price</h4>
+                <p className="text-white font-medium text-base">₹{order.price}</p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-400 text-lg">Type</h4>
+                <div className="mt-1">
+                  {order.deliveryType === 'Express' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-200 to-yellow-500 text-black text-xs font-bold tracking-wide shadow-lg shadow-amber-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
+                      Express
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold tracking-wide border border-slate-700">
+                      Normal
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-400 text-lg">ASR Required</h4>
+                <p className={`font-medium text-base ${order.isASR ? 'text-[#ff8a3d]' : 'text-slate-500'}`}>
+                  {order.isASR ? 'Yes' : 'No'}
+                </p>
+              </div>
+
+              {order.deliveredAt && (
+                <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400" />
+                  <div>
+                    <h4 className="font-semibold text-green-400">Delivered Successfully</h4>
+                    <p className="text-sm text-green-300/80">
+                      Package was delivered on {formatDateTime(order.deliveredAt)}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {eta && !["Delivered", "DeliveryAttempted"].includes(order.status) && (
+                <div className="col-span-2 mt-4">
+                  <h4 className="font-bold text-slate-400 text-lg mb-3">Estimated Arrival</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Earliest */}
+                    <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="p-2 bg-green-500/20 rounded-full text-green-500">
+                        <Zap size={20} fill="currentColor" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-green-400/80  tracking-wider">Earliest</p>
+                        <p className="text-white font-bold text-lg">{eta?.earliest || (typeof eta === 'string' ? eta : '--')}</p>
+                      </div>
+                    </div>
+
+                    {/* Likely */}
+                    <div className="bg-[#ff8a3d]/10 border border-[#ff8a3d]/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="p-2 bg-[#ff8a3d]/20 rounded-full text-[#ff8a3d]">
+                        <Clock size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-orange-400/80  tracking-wider">Likely</p>
+                        <p className="text-white font-bold text-lg">{eta?.average || (typeof eta === 'string' ? eta : '--')}</p>
+                      </div>
+                    </div>
+
+                    {/* Latest */}
+                    <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-4">
+                      <div className="p-2 bg-red-500/20 rounded-full text-red-500">
+                        <Hourglass size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-red-400/80  tracking-wider">Latest</p>
+                        <p className="text-white font-bold text-lg">{eta?.latest || (typeof eta === 'string' ? eta : '--')}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
 
+          {/* ASR VERIFICATION SECTION */}
+          {order.isASR && order.status !== "Delivered" && (
+            <div className={`mx-8 mb-8 rounded-2xl border backdrop-blur-md overflow-hidden transition-all ${order.asrStatus === 'Success'
+              ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)]'
+              : 'bg-orange-500/5 border-orange-500/20 shadow-[0_0_30px_rgba(255,138,61,0.1)]'
+              }`}>
+              <div className="p-6 md:p-8">
+
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-3 rounded-xl flex items-center justify-center shrink-0 ${order.asrStatus === 'Success' ? 'bg-green-500/10 text-green-400' : 'bg-[#ff8a3d]/10 text-[#ff8a3d]'
+                      }`}>
+                      <ShieldCheck size={28} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                        ASR Verification Required
+                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold tracking-wide border ${order.asrStatus === 'Success'
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                          : (order.asrStatus === 'Failed'
+                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                            : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20')
+                          }`}>
+                          {formatStatus(order.asrStatus || 'Pending')}
+                        </span>
+                      </h2>
+                    </div>
+                  </div>
+
+                  {showASRButton && (
+                    <button
+                      onClick={() => setShowASRModal(true)}
+                      className="hidden md:flex whitespace-nowrap px-6 py-2.5 rounded-xl bg-[#ff8a3d] text-black font-bold text-sm hover:bg-[#ff9f63] hover:shadow-[0_0_20px_rgba(255,138,61,0.3)] transition-all items-center gap-2 group"
+                    >
+                      <ShieldCheck size={16} className="group-hover:scale-110 transition-transform" />
+                      Upload ID Proof
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                  This is an Adult-signature Required package. A valid signature and a valid government-issued ID proof are required upon delivery to ensure compliance with regulations.
+                </p>
+
+                {/* Mobile Button */}
+                {showASRButton && (
+                  <button
+                    onClick={() => setShowASRModal(true)}
+                    className="md:hidden w-full mb-6 py-3 rounded-xl bg-[#ff8a3d] text-black font-bold text-sm hover:bg-[#ff9f63] shadow-[0_0_10px_rgba(255,138,61,0.2)] flex justify-center items-center gap-2"
+                  >
+                    <ShieldCheck size={16} />
+                    Upload ID Proof
+                  </button>
+                )}
+
+                {/* Status Messages */}
+                {order.asrStatus === 'Success' && (
+                  <div className="flex items-center gap-3 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 text-sm font-bold">
+                    <Check size={16} /> Verification Successful. You're all set!
+                  </div>
+                )}
+                {order.asrStatus === 'Failed' && (
+                  <div className="flex flex-col gap-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 font-bold">
+                    <div className="flex items-center gap-3 text-sm">
+                      <span className="text-lg">!</span> Verification Failed. Please try uploading clearer documents.
+                    </div>
+
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (order.customerReverifyRequested) return;
+                        
+                        setConfirmData({
+                          open: true,
+                          title: "Request Re-verification?",
+                          desc: "This will notify the admin to manually review your failed verification. Continue?",
+                          action: async () => {
+                            try {
+                              if (!order.asrVerificationId) {
+                                toast.error("Verification ID missing. Cannot request.");
+                                return;
+                              }
+                              setRequestingReverify(order.id); // Optimistic UI
+                              await api.post(`/asr/customer/request-reverify/${order.asrVerificationId}`);
+                              toast.success("Request sent! Admin will review.");
+                              
+                              // safe reload to sync
+                              window.location.reload(); 
+                            } catch (err) { 
+                                console.error(err);
+                                toast.error(err.response?.data?.message || err.message); 
+                                setRequestingReverify(null); // Reset on error
+                            }
+                          }
+                        });
+                      }}
+                      disabled={order.customerReverifyRequested || (requestingReverify === order.id)}
+                      className={`
+                        px-6 py-2 rounded-xl border font-bold text-sm w-full lg:w-auto transition self-start
+                        ${order.customerReverifyRequested
+                          ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500 cursor-not-allowed"
+                          : "bg-orange-500/10 border-orange-500/20 text-orange-400 hover:bg-orange-500/20"}
+                      `}
+                    >
+                      {order.customerReverifyRequested ? "Re-verification Requested" : (requestingReverify === order.id ? "Requesting..." : "Request Re-verification")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-white/10" />
+
+          {/* SHIPMENT INFO */}
+          <div className="p-8 space-y-6">
+            <h2 className="text-xl font-bold">Shipment Information</h2>
+
+            <div>
+              <h4 className="font-semibold">From</h4>
+              <p className="text-slate-400">{order.senderName}</p>
+              <p className="text-slate-500 text-sm">{order.pickupAddress}</p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold">To</h4>
+              <p className="text-slate-400">{order.receiverName}</p>
+              <p className="text-slate-500 text-sm">{order.receiverAddress}</p>
+            </div>
+          </div>
+
+          <div className="border-t border-white/10" />
+
+          {/* TIMELINE */}
+          <div className="p-8">
+            <h3 className="text-sm text-slate-400 mb-6">
+              Tracking Status
+            </h3>
+
+            <div className="relative pl-4">
+              {/* Step 1: Pending Assignment */}
+              <TimelineStep
+                title="Pending Assignment"
+                sub="Waiting for driver"
+                active={true} // Always active as start
+                completed={currentRank >= 10}
+                isFirst={true}
+                color="orange"
+                isCurrent={currentRank < 10}
+              />
+
+              {/* Step 2: Assigned + Nested */}
+              <div className="relative z-10">
+                <TimelineStep
+                  title="Assigned"
+                  sub="Driver has accepted the order"
+                  active={currentRank >= 10}
+                  completed={currentRank >= 60} // Completed when Out For Delivery
+                  hasExpand={true}
+                  expanded={expandedAssigned}
+                  onToggle={() => setExpandedAssigned(!expandedAssigned)}
+                  color="orange"
+                  isCurrent={currentRank >= 10 && currentRank < 60}
+                >
+                  {/* Nested Steps */}
+                  {expandedAssigned && (
+                    <div className="space-y-6 border-l-2 border-dashed border-white/10 pl-6">
+                      <NestedTimelineStep
+                        title="At Origin Warehouse"
+                        active={currentRank >= 30}
+                        completed={currentRank > 30}
+                        isCurrent={currentRank === 30}
+                      />
+                      <NestedTimelineStep
+                        title="In Transit"
+                        active={currentRank >= 40}
+                        completed={currentRank > 40}
+                        isCurrent={currentRank === 40}
+                      />
+                      <NestedTimelineStep
+                        title="At Destination Warehouse"
+                        active={currentRank >= 50}
+                        completed={currentRank > 50}
+                        isCurrent={currentRank === 50}
+                      />
+                    </div>
+                  )}
+                </TimelineStep>
+              </div>
+
+              {/* Step 3: Out For Delivery */}
+              <TimelineStep
+                title="Out For Delivery"
+                sub="Order is on the way"
+                active={currentRank >= 60}
+                completed={currentRank >= 70} // Delivered is 70
+                color="orange"
+                isCurrent={currentRank >= 60 && currentRank < 65}
+              />
+
+              {/* Step 4: Delivered / Delivery Attempted */}
+              <TimelineStep
+                title={order.status === "DeliveryAttempted" ? "Delivery Attempted" : "Delivered"}
+                sub={order.status === "DeliveryAttempted" ? "Delivery was attempted but failed" : "Package delivered successfully"}
+                active={currentRank >= 65} // DeliveryAttempted (65) or Delivered (70)
+                completed={currentRank >= 70}
+                isLast={true}
+                color={order.status === "DeliveryAttempted" ? "red" : "green"} // Keep green/red for final state
+                date={order.deliveredAt}
+                isCurrent={currentRank >= 65}
+              />
+
+            </div>
+          </div>
+
+
+        </div>
+
+        {/* ACTIONS */}
+        <div className="max-w-4xl mt-6 flex gap-4">
+          {order.status !== "Delivered" && (
+            <button
+              onClick={() => setShowRescheduleDialog(true)}
+              className="px-6 py-3 rounded-xl bg-[#ff8a3d] text-black font-bold"
+            >
+              Reschedule Delivery
+            </button>
+          )}
+          {["Delivered", "DeliveryAttempted", "AtDestinationWarehouse"].includes(order.status) && (
+            <button
+              onClick={() => navigate(`/customer/report-issue/${id}`)}
+              className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300"
+            >
+              Report Issue
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* RESCHEDULE MODAL */}
+      {showRescheduleDialog && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <form
+            onSubmit={handleReschedule}
+            className="bg-[#0b0f14] p-6 rounded-xl border border-white/10 space-y-4"
+          >
+            <h3 className="text-lg font-bold">Reschedule Delivery</h3>
+            <input
+              type="datetime-local"
+              className="w-full p-3 bg-white/10 rounded"
+              onChange={(e) =>
+                setRescheduleForm({ ...rescheduleForm, newDate: e.target.value })
+              }
+              required
+            />
+            <textarea
+              rows="3"
+              className="w-full p-3 bg-white/10 rounded"
+              placeholder="Reason (optional)"
+              onChange={(e) =>
+                setRescheduleForm({ ...rescheduleForm, reason: e.target.value })
+              }
+            />
+            <p className="text-xs text-orange-400">
+              Note: Same-day rescheduling updates the driver's route immediately. Please ensure requests are made before 5:00 PM.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowRescheduleDialog(false)}
+                className="flex-1 bg-white/10 py-2 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 bg-[#ff8a3d] text-black py-2 rounded font-bold"
+              >
+                Confirm
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      {/* ASR MODAL */}
+      {showASRModal && (
+        <CustomerASRUpload
+          orderId={order.id}
+          onClose={() => {
+            setShowASRModal(false);
+            fetchOrderDetails();
+          }}
+        />
+      )}
+      <AlertDialog open={confirmData.open} onOpenChange={(open) => setConfirmData(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="bg-[#1a1f29] border border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">{confirmData.title}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {confirmData.desc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-white">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-[#ff8a3d] text-black hover:bg-[#ff8a3d]/90 font-bold border-none"
+              onClick={confirmData.action}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
 export default OrderDetails;
+
+/* ---------------- HELPERS ---------------- */
+
+function TimelineStep({ title, sub, active, completed, isFirst, isLast, color = "green", hasExpand, expanded, onToggle, date, isCurrent, children }) {
+
+  // Status Colors
+  const getColors = () => {
+    if (!active) return "bg-[#0b0f14] border-slate-600";
+    if (color === "red") return "bg-red-500 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]";
+    if (color === "orange") return "bg-[#ff8a3d] border-[#ff8a3d] shadow-[0_0_10px_rgba(255,138,61,0.5)]";
+    return "bg-green-500 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]";
+  };
+
+  const getLineColor = () => {
+    if (!completed) return "bg-white/10";
+    if (color === "red") return "bg-red-500";
+    if (color === "orange") return "bg-[#ff8a3d]";
+    return "bg-green-500";
+  }
+
+  const getTextColor = () => {
+    if (!active) return "text-slate-500";
+    if (color === "red") return "text-red-400";
+    if (color === "orange") return "text-[#ff8a3d]";
+    return "text-white";
+  }
+
+  return (
+    <div className="relative flex gap-6 z-10 min-h-[80px]">
+      {/* Status Dot Column */}
+      <div className="flex flex-col items-center">
+        <div className="relative flex items-center justify-center">
+          {/* Pulsing Effect for Current Step */}
+          {isCurrent && active && (
+            <div className={`absolute w-full h-full rounded-full animate-ping opacity-75 ${color === "red" ? "bg-red-500" : (color === "orange" ? "bg-[#ff8a3d]" : "bg-green-500")
+              }`} />
+          )}
+
+          <div
+            className={`w-4 h-4 rounded-full border-2 z-20 flex-shrink-0 transition-all duration-500 ${getColors()}`}
+            onClick={hasExpand ? onToggle : undefined}
+          />
+        </div>
+
+        {/* Connecting Line (Colored Segment) below */}
+        {!isLast && (
+          <div className={`w-[2px] flex-1 -my-1 transition-colors duration-500 ${getLineColor()}`} />
+        )}
+      </div>
+
+      {/* Content Column */}
+      <div className={`-mt-1.5 flex-1 ${isLast ? '' : 'pb-10'}`}>
+        <div
+          className={`flex items-center gap-2 ${hasExpand ? "cursor-pointer group" : ""}`}
+          onClick={hasExpand ? onToggle : undefined}
+        >
+          <h4 className={`font-bold text-lg transition-colors duration-300 ${getTextColor()} ${hasExpand ? "group-hover:text-white" : ""}`}>
+            {title}
+          </h4>
+          {hasExpand && (
+            <span className={`text-slate-500 transition-transform duration-300 ${expanded ? "rotate-90" : ""}`}>
+              ▶
+            </span>
+          )}
+        </div>
+        <TimelineParams date={date} isCompleted={completed} isCurrent={isCurrent} />
+        <p className={`text-sm mt-1 ${active ? "text-slate-300" : "text-slate-600"}`}>
+          {sub}
+        </p>
+
+        {/* Render Nested Children here so layout stretches and line continues */}
+        {children && <div className="mt-4">{children}</div>}
+      </div>
+    </div>
+  );
+};
+
+function NestedTimelineStep({ title, active, completed, isCurrent }) {
+  return (
+    <div className="relative flex gap-4 items-center">
+      <div className="relative flex items-center justify-center">
+        {isCurrent && active && (
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[#ff8a3d] opacity-75 animate-ping"></span>
+        )}
+        <div className={`w-2.5 h-2.5 rounded-full border z-10 ${active ? "bg-[#ff8a3d] border-[#ff8a3d]" : "bg-transparent border-slate-600"
+          }`} />
+      </div>
+
+      <h5 className={`font-semibold text-sm ${active ? "text-white" : "text-slate-500"}`}>
+        {title}
+      </h5>
+    </div>
+  );
+}
+
+function TimelineParams({ date, isCompleted, isCurrent }) {
+    if (!date && !isCompleted && !isCurrent) return null;
+
+    if (date) {
+        return (
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1 font-mono">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                {formatDateTime(date)}
+            </p>
+        );
+    }
+    
+    return null;
+}

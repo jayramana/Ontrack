@@ -14,6 +14,31 @@ import base64
 import re
 import os
 import tempfile
+import shutil
+
+# Fix DeepFace directory initialization before import
+def init_deepface_directories():
+    """Initialize DeepFace directories before importing DeepFace"""
+    try:
+        home = os.path.expanduser("~")
+        deepface_dir = os.path.join(home, ".deepface")
+        weights_dir = os.path.join(deepface_dir, "weights")
+        
+        # Remove if exists as file
+        if os.path.exists(deepface_dir) and not os.path.isdir(deepface_dir):
+            print(f"⚠️  Removing {deepface_dir} (exists as file, not directory)")
+            os.remove(deepface_dir)
+        
+        # Create directories
+        os.makedirs(deepface_dir, exist_ok=True)
+        os.makedirs(weights_dir, exist_ok=True)
+        print(f"✅ DeepFace directories initialized: {deepface_dir}")
+    except Exception as e:
+        print(f"⚠️  DeepFace directory init warning: {e}")
+
+# Initialize directories BEFORE importing DeepFace
+init_deepface_directories()
+
 from deepface import DeepFace
 
 app = Flask(__name__)

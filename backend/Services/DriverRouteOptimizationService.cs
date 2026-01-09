@@ -7,10 +7,12 @@ namespace Backend.Services
     public class DriverRouteOptimizationService
     {
         private readonly AppDbContext _context;
+        private readonly IEtaservice _etaService;
 
-        public DriverRouteOptimizationService(AppDbContext context)
+        public DriverRouteOptimizationService(AppDbContext context, IEtaservice etaService)
         {
             _context = context;
+            _etaService = etaService;
         }
 
         public async Task<object> GenerateRouteForDriver(int driverId)
@@ -96,7 +98,7 @@ namespace Backend.Services
             {
                 foreach (var issue in activeIssues)
                 {
-                    double distance = CalculateDistance(
+                    double distance = _etaService.GetDistance(
                         issue.Latitude, issue.Longitude,
                         order.DeliveryLatitude, order.DeliveryLongitude
                     );
@@ -120,7 +122,7 @@ namespace Backend.Services
             var optimizedOrders = safeOrders
                 .OrderByDescending(o => o.AiPriority ?? o.Priority)
                 .ThenBy(o => o.EstimatedDeliveryDate)
-                .ThenBy(o => CalculateDistance(currentLat, currentLng, o.DeliveryLatitude, o.DeliveryLongitude))
+                .ThenBy(o => _etaService.GetDistance(currentLat, currentLng, o.DeliveryLatitude, o.DeliveryLongitude))
                 .ToList();
 
             return optimizedOrders;
@@ -131,21 +133,6 @@ namespace Backend.Services
             await GetOptimizedRouteForDriver(driverId);
         }
 
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            const double R = 6371;
-
-            var dLat = DegreesToRadians(lat2 - lat1);
-            var dLon = DegreesToRadians(lon2 - lon1);
-
-            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                    Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
-                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-            var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-            return R * c;
-        }
 
         public bool HasValidCoordinates(Order o)
         {
@@ -155,10 +142,5 @@ namespace Backend.Services
                 !double.IsNaN(o.DeliveryLatitude) &&
                 !double.IsNaN(o.DeliveryLongitude);
         }
-
-        private double DegreesToRadians(double degrees)
-        {
-            return degrees * Math.PI / 180.0;
         }
     }
-}

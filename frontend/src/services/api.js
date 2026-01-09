@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:5066/api';
-
+export const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 // Create axios instance
 const api = axios.create({
@@ -29,40 +28,68 @@ export const authAPI = {
     login: async (email, password, role) => {
         try {
             const response = await api.post('/auth/login', {
-                Email : email,
-                Password : password,
-                Role : role,
+                Email: email,
+                Password: password,
+                Role: role,
             });
             return response.data;
         } catch (error) {
             throw error.response?.data?.message || 'Login failed';
         }
     },
-register: async (payload) => {
-    try {
-        const response = await api.post('/auth/register', {
-            UserFName: payload.userFName,
-            UserLName: payload.userLName,
-            PhonePrimary: payload.phonePrimary,
-            PhoneSecondary: payload.phoneSecondary,
-            Email: payload.email,
-            Password: payload.password,
-            Role: payload.role,
-            // Address Fields
-            AddressLine1: payload.addressLine1,
-            AddressLine2: payload.addressLine2,
-            City: payload.city,
-            State: payload.state,
-            PostalCode: payload.postalCode,
-            Country: payload.country,
-            SellerType: payload.sellerType
-        });
+    register: async (payload) => {
+        try {
+            const response = await api.post('/auth/register', {
+                UserFName: payload.userFName,
+                UserLName: payload.userLName,
+                PhonePrimary: payload.phonePrimary,
+                PhoneSecondary: payload.phoneSecondary,
+                Email: payload.email,
+                Password: payload.password,
+                Role: payload.role,
+                // Address Fields
+                AddressLine1: payload.addressLine1,
+                AddressLine2: payload.addressLine2,
+                City: payload.city,
+                State: payload.state,
+                PostalCode: payload.postalCode,
+                Country: payload.country,
+                SellerType: payload.sellerType
+            });
 
-        return response.data;
-    } catch (error) {
-        throw error.response?.data?.message || 'Registration failed';
+            return response.data;
+        } catch (error) {
+            throw error.response?.data?.message || 'Registration failed';
+        }
     }
-}
+};
+
+// Notification API
+export const notificationAPI = {
+    getNotifications: async () => {
+        try {
+            const response = await api.get('/notifications');
+            return response.data;
+        } catch (error) {
+            throw error.response?.data?.message || 'Failed to fetch notifications';
+        }
+    },
+    markAsRead: async (id) => {
+        try {
+            const response = await api.post(`/notifications/${id}/read`);
+            return response.data;
+        } catch (error) {
+            throw error.response?.data?.message || 'Failed to mark notification as read';
+        }
+    },
+    markAllAsRead: async () => {
+        try {
+            const response = await api.post('/notifications/read-all');
+            return response.data;
+        } catch (error) {
+            throw error.response?.data?.message || 'Failed to mark all as read';
+        }
+    }
 };
 
 export default api;

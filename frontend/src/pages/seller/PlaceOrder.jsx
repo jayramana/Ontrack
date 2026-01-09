@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import api from "../../services/api";
 import MapPicker from "../../components/MapPicker";
-import SellerSidebar from "./SellerSidebar"
+import SellerSidebar from "./SellerSidebar";
+import { ShieldCheck } from "lucide-react";
 
 function PlaceOrder() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     senderName: "",
     senderPhone: "",
@@ -28,36 +31,32 @@ function PlaceOrder() {
     scheduledDate: "",
     scheduledTimeSlot: "",
     price: 0,
-    isASR: false, // 🆕 ASR field
+    isASR: false,
   });
 
-  const [showPickupPicker, setShowPickupPicker] = useState(false);
-  const [showDeliveryPicker, setShowDeliveryPicker] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const navigate = useNavigate();
-
-  // 🆕 Fetch Profile for Autofill
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await api.get("/auth/profile");
-        const profile = res.data;
-        if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                senderName: `${profile.firstName} ${profile.lastName}`.trim(),
-                senderPhone: profile.phone || "",
-                senderEmail: profile.email || "",
-                // Note: Pickup address explicitly NOT autofilled per user request
-            }));
-        }
+        const user = res.data;
+
+        setFormData((prev) => ({
+          ...prev,
+          senderName: `${user.firstName} ${user.lastName}`.trim(),
+          senderEmail: user.email,
+          senderPhone: user.phone,
+        }));
       } catch (err) {
-        console.error("Failed to fetch profile for autofill:", err);
+        console.error("Failed to load profile for autofill", err);
       }
     };
     fetchProfile();
   }, []);
+
+  const [showPickupPicker, setShowPickupPicker] = useState(false);
+  const [showDeliveryPicker, setShowDeliveryPicker] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -90,50 +89,52 @@ function PlaceOrder() {
     }
   };
 
-  const calculatePrice = () => {
-    let weightPrice = parseFloat(formData.weight || 0) * 10;
+  useEffect(() => {
+    const weightVal = parseFloat(formData.weight) || 0;
+    const sizeVal = formData.parcelSize;
+    const asrVal = formData.isASR;
+
+    let weightPrice = weightVal * 10;
     let sizePrice =
-      formData.parcelSize === "Large"
+      sizeVal === "Large"
         ? 50
-        : formData.parcelSize === "Medium"
+        : sizeVal === "Medium"
         ? 30
         : 10;
 
-    // 🆕 ASR adds extra cost
-    let asrPrice = formData.isASR ? 100 : 0;
+    let asrPrice = asrVal ? 100 : 0;
 
-    setFormData((s) => ({
-      ...s,
-      price: weightPrice + sizePrice + asrPrice,
-    }));
-  };
+    const newPrice = weightPrice + sizePrice + asrPrice;
+
+    setFormData((prev) => {
+      if (prev.price === newPrice) return prev;
+      return { ...prev, price: newPrice };
+    });
+  }, [formData.weight, formData.parcelSize, formData.isASR]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      // Prepare payload: include coordinates only if available (null -> omitted)
       const payload = {
         senderName: formData.senderName,
         senderPhone: formData.senderPhone,
         senderEmail: formData.senderEmail,
         pickupAddress: formData.pickupAddress,
         pickupPincode: formData.pickupPincode,
-        // If null, let backend geocode from address
         pickupLatitude: formData.pickupLatitude,
         pickupLongitude: formData.pickupLongitude,
-
         receiverName: formData.receiverName,
         receiverPhone: formData.receiverPhone,
         receiverEmail: formData.receiverEmail,
         receiverAddress: formData.receiverAddress,
-        receiverPincode: formData.deliveryPincode || formData.receiverPincode,
+        receiverPincode: formData.receiverPincode,
         deliveryLatitude: formData.deliveryLatitude,
         deliveryLongitude: formData.deliveryLongitude,
-
+        deliveryPincode: formData.deliveryPincode,
         deliveryType: formData.deliveryType,
         parcelSize: formData.parcelSize,
-        weight: parseFloat(formData.weight || 0),
+        weight: parseFloat(formData.weight),
         deliveryNotes: formData.deliveryNotes,
         scheduledDate: formData.scheduledDate || null,
         scheduledTimeSlot: formData.scheduledTimeSlot || null,
@@ -141,11 +142,13 @@ function PlaceOrder() {
         isASR: formData.isASR,
       };
 
-      // Send to server
       await api.post("/orders", payload);
-      alert("Order placed successfully!");
-      // Redirect to valid page, e.g. dashboard or orders list
-      navigate("/seller/dashboard");
+      toast.success("Order placed successfully! Redirecting to dashboard...");
+      
+      // Delay redirection to let the user see the toast
+      setTimeout(() => {
+        navigate("/seller/dashboard");
+      }, 1500);
     } catch (error) {
       console.error("Error placing order:", error);
       const errorMessage =
@@ -153,342 +156,354 @@ function PlaceOrder() {
         error.response?.data?.innerException ||
         error.message ||
         "Failed to place order.";
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const inputClass =
+    "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#ff8a3d] focus:ring-1 focus:ring-[#ff8a3d] transition";
+  const labelClass =
+    "block mb-1 text-sm font-semibold text-slate-400";
+
   return (
-    <main className="flex">
-      <SellerSidebar />
-      <div className="p-6 w-[80%] mx-auto">
-        <h2 className="text-3xl font-bold mb-6 text-[#351c15]">
-          Place New Order
-        </h2>
+    <div className="min-h-screen flex bg-[#0b0f14] text-slate-100">
+      <SellerSidebar active="place-order" />
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 bg-white p-8 rounded-xl shadow-md border border-[#e6d8c9]"
-        >
-          {/* Sender */}
-          <div className="border-b pb-4">
-            <h3 className="text-xl font-semibold mb-4 text-[#351c15]">
-              Sender Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                name="senderName"
-                value={formData.senderName}
-                onChange={handleChange}
-                placeholder="Sender Name"
-                required
-                readOnly
-                className="p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-              />
-              <input
-                name="senderPhone"
-                value={formData.senderPhone}
-                onChange={handleChange}
-                placeholder="Sender Phone"
-                required
-                readOnly
-                className="p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-              />
-              <input
-                name="senderEmail"
-                value={formData.senderEmail}
-                onChange={handleChange}
-                placeholder="Sender Email"
-                type="email"
-                readOnly
-                className="p-2 border rounded bg-gray-100 text-gray-500 cursor-not-allowed"
-              />
-              <div className="md:col-span-2">
-                <label className="block mb-1 font-medium text-[#4b382e]">
-                  Pickup Address
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    name="pickupAddress"
-                    value={formData.pickupAddress}
-                    onChange={handleChange}
-                    placeholder="Street, area, etc."
-                    className="flex-1 p-2 border rounded"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPickupPicker(true)}
-                    className="px-3 py-2 bg-[#ffb500] text-[#351c15] font-semibold rounded hover:bg-[#e6a300] transition"
-                  >
-                    Pick on map
-                  </button>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <input
-                    name="pickupPincode"
-                    value={formData.pickupPincode}
-                    onChange={handleChange}
-                    placeholder="Pincode"
-                    className="p-2 border rounded"
-                  />
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Latitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.pickupLatitude
-                        ? formData.pickupLatitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Longitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.pickupLongitude
-                        ? formData.pickupLongitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="flex-1 px-10 py-10 overflow-y-auto">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-black mb-6 text-white tracking-tight">
+            Place New Order
+          </h2>
 
-          {/* Receiver */}
-          <div className="border-b pb-4">
-            <h3 className="text-xl font-semibold mb-4 text-[#351c15]">
-              Receiver Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                name="receiverName"
-                value={formData.receiverName}
-                onChange={handleChange}
-                placeholder="Receiver Name"
-                required
-                className="p-2 border rounded"
-              />
-              <input
-                name="receiverPhone"
-                value={formData.receiverPhone}
-                onChange={handleChange}
-                placeholder="Receiver Phone"
-                required
-                className="p-2 border rounded"
-              />
-              <input
-                name="receiverEmail"
-                value={formData.receiverEmail}
-                onChange={handleChange}
-                placeholder="Receiver Email"
-                className="p-2 border rounded"
-              />
-              <div className="md:col-span-2">
-                <label className="block mb-1 font-medium text-[#4b382e]">
-                  Receiver Address
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    name="receiverAddress"
-                    value={formData.receiverAddress}
-                    onChange={handleChange}
-                    placeholder="Delivery address"
-                    className="flex-1 p-2 border rounded"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowDeliveryPicker(true)}
-                    className="px-3 py-2 bg-[#ffb500] text-[#351c15] font-semibold rounded hover:bg-[#e6a300] transition"
-                  >
-                    Pick on map
-                  </button>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
-                  <input
-                    name="receiverPincode"
-                    value={formData.receiverPincode}
-                    onChange={handleChange}
-                    placeholder="Pincode"
-                    className="p-2 border rounded"
-                  />
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Latitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.deliveryLatitude
-                        ? formData.deliveryLatitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                  <div className="p-2 border rounded bg-gray-50">
-                    <div className="text-xs text-gray-500">Longitude</div>
-                    <div className="text-sm font-mono">
-                      {formData.deliveryLongitude
-                        ? formData.deliveryLongitude.toFixed(6)
-                        : "—"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Package */}
-          <div>
-            <h3 className="text-xl font-semibold mb-4 text-[#351c15]">
-              Package & Delivery
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select
-                name="deliveryType"
-                value={formData.deliveryType}
-                onChange={handleChange}
-                className="p-2 border rounded"
-              >
-                <option value="Normal">Normal</option>
-                <option value="Express">Express</option>
-              </select>
-              <select
-                name="parcelSize"
-                value={formData.parcelSize}
-                onChange={handleChange}
-                className="p-2 border rounded"
-              >
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-                <option value="Large">Large</option>
-              </select>
-              <input
-                name="weight"
-                value={formData.weight}
-                onChange={handleChange}
-                onBlur={calculatePrice}
-                placeholder="Weight (kg)"
-                type="number"
-                className="p-2 border rounded"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-[#4b382e] mb-1">
-                  Scheduled Date
-                </label>
+          <div className="space-y-8 bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-xl">
+            {/* Sender */}
+            <div className="border-b border-white/10 pb-6">
+              <h3 className="text-xl font-bold mb-6 text-[#ff8a3d]">
+                Sender Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <input
+                  name="senderName"
+                  value={formData.senderName}
+                  readOnly
+                  placeholder="Sender Name"
+                  className={`${inputClass} opacity-60 cursor-not-allowed`}
+                  title="Auto-filled from profile"
+                />
+                <input
+                  name="senderPhone"
+                  value={formData.senderPhone}
+                  readOnly
+                  placeholder="Sender Phone"
+                  className={`${inputClass} opacity-60 cursor-not-allowed`}
+                  title="Auto-filled from profile"
+                />
+                <input
+                  name="senderEmail"
+                  value={formData.senderEmail}
+                  readOnly
+                  placeholder="Sender Email"
+                  type="email"
+                  className={`${inputClass} opacity-60 cursor-not-allowed`}
+                  title="Auto-filled from profile"
+                />
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Pickup Address</label>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      name="pickupAddress"
+                      value={formData.pickupAddress}
+                      onChange={handleChange}
+                      placeholder="Street, area, etc."
+                      className={`flex-1 ${inputClass}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPickupPicker(true)}
+                      className="px-5 py-3 bg-[#ff8a3d] text-black font-bold rounded-xl hover:bg-[#e57c37] hover:text-white transition"
+                    >
+                      Pick on map
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <input
+                      name="pickupPincode"
+                      value={formData.pickupPincode}
+                      onChange={handleChange}
+                      placeholder="Pincode"
+                      className={inputClass}
+                    />
+                    <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
+                      <div className="text-xs text-slate-500 ">
+                        Latitude
+                      </div>
+                      <div className="text-sm font-mono text-slate-300">
+                        {formData.pickupLatitude
+                          ? formData.pickupLatitude.toFixed(6)
+                          : "—"}
+                      </div>
+                    </div>
+                    <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
+                      <div className="text-xs text-slate-500 ">
+                        Longitude
+                      </div>
+                      <div className="text-sm font-mono text-slate-300">
+                        {formData.pickupLongitude
+                          ? formData.pickupLongitude.toFixed(6)
+                          : "—"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Receiver */}
+            <div className="border-b border-white/10 pb-6">
+              <h3 className="text-xl font-bold mb-6 text-[#ff8a3d]">
+                Receiver Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <input
+                  name="receiverName"
+                  value={formData.receiverName}
+                  onChange={handleChange}
+                  placeholder="Receiver Name"
+                  required
+                  className={inputClass}
+                />
+                <input
+                  name="receiverPhone"
+                  value={formData.receiverPhone}
+                  onChange={handleChange}
+                  placeholder="Receiver Phone"
+                  required
+                  className={inputClass}
+                />
+                <input
+                  name="receiverEmail"
+                  value={formData.receiverEmail}
+                  onChange={handleChange}
+                  placeholder="Receiver Email (optional)"
+                  className={inputClass}
+                />
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Receiver Address</label>
+                  <div className="flex gap-2 mb-3">
+                    <input
+                      name="receiverAddress"
+                      value={formData.receiverAddress}
+                      onChange={handleChange}
+                      placeholder="Delivery address"
+                      className={`flex-1 ${inputClass}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDeliveryPicker(true)}
+                      className="px-5 py-3 bg-[#ff8a3d] text-black font-bold rounded-xl hover:bg-[#e57c37] hover:text-white transition"
+                    >
+                      Pick on map
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <input
+                      name="receiverPincode"
+                      value={formData.receiverPincode}
+                      onChange={handleChange}
+                      placeholder="Pincode"
+                      className={inputClass}
+                    />
+                    <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
+                      <div className="text-xs text-slate-500">
+                        Latitude
+                      </div>
+                      <div className="text-sm font-mono text-slate-300">
+                        {formData.deliveryLatitude
+                          ? formData.deliveryLatitude.toFixed(6)
+                          : "—"}
+                      </div>
+                    </div>
+                    <div className="p-3 border border-white/10 rounded-xl bg-white/5 flex flex-col justify-center">
+                      <div className="text-xs text-slate-500">
+                        Longitude
+                      </div>
+                      <div className="text-sm font-mono text-slate-300">
+                        {formData.deliveryLongitude
+                          ? formData.deliveryLongitude.toFixed(6)
+                          : "—"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Package */}
+            <div>
+              <h3 className="text-xl font-bold mb-6 text-[#ff8a3d]">
+                Package & Delivery
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label className={labelClass}>Type</label>
+                  <select
+                    name="deliveryType"
+                    value={formData.deliveryType}
+                    onChange={handleChange}
+                    className={inputClass}
+                  >
+                    <option value="Normal" className="bg-[#1a1f29]">
+                      Normal
+                    </option>
+                    <option value="Express" className="bg-[#1a1f29]">
+                      Express
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Size</label>
+                  <select
+                    name="parcelSize"
+                    value={formData.parcelSize}
+                    onChange={handleChange}
+                    className={inputClass}
+                  >
+                    <option value="Small" className="bg-[#1a1f29]">
+                      Small
+                    </option>
+                    <option value="Medium" className="bg-[#1a1f29]">
+                      Medium
+                    </option>
+                    <option value="Large" className="bg-[#1a1f29]">
+                      Large
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Weight (kg)</label>
+                  <input
+                    name="weight"
+                    value={formData.weight}
+                    onChange={handleChange}
+                    placeholder="0.0"
+                    type="number"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              {/* ASR Checkbox */}
+              <div className="mt-6 bg-[#ff8a3d]/10 border border-[#ff8a3d]/30 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck
+                        className={`w-5 h-5 ${
+                          formData.isASR ? "text-[#ff8a3d]" : "text-slate-400"
+                        }`}
+                      />
+                      <span className="text-lg font-bold text-white">
+                        Enable ASR
+                      </span>
+                    </div>
+                    
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isASR"
+                        checked={formData.isASR}
+                        onChange={handleChange}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#ff8a3d]"></div>
+                    </label>
+                </div>
+                
+                <p className="text-sm text-slate-400">
+                  Customer must provide ID verification and signature before
+                  delivery. Additional{" "}
+                  <span className="text-white font-bold">₹100</span> fee
+                  applies.
+                </p>
+              </div>
+
+
+              <div>
+                <label className={labelClass}>Schedule Delivery</label>
+                <input 
                   type="date"
                   name="scheduledDate"
-                  value={formData.scheduledDate}
-                  onChange={handleChange}
                   min={new Date().toISOString().split("T")[0]}
-                  className="w-full p-2 border rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#4b382e] mb-1">
-                  Time Slot (Optional)
-                </label>
-                <select
-                  name="scheduledTimeSlot"
-                  value={formData.scheduledTimeSlot}
-                  onChange={handleChange}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="">Any Time</option>
-                  <option value="Morning (9AM - 12PM)">
-                    Morning (9AM - 12PM)
-                  </option>
-                  <option value="Afternoon (12PM - 4PM)">
-                    Afternoon (12PM - 4PM)
-                  </option>
-                  <option value="Evening (4PM - 8PM)">
-                    Evening (4PM - 8PM)
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            {/* 🆕 ASR Checkbox */}
-            <div className="mt-4 bg-red-50 border-2 border-red-300 rounded-lg p-4">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="isASR"
-                  checked={formData.isASR}
+                  value={formData.scheduledDate ? formData.scheduledDate.split("T")[0] : ""} 
                   onChange={(e) => {
-                    handleChange(e);
-                    // Recalculate price when ASR changes
-                    setTimeout(calculatePrice, 100);
+                    const dateVal = e.target.value ? new Date(e.target.value).toISOString() : "";
+                    setFormData(prev => ({ ...prev, scheduledDate: dateVal }));
                   }}
-                  className="w-5 h-5 text-red-600 border-red-300 rounded focus:ring-red-500"
+                  className={`${inputClass} [color-scheme:dark]`}
                 />
-                <div>
-                  <span className="text-lg font-bold text-red-800">
-                    🔒 Require Adult Signature (ASR)
-                  </span>
-                  <p className="text-sm text-red-700 mt-1">
-                    Customer must provide ID verification and signature before
-                    delivery. Additional ₹100 fee applies.
-                  </p>
-                </div>
-              </label>
+              </div>
+
+              <div className="mt-6">
+                <label className={labelClass}>Delivery Notes</label>
+                <textarea
+                  name="deliveryNotes"
+                  value={formData.deliveryNotes}
+                  onChange={handleChange}
+                  placeholder="Instructions for driver..."
+                  className={inputClass}
+                  rows="3"
+                />
+              </div>
             </div>
 
-            <div className="mt-4">
-              <textarea
-                name="deliveryNotes"
-                value={formData.deliveryNotes}
-                onChange={handleChange}
-                placeholder="Delivery notes"
-                className="w-full p-2 border rounded"
-                rows="2"
-              />
+            <div className="bg-[#0f141c] border border-white/10 p-6 rounded-2xl flex justify-between items-center shadow-inner">
+              <span className="text-lg font-semibold text-slate-300">
+                Estimated Price:
+              </span>
+              <span className="text-3xl font-black text-white">
+                ₹{formData.price}
+              </span>
             </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full bg-[#ff8a3d] text-black py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_20px_rgba(255,138,61,0.4)] hover:scale-[1.01] hover:bg-[#e57c37] hover:text-white transition disabled:opacity-50 disabled:hover:scale-100"
+            >
+              {submitting ? "Processing..." : "Confirm & Place Order"}
+            </button>
           </div>
-
-          <div className="bg-[#fdf7ed] p-4 rounded-lg flex justify-between items-center border border-[#e6d8c9]">
-            <span className="text-lg font-semibold text-[#351c15]">
-              Estimated Price:
-            </span>
-            <span className="text-2xl font-bold text-[#ffb500]">
-              ₹{formData.price}
-            </span>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-[#351c15] text-white py-3 rounded-lg font-semibold hover:bg-[#4a2a21] transition disabled:opacity-50"
-          >
-            {submitting ? "Placing order..." : "Confirm & Place Order"}
-          </button>
-        </form>
-
-        {/* Map pickers as modal-like components */}
-        {showPickupPicker && (
-          <MapPicker
-            initialPosition={
-              formData.pickupLatitude && formData.pickupLongitude
-                ? [formData.pickupLatitude, formData.pickupLongitude]
-                : null
-            }
-            onCancel={() => setShowPickupPicker(false)}
-            onSelect={(payload) => handleMapPick("pickup", payload)}
-            title="Pick Pickup Location"
-          />
-        )}
-
-        {showDeliveryPicker && (
-          <MapPicker
-            initialPosition={
-              formData.deliveryLatitude && formData.deliveryLongitude
-                ? [formData.deliveryLatitude, formData.deliveryLongitude]
-                : null
-            }
-            onCancel={() => setShowDeliveryPicker(false)}
-            onSelect={(payload) => handleMapPick("delivery", payload)}
-            title="Pick Delivery Location"
-          />
-        )}
+        </div>
       </div>
-    </main>
+
+      {/* Map pickers */}
+      {showPickupPicker && (
+        <MapPicker
+          initialPosition={
+            formData.pickupLatitude && formData.pickupLongitude
+              ? [formData.pickupLatitude, formData.pickupLongitude]
+              : null
+          }
+          onCancel={() => setShowPickupPicker(false)}
+          onSelect={(payload) => handleMapPick("pickup", payload)}
+          title="Pick Pickup Location"
+        />
+      )}
+
+      {showDeliveryPicker && (
+        <MapPicker
+          initialPosition={
+            formData.deliveryLatitude && formData.deliveryLongitude
+              ? [formData.deliveryLatitude, formData.deliveryLongitude]
+              : null
+          }
+          onCancel={() => setShowDeliveryPicker(false)}
+          onSelect={(payload) => handleMapPick("delivery", payload)}
+          title="Pick Delivery Location"
+        />
+      )}
+    </div>
   );
 }
 

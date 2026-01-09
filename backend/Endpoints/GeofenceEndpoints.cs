@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 public static class GeofenceEndpoints
 {
-    public static void MapGeofenceEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapGeofenceEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/geofence").WithTags("Geofence");
 
@@ -104,7 +104,7 @@ public static class GeofenceEndpoints
             bool changes = false;
             foreach(var g in list)
             {
-                if(g.IsActive && g.Order != null && g.Order.Status == "Delivered")
+                if(g.IsActive && g.Order != null && (g.Order.Status == "Delivered" || g.Order.Status == "DeliveryAttempted"))
                 {
                     g.IsActive = false;
                     changes = true;
@@ -118,6 +118,7 @@ public static class GeofenceEndpoints
 
             return Results.Ok(list);
         });
+        return group;
     }
     private static double Haversine(double lat1, double lon1, double lat2, double lon2)
     {

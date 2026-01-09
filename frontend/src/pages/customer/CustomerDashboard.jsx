@@ -1,18 +1,45 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from "chart.js";
-import { Doughnut, Bar } from "react-chartjs-2";
+import { formatStatus } from "@/lib/utils";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+} from "chart.js";
+import {
+  Package,
+  Truck,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
+import { Doughnut } from "react-chartjs-2";
 import CustomerSidebar from "./CustomerSidebar";
+import { OrdersBarChart } from "../../components/charts/OrdersBarChart";
+import { OrdersPieChart } from "../../components/charts/OrdersPieChart";
+import { OrdersSpendingChart } from "../../components/charts/OrdersSpendingChart";
 
-ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale
+);
 
 const CustomerDashboard = () => {
   const { user, logout } = useAuth();
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [trackingData, setTrackingData] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduleForm, setRescheduleForm] = useState({
     newDate: "",
@@ -21,6 +48,7 @@ const CustomerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [currDriverLoc, setcurrDriverLoc] = useState({ lat: null, lon: null });
   const [useLiveDriverLoc, setUseLiveDriverLoc] = useState(false);
+  const [dateFilter, setDateFilter] = useState("1W");
 
   const [connection, setConnection] = useState(null);
 
@@ -28,7 +56,7 @@ const CustomerDashboard = () => {
     fetchOrders();
     setupSignalR();
     return () => {
-      if (connection) connection.stop().catch(() => {});
+      if (connection) connection.stop().catch(() => { });
     };
   }, []);
 
@@ -100,7 +128,7 @@ const CustomerDashboard = () => {
       const order = data.order || data;
       const latestDriverLocation = data.latestDriverLocation;
 
-      console.log("ETA Debug - API Response:", data);
+
 
       let driverLat;
       let driverLon;
@@ -144,24 +172,32 @@ const CustomerDashboard = () => {
         }
 
         // Logic: Use Profile if FRESH, otherwise fallback to HISTORY
-        if (isProfileFresh && driverProfile.currentLatitude && driverProfile.currentLongitude) {
-          console.log("ETA: Using FRESH Profile Location");
+        if (
+          isProfileFresh &&
+          driverProfile.currentLatitude &&
+          driverProfile.currentLongitude
+        ) {
+
           driverLat = driverProfile.currentLatitude;
           driverLon = driverProfile.currentLongitude;
-        } 
-        else if (driverHistory && driverHistory.latitude && driverHistory.longitude) {
-           console.log("ETA: Profile stale or empty. Using HISTORY Location.");
-           driverLat = driverHistory.latitude;
-           driverLon = driverHistory.longitude;
-        } 
-        else if (driverProfile?.currentLatitude && driverProfile?.currentLongitude) {
-           // Last resort: Profile is stale but History is empty? Use stale profile.
-           console.warn("ETA: Both sources poor. Defaulting to stale Profile.");
-           driverLat = driverProfile.currentLatitude;
-           driverLon = driverProfile.currentLongitude;
-        }
-        else {
-           throw new Error("Driver has not reported any location updates yet.");
+        } else if (
+          driverHistory &&
+          driverHistory.latitude &&
+          driverHistory.longitude
+        ) {
+
+          driverLat = driverHistory.latitude;
+          driverLon = driverHistory.longitude;
+        } else if (
+          driverProfile?.currentLatitude &&
+          driverProfile?.currentLongitude
+        ) {
+          // Last resort: Profile is stale but History is empty? Use stale profile.
+          console.warn("ETA: Both sources poor. Defaulting to stale Profile.");
+          driverLat = driverProfile.currentLatitude;
+          driverLon = driverProfile.currentLongitude;
+        } else {
+          throw new Error("Driver has not reported any location updates yet.");
         }
       }
 
@@ -174,10 +210,12 @@ const CustomerDashboard = () => {
         speedKmph: 40,
       });
 
-      alert(`ETA: ${etaRes.data.eta}\nDistance: ${etaRes.data.distance_km} km`);
+      const etaVal = etaRes.data.eta;
+      const displayEta = typeof etaVal === 'object' ? etaVal.average : etaVal;
+      toast.info(`ETA: ${displayEta} - Distance: ${etaRes.data.distance_km} km`);
     } catch (error) {
       console.error("ETA error:", error);
-      alert(error.message || "Failed to calculate ETA");
+      toast.error(error.message || "Failed to calculate ETA");
     }
   };
 
@@ -187,7 +225,7 @@ const CustomerDashboard = () => {
       setTrackingData(response.data);
       setSelectedOrder(orderId);
     } catch {
-      alert("Unable to track this order.");
+      toast.error("Unable to track this order.");
     }
   };
 
@@ -204,12 +242,12 @@ const CustomerDashboard = () => {
         reason: rescheduleForm.reason,
       });
 
-      alert("Delivery rescheduled!");
+      toast.success("Delivery rescheduled!");
       setShowRescheduleDialog(false);
       setRescheduleForm({ newDate: "", reason: "" });
       fetchOrders();
     } catch {
-      alert("Error updating schedule");
+      toast.error("Error updating schedule");
     }
   };
 
@@ -220,203 +258,159 @@ const CustomerDashboard = () => {
       </div>
     );
 
+  // --- STATS DATA ---
+  const stats = [
+    {
+      label: "Total Orders",
+      value: orders.length,
+      icon: <Package size={30} />,
+      color: "text-[#ff8a3d]",
+      bg: "bg-[#ff8a3d]/10",
+      border: "border-[#ff8a3d]/20",
+    },
+    {
+      label: "Active Shipments",
+      value: orders.filter((o) =>
+        ["In Transit", "InTransit", "OutForDelivery"].includes(o.status)
+      ).length,
+      icon: <Truck size={30} />,
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      border: "border-blue-500/20",
+    },
+    {
+      label: "Delivered Orders",
+      value: orders.filter((o) => o.status === "Delivered").length,
+      icon: <CheckCircle size={30} />,
+      color: "text-green-400",
+      bg: "bg-green-500/10",
+      border: "border-green-500/20",
+    },
+    {
+      label: "Exceptions",
+      value: orders.filter((o) =>
+        ["Cancelled", "DeliveryAttempted"].includes(o.status)
+      ).length,
+      icon: <AlertTriangle size={30} />,
+      color: "text-red-400",
+      bg: "bg-red-500/10",
+      border: "border-red-500/20",
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex bg-[#f8fafc] font-sans text-[#0f172a]">
+    <div className="min-h-screen flex bg-[#0b0f14] font-sans text-white">
       <CustomerSidebar active="dashboard" />
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300">
         {/* HEADER */}
-        <header className="bg-white/80 backdrop-blur-md border-b border-[#e2e8f0] sticky top-0 z-30">
-          <div className="max-w-7xl mx-auto px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-[#0f172a]">
-                DASHBOARD
-              </h1>
-              <p className="text-sm text-[#64748b] font-medium mt-0.5">
-                Welcome back, {user?.first_name}
-              </p>
-            </div>
-
-
-          </div>
-        </header>
-
-
         {/* SCROLLABLE CONTENT */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            <div className="max-w-7xl mx-auto space-y-8">
-                
-                {/* 1. METRICS ROW */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* TOTAL */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#e2e8f0] flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
-                        <div className="absolute right-0 top-0 w-24 h-24 bg-[#f1f5f9] rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-                        <div className="relative z-10">
-                            <p className="text-xs font-bold text-[#64748b] uppercase tracking-wider mb-1">Total Orders</p>
-                            <h3 className="text-4xl font-black text-[#0f172a]">{orders.length}</h3>
-                        </div>
-                        <div className="relative z-10 mt-4 flex items-center text-xs font-bold text-[#0f172a]">
-                             <span className="w-6 h-6 rounded-full bg-[#0f172a] text-white flex items-center justify-center mr-2">📦</span>
-                             All Time
-                        </div>
-                    </div>
-
-                    {/* IN TRANSIT */}
-                    <div className="bg-[#2563eb] p-6 rounded-2xl shadow-sm border border-[#2563eb] flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden text-white">
-                        <div className="absolute right-0 top-0 w-24 h-24 bg-[#1d4ed8] rounded-bl-full -mr-4 -mt-4"></div>
-                        <div className="relative z-10">
-                            <p className="text-xs font-bold text-blue-100 uppercase tracking-wider mb-1">Active Shipments</p>
-                            <h3 className="text-4xl font-black text-white">
-                                {orders.filter((o) => ["InTransit", "OutForDelivery"].includes(o.status)).length}
-                            </h3>
-                        </div>
-                         <div className="relative z-10 mt-4 flex items-center text-xs font-bold text-blue-100">
-                             <span className="w-6 h-6 rounded-full bg-white text-[#2563eb] flex items-center justify-center mr-2 animate-pulse">🚚</span>
-                             On the road
-                        </div>
-                    </div>
-
-                    {/* DELIVERED */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#e2e8f0] flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
-                        <div className="absolute right-0 top-0 w-24 h-24 bg-[#ecfdf5] rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-                        <div className="relative z-10">
-                            <p className="text-xs font-bold text-[#64748b] uppercase tracking-wider mb-1">Delivered</p>
-                            <h3 className="text-4xl font-black text-[#0f172a]">
-                                {orders.filter((o) => o.status === "Delivered").length}
-                            </h3>
-                        </div>
-                        <div className="relative z-10 mt-4 flex items-center text-xs font-bold text-green-600">
-                             <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center mr-2">✅</span>
-                             Completed
-                        </div>
-                    </div>
-
-                     {/* EXCEPTIONS */}
-                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#e2e8f0] flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
-                        <div className="absolute right-0 top-0 w-24 h-24 bg-[#fef2f2] rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
-                        <div className="relative z-10">
-                            <p className="text-xs font-bold text-[#64748b] uppercase tracking-wider mb-1">Exceptions</p>
-                            <h3 className="text-4xl font-black text-[#0f172a]">
-                                {orders.filter((o) => ["Cancelled", "DeliveryAttempted"].includes(o.status)).length}
-                            </h3>
-                        </div>
-                        <div className="relative z-10 mt-4 flex items-center text-xs font-bold text-red-600">
-                             <span className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-2">⚠️</span>
-                             Action Needed
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. ANALYTICS SECTION */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* CHART 1: STATUS DISTRIBUTION */}
-                      <div className="bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8 flex flex-col items-center justify-center">
-                            <h3 className="font-bold text-[#0f172a] uppercase tracking-wide text-sm mb-8 w-full text-left">Order Status Distribution</h3>
-                            <div className="h-64 w-full relative">
-                              <Doughnut 
-                                  data={{
-                                      labels: [
-                                          'Pending Assignment',
-                                          'At Origin Warehouse', 
-                                          'Assigned',
-                                          'In Transit',
-                                          'Out For Delivery',
-                                          'At Dest Warehouse',
-                                          'Delivered',
-                                          'Delivery Attempted'
-                                      ],
-                                      datasets: [{
-                                          data: [
-                                              orders.filter(o => o.status === 'PendingAssignment').length,
-                                              orders.filter(o => o.status === 'AtOriginWarehouse').length,
-                                              orders.filter(o => o.status === 'Assigned').length,
-                                              orders.filter(o => o.status === 'InTransit').length,
-                                              orders.filter(o => o.status === 'OutForDelivery').length,
-                                              orders.filter(o => o.status === 'AtDestinationWarehouse').length,
-                                              orders.filter(o => o.status === 'Delivered').length,
-                                              orders.filter(o => o.status === 'DeliveryAttempted').length
-                                          ],
-                                          backgroundColor: [
-                                              '#94a3b8', // PendingAssignment (Gray)
-                                              '#60a5fa', // AtOriginWarehouse (Blue)
-                                              '#facc15', // Assigned (Yellow)
-                                              '#f97316', // InTransit (Orange)
-                                              '#c026d3', // OutForDelivery (Purple)
-                                              '#3b82f6', // AtDestinationWarehouse (Blue)
-                                              '#22c55e', // Delivered (Green)
-                                              '#ef4444'  // DeliveryAttempted (Red)
-                                          ],
-                                          borderWidth: 0,
-                                          hoverOffset: 10
-                                      }]
-                                  }}
-                                  options={{
-                                      responsive: true,
-                                      maintainAspectRatio: false,
-                                      cutout: '70%',
-                                      plugins: { 
-                                          legend: { 
-                                              position: 'bottom',
-                                              labels: { usePointStyle: true, padding: 20, font: { family: 'sans-serif', size: 12 } } 
-                                          } 
-                                      }
-                                  }}
-                              />
-                               {/* Center Text Overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-                                  <div className="text-center">
-                                      <span className="text-4xl font-black text-[#0f172a] block">{orders.length}</span>
-                                      <span className="text-xs font-bold text-[#64748b] uppercase tracking-wider">Total</span>
-                                  </div>
-                              </div>
-                            </div>
-                      </div>
-
-                      {/* CHART 2: DAILY VOLUME */}
-                      <div className="bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8">
-                            <h3 className="font-bold text-[#0f172a] uppercase tracking-wide text-sm mb-8">Daily Order Volume</h3>
-                            <div className="h-64">
-                              <Bar 
-                                    data={{
-                                        labels: Array.from({length: 7}, (_, i) => {
-                                            const d = new Date();
-                                            d.setDate(d.getDate() - (6 - i));
-                                            return d.toLocaleDateString('en-US', {weekday: 'short'});
-                                        }),
-                                        datasets: [{
-                                            label: 'Orders',
-                                            data: Array.from({length: 7}, (_, i) => {
-                                                const d = new Date();
-                                                d.setDate(d.getDate() - (6 - i));
-                                                const dateStr = d.toISOString().split('T')[0];
-                                                return orders.filter(o => o.createdAt.startsWith(dateStr)).length;
-                                            }),
-                                            backgroundColor: '#2563eb',
-                                            borderRadius: 6,
-                                            barThickness: 24
-                                        }]
-                                    }}
-                                    options={{
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        plugins: { legend: { display: false } },
-                                        scales: {
-                                            y: { 
-                                                beginAtZero: true, 
-                                                grid: { color: '#f1f5f9' },
-                                                ticks: { stepSize: 1, font: { size: 11 } } 
-                                            },
-                                            x: { 
-                                                grid: { display: false }, 
-                                                ticks: { font: { size: 11 } } 
-                                            }
-                                        }
-                                    }}
-                                />
-                            </div>
-                      </div>
-                </div>
+        <main
+          className="flex-1 overflow-y-auto"
+          onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 10)}
+        >
+          {/* HEADER */}
+          <header
+            className={`sticky top-0 z-40 transition-all duration-300
+              ${isScrolled
+                ? "bg-[#0b0f14]/60 backdrop-blur-xl"
+                : "bg-transparent"
+              }
+            `}
+          >
+            <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="md:pl-0 pl-12"> {/* Added padding for mobile menu button */}
+                <h1 className="text-2xl font-extrabold">Dashboard</h1>
+                <p className="text-sm text-[#64748b]">
+                  Welcome back, {user?.first_name}
+                </p>
+              </div>
             </div>
+          </header>
+          <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
+            {/* 1. METRICS ROW */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((item, i) => (
+                <div
+                  key={i}
+                  className="bg-[#1a1f29] p-6 rounded-xl shadow border border-[#1f2937] flex justify-between items-center"
+                >
+                  <div>
+                    <p className="text-gray-400 text-sm font-medium">{item.label}</p>
+                    <p className="text-3xl font-bold text-white mt-2">
+                      {item.value}
+                    </p>
+                  </div>
+                  <div
+                    className={`p-3 rounded-full ${item.bg} ${item.color}`}
+                  >
+                    {item.icon}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 2. ANALYTICS SECTION */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Package className="text-[#ff8a3d]" size={20} /> Analytics Overview
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">Track your order history and status</p>
+              </div>
+
+              {/* DATE FILTERS */}
+              <div className="bg-white/5 p-1 rounded-xl flex gap-1 border border-white/10 backdrop-blur-sm overflow-x-auto max-w-full">
+                {["1W", "1M", "3M", "1Y"].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setDateFilter(filter)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${dateFilter === filter
+                        ? "bg-[#ff8a3d]/20 text-[#ff8a3d] border border-[#ff8a3d]/50 backdrop-blur-md shadow-lg shadow-orange-500/10"
+                        : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"
+                      }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(() => {
+              // Filter Logic
+              const now = new Date();
+              const past = new Date();
+              if (dateFilter === "1Y") past.setDate(past.getDate() - 365);
+              else if (dateFilter === "3M") past.setDate(past.getDate() - 90);
+              else if (dateFilter === "1M") past.setDate(past.getDate() - 30);
+              else past.setDate(past.getDate() - 7);
+
+              const filteredOrders = orders.filter(o => {
+                if (!o.createdAt) return false;
+                const d = new Date(o.createdAt);
+                return d >= past && d <= now;
+              });
+
+              return (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-0">
+                    <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                      <OrdersPieChart data={filteredOrders} />
+                    </div>
+
+                    {/* CHART 2: DAILY VOLUME */}
+                    <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                      <OrdersBarChart data={filteredOrders} filterType={dateFilter} />
+                    </div>
+                  </div>
+                  {/* CHART 3: SPENDING HISTORY */}
+                  <div className="w-full bg-[#0b0f14] rounded-xl shadow-sm border border-[#1f2937] p-1">
+                    <OrdersSpendingChart data={filteredOrders} filterType={dateFilter} />
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </main>
 
         {/* --- MODALS (Preserved) --- */}
@@ -425,7 +419,7 @@ const CustomerDashboard = () => {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl p-0 max-w-2xl w-full shadow-2xl border border-[#e2e8f0] overflow-hidden">
               <div className="bg-[#0f172a] px-6 py-4 flex justify-between items-center">
-                 <h3 className="text-lg font-bold text-white uppercase tracking-wide">
+                <h3 className="text-lg font-bold text-white">
                   Live Tracking
                 </h3>
                 <button
@@ -438,45 +432,62 @@ const CustomerDashboard = () => {
                   ✕
                 </button>
               </div>
-              
+
               <div className="p-8">
-                 <div className="flex items-center gap-4 mb-6">
-                     <div className="w-12 h-12 rounded-full bg-blue-50 text-[#2563eb] flex items-center justify-center text-xl">📍</div>
-                     <div>
-                         <p className="text-xs text-[#64748b] font-bold uppercase">Current Status</p>
-                         <p className="text-2xl font-black text-[#0f172a]">{trackingData.order.status}</p>
-                     </div>
-                 </div>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-orange-500/10 text-[#ff8a3d] flex items-center justify-center text-xl">
+                    📍
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#64748b] font-bold">
+                      Current Status
+                    </p>
+                    <p className="text-2xl font-black text-[#0f172a]">
+                      {formatStatus(trackingData.order.status)}
+                    </p>
+                  </div>
+                </div>
 
-                 {trackingData.driverLocation ? (
-                    <div className="bg-[#f8fafc] p-6 rounded-xl border border-[#e2e8f0] mb-6">
-                       <div className="grid grid-cols-2 gap-4">
-                           <div>
-                                <p className="text-xs text-[#64748b] font-bold uppercase mb-1">Latitude</p>
-                                <p className="font-mono text-[#0f172a] font-bold">{trackingData.driverLocation.latitude.toFixed(6)}</p>
-                           </div>
-                           <div>
-                                <p className="text-xs text-[#64748b] font-bold uppercase mb-1">Longitude</p>
-                                <p className="font-mono text-[#0f172a] font-bold">{trackingData.driverLocation.longitude.toFixed(6)}</p>
-                           </div>
-                       </div>
+                {trackingData.driverLocation ? (
+                  <div className="bg-[#f8fafc] p-6 rounded-xl border border-[#e2e8f0] mb-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-[#64748b] font-bold mb-1">
+                          Latitude
+                        </p>
+                        <p className="font-mono text-[#0f172a] font-bold">
+                          {trackingData.driverLocation.latitude.toFixed(6)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-[#64748b] font-bold mb-1">
+                          Longitude
+                        </p>
+                        <p className="font-mono text-[#0f172a] font-bold">
+                          {trackingData.driverLocation.longitude.toFixed(6)}
+                        </p>
+                      </div>
                     </div>
-                 ) : (
-                    <div className="text-center py-8 text-gray-400 italic">Drivers location is currently unavailable.</div>
-                 )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400 italic">
+                    Drivers location is currently unavailable.
+                  </div>
+                )}
 
-                 <button
-                    onClick={() =>
-                      window.open(
-                        `https://www.openstreetmap.org/?mlat=${trackingData.driverLocation?.latitude}&mlon=${trackingData.driverLocation?.longitude}`,
-                        "_blank"
-                      )
-                    }
-                    disabled={!trackingData.driverLocation}
-                    className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-extrabold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    OPEN IN MAPS
-                 </button>
+
+                <button
+                  onClick={() =>
+                    window.open(
+                      `https://www.openstreetmap.org/?mlat=${trackingData.driverLocation?.latitude}&mlon=${trackingData.driverLocation?.longitude}`,
+                      "_blank"
+                    )
+                  }
+                  disabled={!trackingData.driverLocation}
+                  className="w-full bg-[#ff8a3d] hover:bg-[#ff9a55] text-white font-extrabold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  OPEN IN MAPS
+                </button>
               </div>
             </div>
           </div>
@@ -486,13 +497,13 @@ const CustomerDashboard = () => {
         {showRescheduleDialog && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-[#e2e8f0]">
-              <h3 className="text-xl font-black text-[#0f172a] mb-6 uppercase tracking-wide">
+              <h3 className="text-xl font-black text-[#0f172a] mb-6">
                 Reschedule Delivery
               </h3>
 
               <form onSubmit={handleReschedule} className="space-y-6">
                 <div>
-                  <label className="text-xs font-bold text-[#64748b] uppercase mb-2 block">
+                  <label className="text-xs font-bold text-[#64748b] mb-2 block">
                     New Delivery Date
                   </label>
                   <input
@@ -510,7 +521,7 @@ const CustomerDashboard = () => {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#64748b] uppercase mb-2 block">
+                  <label className="text-xs font-bold text-[#64748b] mb-2 block">
                     Reason (Optional)
                   </label>
                   <textarea
@@ -535,9 +546,11 @@ const CustomerDashboard = () => {
                     Cancel
                   </button>
 
+
+
                   <button
                     type="submit"
-                    className="flex-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95"
+                    className="flex-1 bg-[#ff8a3d] hover:bg-[#ff9a55] text-white font-bold py-3 rounded-xl shadow-lg transition-transform active:scale-95"
                   >
                     Confirm
                   </button>

@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import api from "../../services/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import CustomerSidebar from "./CustomerSidebar";
+import { MdMyLocation } from "react-icons/md";
+import { Radio, Flag, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 
 export default function CustomerGeofenceAlerts() {
   const { user } = useAuth();
@@ -9,6 +13,9 @@ export default function CustomerGeofenceAlerts() {
   const [ordersMap, setOrdersMap] = useState({});
   const [driverStatuses, setDriverStatuses] = useState({});
   const [loading, setLoading] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     if (!user) return;
@@ -17,7 +24,9 @@ export default function CustomerGeofenceAlerts() {
       setLoading(true);
       try {
         const gfRes = await api.get("/geofence/list");
-        const myGeofences = gfRes.data.filter((g) => g.ownerUserId === user.userId);
+        const myGeofences = gfRes.data.filter(
+          (g) => g.ownerUserId === user.userId
+        );
 
         const ordersRes = await api.get("/orders/my-orders");
         const myOrders = ordersRes.data;
@@ -49,7 +58,9 @@ export default function CustomerGeofenceAlerts() {
                   ...check.data,
                 };
               } else {
-                statuses[gf.geofenceId] = { error: "Driver location unavailable" };
+                statuses[gf.geofenceId] = {
+                  error: "Driver location unavailable",
+                };
               }
             } catch {
               statuses[gf.geofenceId] = { error: "Status check failed" };
@@ -69,15 +80,9 @@ export default function CustomerGeofenceAlerts() {
     return () => clearInterval(interval);
   }, [user]);
 
-  const activeGeofences = geofences.filter((g) => {
-    const o = ordersMap[g.orderId];
-    return o && o.status !== "Delivered";
-  });
+  const activeGeofences = geofences.filter((g) => g.isActive);
 
-  const expiredGeofences = geofences.filter((g) => {
-    const o = ordersMap[g.orderId];
-    return o && o.status === "Delivered";
-  });
+  const expiredGeofences = geofences.filter((g) => !g.isActive);
 
   const renderGeofenceRow = (gf) => {
     const status = driverStatuses[gf.geofenceId];
@@ -87,68 +92,74 @@ export default function CustomerGeofenceAlerts() {
     return (
       <div
         key={gf.geofenceId}
-        className="bg-white border border-gray-200 rounded-lg p-6 mb-4 flex flex-col md:flex-row items-center justify-between shadow-sm hover:shadow-md transition-shadow"
+        className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] rounded-lg p-6 mb-4 flex flex-col md:flex-row items-center justify-between shadow-sm hover:shadow-md transition-shadow"
       >
         {/* LEFT: Info */}
         <div className="flex-1 w-full md:w-auto mb-4 md:mb-0">
           <div className="flex items-center gap-3 mb-2">
-             <div className="bg-[#fff8e7] text-[#351c15] p-2 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-             </div>
-             <div>
-                 <h3 className="text-lg font-bold text-gray-900">Geofence - #{gf.geofenceId}</h3>
+            <div className="bg-[#fff8e7] text-[#351c15] p-2 rounded-lg">
+              <Radio className="h-6 w-6 text-[#ea580c]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-bold text-white">
+                  Geofence - #{gf.geofenceId}
+                </h3>
+                {status && !status.error && (
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                      inside
+                        ? "bg-green-500/10 text-green-400 border-green-500/20 animate-pulse"
+                        : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                    }`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shadow-[0_0_5px_currentColor] ${
+                        inside ? "bg-green-400" : "bg-yellow-400"
+                      }`}
+                    ></span>
+                    {inside ? "INSIDE" : "OUTSIDE"}
+                  </span>
+                )}
               </div>
+              <p className="text-xs font-mono text-gray-400">
+                {gf.name}
+              </p>
+            </div>
+
+
           </div>
-          
+
           <div className="pl-0 md:pl-14">
-             <div className="flex flex-col gap-2 text-sm text-gray-600">
-                <p><span className="font-semibold text-gray-800">Order ID:</span> {order?.id}</p>
-                <p><span className="font-semibold text-gray-800">Radius:</span> {gf.radiusMeters}m</p>
-                <p><span className="font-semibold text-gray-800">Driver:</span> {status?.driverName || "Unknown"}</p>
-                <p><span className="font-semibold text-gray-800">Distance:</span> {status?.distanceMeters ? `${Math.round(status.distanceMeters)}m` : "Calculating..."}</p>
-             </div>
+            <div className="flex flex-col gap-2 text-sm text-gray-400">
+
+              {status && typeof status.distanceMeters === "number" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Distance:</span>
+                  <span className="text-white font-mono font-bold">
+                    {(status.distanceMeters / 1000).toFixed(2)} km
+                  </span>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
 
-        {/* RIGHT: Status Indicator */}
-        <div className="md:w-64 w-full flex flex-col items-center md:items-end border-t md:border-t-0 border-gray-100 pt-4 md:pt-0">
-            {status ? (
-                status.error ? (
-                    <div className="flex flex-col items-end">
-                        <span className="text-red-600 font-bold bg-red-50 px-3 py-1 rounded text-sm mb-1">Check Failed</span>
-                        <span className="text-xs text-gray-400">{status.error}</span>
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center md:items-end text-center md:text-right">
-                        {inside ? (
-                            <>
-                                <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full font-bold text-sm flex items-center gap-2 mb-2 animate-pulse">
-                                    <span className="w-2 h-2 bg-green-600 rounded-full"></span>
-                                    INSIDE ZONE
-                                </span>
-                                <p className="text-xs text-gray-500">Driver is expected to arrive soon.</p>
-                            </>
-                        ) : (
-                            <>
-                                <span className="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full font-bold text-sm flex items-center gap-2 mb-2">
-                                     <span className="w-2 h-2 bg-yellow-600 rounded-full"></span>
-                                     OUTSIDE ZONE
-                                </span>
-                            </>
-                        )}
-                    </div>
-                )
-            ) : (
-                 <div className="flex items-center gap-2 text-gray-400 italic text-sm">
-                    <div className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></div>
-                    Locating driver...
-                 </div>
-            )}
+        
+        
+        {/* VIEW DETAILS BUTTON */}
+        <div className="md:ml-6 mt-4 md:mt-0 flex-shrink-0">
+             <button 
+                onClick={() => navigate(`/customer/geofence-details/${gf.geofenceId}`)}
+                className="flex items-center gap-2 bg-[#2a303c] hover:bg-[#374151] text-white px-4 py-2 rounded-lg transition-colors border border-gray-700 text-sm font-medium"
+             >
+                View Details
+                <ArrowRight className="w-4 h-4" />
+             </button>
         </div>
       </div>
+
     );
   };
 
@@ -156,27 +167,41 @@ export default function CustomerGeofenceAlerts() {
     <div className="min-h-screen bg-[#f8f9fa] flex">
       <CustomerSidebar active="alerts" />
 
-      <main className="flex-1 p-8 overflow-y-auto h-screen">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Geofence Alerts</h1>
-          <p className="text-gray-500 mt-1">
-            Real-time monitoring of your delivery zones
-          </p>
+      <main
+        className="flex-1 overflow-y-auto h-screen bg-[#0b0f14] transition-all duration-300"
+        onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 10)}
+      >
+        <header
+          className={`sticky top-0 z-30 mb-8 px-8 py-4 transition-all duration-300 ${
+            isScrolled
+              ? "bg-[#0b0f14]/80 backdrop-blur-xl border-b border-white/10"
+              : "bg-transparent"
+          }`}
+        >
+          <h1 className="text-2xl font-bold text-white">Geofence Alerts</h1>
         </header>
 
+        <div className="p-8 pt-0">
+
         <section className="mb-12">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <span className="w-2 h-8 bg-[#351c15] rounded-full"></span>
-              Active Zones ({activeGeofences.length})
+          <div className="flex gap-2 align-middle items-center mb-6">
+            <MdMyLocation className="text-green-600 text-xl" />
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              Active Geofences
             </h2>
           </div>
 
           {activeGeofences.length === 0 ? (
             <div className="bg-white border border-dashed border-gray-300 rounded-xl p-12 text-center">
-               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl">📡</div>
-              <p className="text-gray-500 font-medium">No active geofences currently being monitored.</p>
-              <p className="text-gray-400 text-sm mt-1">Alerts will appear here when drivers approach.</p>
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 text-2xl">
+                📡
+              </div>
+              <p className="text-gray-500 font-medium">
+                No active geofences currently being monitored.
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                Alerts will appear here when drivers approach.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -186,34 +211,41 @@ export default function CustomerGeofenceAlerts() {
         </section>
 
         <section>
-          <h2 className="text-lg font-bold text-gray-800 mb-4 opacity-75">
-            History
+          <h2 className="text-lg font-bold text-gray-400 mb-4 opacity-75">
+            Expired Geofences
           </h2>
 
           {expiredGeofences.length === 0 ? (
-            <p className="text-gray-400 text-sm italic">No completed delivery alerts yet.</p>
+            <p className="text-gray-400 text-sm italic">
+              No completed delivery alerts yet.
+            </p>
           ) : (
-            <div className="space-y-3 opacity-70 hover:opacity-100 transition-opacity">
+            <div className="space-y-3 opacity-90 hover:opacity-100 transition-opacity">
               {expiredGeofences.map((gf) => (
                 <div
                   key={gf.geofenceId}
-                  className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-center justify-between"
+                  className="bg-linear-to-br from-[#1a1f29] to-[#0f141c] border border-[#1f2937] rounded-lg p-4 flex items-center justify-between shadow-sm"
                 >
-                  <div className="flex items-center gap-3">
-                     <span className="text-gray-400">🏁</span>
-                     <div>
-                        <h3 className="font-bold text-gray-700">{gf.name}</h3>
-                        <p className="text-xs text-gray-500">ID: {gf.geofenceId}</p>
-                     </div>
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 bg-gray-800 rounded-lg">
+                        <Flag className="text-gray-400 w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white">{gf.name}</h3>
+                      <p className="text-xs text-gray-400">
+                        ID: {gf.geofenceId}
+                      </p>
+                    </div>
                   </div>
-                  <span className="bg-gray-200 text-gray-600 px-3 py-1 text-xs font-bold rounded-full">
-                    Completed
+                  <span className="bg-[#1f2937] text-gray-300 border border-gray-700 px-3 py-1 text-xs font-bold rounded-full">
+                    Expired
                   </span>
                 </div>
               ))}
             </div>
           )}
         </section>
+        </div>
       </main>
     </div>
   );

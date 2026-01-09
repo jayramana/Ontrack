@@ -1,18 +1,23 @@
 import { useState, useEffect } from "react";
 import api, { API_BASE_URL } from "../../services/api";
 import * as signalR from "@microsoft/signalr";
+import { FaCloudUploadAlt } from "react-icons/fa";
+import { MdOutlineVerifiedUser } from "react-icons/md";
+import { toast } from "sonner";
+import { formatStatus } from "@/lib/utils";
 
 export default function CustomerASRUpload({ orderId, onClose }) {
   const [asrStatus, setAsrStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  
+
+
   // Document uploads
   const [aadhaarFront, setAadhaarFront] = useState(null);
   const [aadhaarBack, setAadhaarBack] = useState(null);
   const [panCard, setPanCard] = useState(null);
   const [aadhaarNumber, setAadhaarNumber] = useState("");
-  
+
   // Previews
   const [frontPreview, setFrontPreview] = useState(null);
   const [backPreview, setBackPreview] = useState(null);
@@ -27,7 +32,18 @@ export default function CustomerASRUpload({ orderId, onClose }) {
     try {
       setLoading(true);
       const asrRes = await api.get(`/asr/customer/status/${orderId}`);
-      setAsrStatus(asrRes.data);
+      const data = asrRes.data;
+      setAsrStatus(data);
+
+      if (data.aadhaarNumber) {
+        setAadhaarNumber(formatAadhaarNumber(data.aadhaarNumber));
+      }
+
+      if (data.documentUrls && data.documentUrls.length > 0) {
+        setFrontPreview(data.documentUrls[0]);
+        if (data.documentUrls.length > 1) setBackPreview(data.documentUrls[1]);
+        if (data.documentUrls.length > 2) setPanPreview(data.documentUrls[2]);
+      }
     } catch (err) {
       console.error("Error loading ASR:", err);
       if (err.response?.status === 404) {
@@ -53,7 +69,19 @@ export default function CustomerASRUpload({ orderId, onClose }) {
 
       conn.on("ASRVerificationRequested", (data) => {
         if (data.orderId === parseInt(orderId)) {
-          alert(data.message);
+          toast.info(data.message || "ASR Verification Requested", {
+            action: {
+              label: "Refresh",
+              onClick: () => loadData()
+            }
+          });
+          loadData();
+        }
+      });
+
+      conn.on("ASRReopenedForEditing", (data) => {
+        if (data.orderId === parseInt(orderId)) {
+          toast.warning(data.message || "Re-opened for Editing");
           loadData();
         }
       });
@@ -104,57 +132,80 @@ export default function CustomerASRUpload({ orderId, onClose }) {
   };
 
   const handleUpload = async () => {
-    if (!aadhaarFront) {
-      alert("Please upload Aadhaar front side (mandatory)");
+    if (!frontPreview) {
+      toast.error("Please upload Aadhaar front side (mandatory)");
       return;
     }
 
     if (!aadhaarNumber || aadhaarNumber.replace(/\D/g, '').length !== 12) {
-      alert("Please enter a valid 12-digit Aadhaar number");
+      toast.error("Please enter a valid 12-digit Aadhaar number");
       return;
     }
 
     try {
       setUploading(true);
-      
-      const documentUrls = [];
-      
-      // Front (mandatory)
-      documentUrls.push(await fileToBase64(aadhaarFront));
-      
-      // Back (optional)
-      if (aadhaarBack) {
-        documentUrls.push(await fileToBase64(aadhaarBack));
-      }
-      
-      // PAN (optional)
-      if (panCard) {
-        documentUrls.push(await fileToBase64(panCard));
-      }
+
+      const documentKeys = [];
+
+      // Helper to process each side
+      const processDocument = async (file, preview) => {
+        if (file) {
+          // It's a new file
+          return await uploadFile(file);
+        } else if (preview && typeof preview === 'string' && preview.includes('http')) {
+          // It's an existing URL, need to extract the key
+          // Logic: backend returns URLs like "http://localhost:5066/uploads/filename"
+          // Key should be "uploads/filename"
+          const keyIndex = preview.indexOf('uploads/');
+          if (keyIndex !== -1) {
+             let key = preview.substring(keyIndex);
+             const qIndex = key.indexOf('?');
+             if (qIndex !== -1) {
+                key = key.substring(0, qIndex);
+             }
+             return key;
+          }
+           return preview; // Fallback
+        }
+        return null;
+      };
+
+      // Process Front
+      const frontKey = await processDocument(aadhaarFront, frontPreview);
+      if (frontKey) documentKeys.push(frontKey);
+
+      // Process Back
+      const backKey = await processDocument(aadhaarBack, backPreview);
+      if (backKey) documentKeys.push(backKey);
+
+      // Process PAN
+      const panKey = await processDocument(panCard, panPreview);
+      if (panKey) documentKeys.push(panKey);
 
       await api.post(`/asr/customer/upload-documents/${asrStatus.asrId}`, {
-        documentUrls: documentUrls,
+        documentUrls: documentKeys,
         aadhaarNumber: aadhaarNumber.replace(/\D/g, '')
       });
 
-      alert("Documents uploaded successfully! Driver will be notified.");
+      toast.success("Documents uploaded successfully! Driver will be notified.");
       await loadData();
-      
       if (onClose) onClose();
+      
     } catch (err) {
-      alert("Upload failed: " + (err.response?.data?.message || err.message));
+      toast.error("Upload failed: " + (err.response?.data?.message || err.message));
     } finally {
       setUploading(false);
     }
   };
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
+  const uploadFile = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await api.post("/aws/files", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
     });
+    return res.data.key;
   };
 
   if (loading) {
@@ -170,20 +221,23 @@ export default function CustomerASRUpload({ orderId, onClose }) {
     );
   }
 
-  // 🔥 FIX: Handle case where ASR hasn't been initiated yet
+  // Waiting State
   if (!asrStatus) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl max-w-md w-full p-6 text-center">
-          <div className="mb-4 text-yellow-500 text-5xl">⏳</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Waiting for Driver</h2>
-          <p className="text-gray-600 mb-6">
-            The driver has not initiated the ASR verification process yet. 
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-[#1a1f29] border border-white/10 rounded-2xl max-w-md w-full p-8 text-center shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#ff8a3d] to-transparent animate-pulse" />
+          <div className="mb-6 mx-auto w-20 h-20 rounded-full bg-[#ff8a3d]/10 flex items-center justify-center">
+            <div className="text-4xl animate-pulse">⏳</div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">Waiting for Driver</h2>
+          <p className="text-slate-400 mb-8 leading-relaxed">
+            The driver has not initiated the ASR verification process yet.
             Please wait for the driver to arrive and request verification.
           </p>
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold"
+            className="w-full px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold transition-all"
           >
             Close
           </button>
@@ -193,211 +247,171 @@ export default function CustomerASRUpload({ orderId, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            🔒 Upload Documents for ASR Verification
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-[#0b0f14] border border-white/10 rounded-2xl max-w-4xl w-full p-0 shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+        {/* Header */}
+        <div className="p-6 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#0b0f14]/80 backdrop-blur-md z-10">
+          <h2 className="text-xl font-black text-white flex items-center gap-3">
+            <span className="w-10 h-10 rounded-lg bg-[#ff8a3d]/20 flex items-center justify-center text-[#ff8a3d]"><MdOutlineVerifiedUser /></span>
+            ASR Verification Upload
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            className="text-slate-400 hover:text-white p-2 hover:bg-white/10 rounded-lg transition-colors"
           >
-            ×
+            ✕
           </button>
         </div>
 
-        {asrStatus && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Status:</strong> {asrStatus.status}
-            </p>
-            {asrStatus.requestedAt && (
-              <p className="text-sm text-blue-700 mt-1">
-                Requested: {new Date(asrStatus.requestedAt).toLocaleString()}
-              </p>
-            )}
-          </div>
-        )}
+        <div className="p-6 md:p-8 space-y-6">
 
-        {/* Instructions */}
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="font-semibold text-yellow-900 mb-2">📋 Requirements:</h3>
-          <ul className="text-sm text-yellow-800 space-y-1">
-            <li>• <strong>Aadhaar Front</strong> (mandatory): Must show photo clearly</li>
-            <li>• <strong>Aadhaar Back</strong> (optional): Shows address details</li>
-            <li>• <strong>PAN Card</strong> (optional): Additional verification</li>
-            <li>• <strong>Aadhaar Number</strong> (mandatory): Enter 12-digit number</li>
-            <li>• Ensure good lighting and all corners visible</li>
-          </ul>
-        </div>
-
-        {/* Aadhaar Number Input */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            🔢 Aadhaar Number *
-          </label>
-          <input
-            type="text"
-            value={aadhaarNumber}
-            onChange={handleAadhaarNumberChange}
-            placeholder="XXXX-XXXX-XXXX"
-            maxLength={14}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-lg"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Enter your 12-digit Aadhaar number (will be auto-formatted)
-          </p>
-        </div>
-
-        {/* Aadhaar Front Upload */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            📄 Aadhaar Front Side (with Photo) *
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFrontUpload}
-            className="block w-full text-sm text-gray-700
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-lg file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-600 file:text-white
-              hover:file:bg-blue-700"
-          />
-          {frontPreview && (
-            <div className="mt-3">
-              <img
-                src={frontPreview}
-                alt="Aadhaar Front"
-                className="w-full max-w-md h-48 object-contain rounded-lg border-2 border-blue-200 bg-gray-50"
-              />
-              <button
-                onClick={() => {
-                  setAadhaarFront(null);
-                  setFrontPreview(null);
-                }}
-                className="mt-2 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-              >
-                Remove
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Aadhaar Back Upload */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            📄 Aadhaar Back Side (with Address)
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleBackUpload}
-            className="block w-full text-sm text-gray-700
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-lg file:border-0
-              file:text-sm file:font-semibold
-              file:bg-gray-400 file:text-white
-              hover:file:bg-gray-500"
-          />
-          {backPreview && (
-            <div className="mt-3">
-              <img
-                src={backPreview}
-                alt="Aadhaar Back"
-                className="w-full max-w-md h-48 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
-              />
-              <button
-                onClick={() => {
-                  setAadhaarBack(null);
-                  setBackPreview(null);
-                }}
-                className="mt-2 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-              >
-                Remove
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* PAN Card Upload */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            💳 PAN Card (Optional)
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handlePanUpload}
-            className="block w-full text-sm text-gray-700
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-lg file:border-0
-              file:text-sm file:font-semibold
-              file:bg-gray-400 file:text-white
-              hover:file:bg-gray-500"
-          />
-          {panPreview && (
-            <div className="mt-3">
-              <img
-                src={panPreview}
-                alt="PAN Card"
-                className="w-full max-w-md h-48 object-contain rounded-lg border-2 border-gray-200 bg-gray-50"
-              />
-              <button
-                onClick={() => {
-                  setPanCard(null);
-                  setPanPreview(null);
-                }}
-                className="mt-2 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-              >
-                Remove
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Upload Summary */}
-        {(frontPreview || backPreview || panPreview) && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-800 font-semibold mb-2">
-              ✓ Ready to upload
-            </p>
-            <div className="space-y-1 text-sm text-gray-700">
-              {frontPreview && <p>✓ Aadhaar Front</p>}
-              {backPreview && <p>✓ Aadhaar Back</p>}
-              {panPreview && <p>✓ PAN Card</p>}
-              {aadhaarNumber && aadhaarNumber.replace(/\D/g, '').length === 12 && (
-                <p>✓ Aadhaar Number: {aadhaarNumber}</p>
+          {/* Status Banner */}
+          {asrStatus && (
+            <div className={`px-4 py-3 border rounded-lg flex justify-between items-center ${asrStatus.status === 'Failed'
+              ? 'bg-red-500/10 border-red-500/20'
+              : asrStatus.status === 'Pending'
+                ? 'bg-yellow-500/10 border-yellow-500/20'
+                : 'bg-blue-500/10 border-blue-500/20'
+              }`}>
+              <div>
+                <p className={`text-sm font-bold ${asrStatus.status === 'Failed' ? 'text-red-400' :
+                  asrStatus.status === 'Pending' ? 'text-yellow-400' :
+                    'text-blue-400'
+                  }`}>
+                  STATUS: <span>{formatStatus(asrStatus.status)}</span>
+                </p>
+                {(asrStatus.status === 'Pending' || asrStatus.status === 'Failed') && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    ✏️ You can upload or re-upload your documents below
+                  </p>
+                )}
+              </div>
+              {asrStatus.requestedAt && (
+                <p className="text-xs text-slate-400 font-mono">
+                  REQ: {new Date(asrStatus.requestedAt).toLocaleTimeString()}
+                </p>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="flex gap-3">
+          <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+            <h3 className="font-bold text-yellow-500 mb-2 flex items-center gap-2">Requirements</h3>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {[
+                "Aadhaar Front (Mandatory)",
+                "Aadhaar Back (Optional)",
+                "PAN Card (Optional)",
+                "Valid 12-digit Aadhaar Number",
+                "Ensure good lighting"
+              ].map((item, i) => (
+                <li key={i} className="text-sm text-yellow-200/80 flex items-start gap-2">
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-300 mb-2">
+              Aadhaar Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={aadhaarNumber}
+              onChange={handleAadhaarNumberChange}
+              placeholder="XXXX-XXXX-XXXX"
+              maxLength={14}
+              className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:border-[#ff8a3d] focus:outline-none focus:ring-1 focus:ring-[#ff8a3d]/50 text-white font-mono text-lg placeholder-slate-600 transition-all"
+            />
+            <p className="text-xs text-slate-500 mt-2">
+              Format: 12-digit unique identification number
+            </p>
+          </div>
+
+          {/* Front Upload */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
+            <label className="flex justify-between items-center mb-3">
+              <span className="text-sm font-bold text-white">Aadhaar Front Side <span className="text-red-500">*</span></span>
+              {frontPreview && <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Uploaded</span>}
+            </label>
+
+            {frontPreview ? (
+              <div className="relative group">
+                <img src={frontPreview} alt="Front" className="w-full h-48 object-contain rounded-lg bg-black/40 border border-white/5" />
+                <button onClick={() => { setAadhaarFront(null); setFrontPreview(null); }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-bold text-red-500">Remove</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:bg-white/5 hover:border-[#ff8a3d]/50 transition-all group">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl group-hover:scale-110 transition-transform text-slate-500 group-hover:text-[#ff8a3d]"><FaCloudUploadAlt /></span>
+                  <span className="text-xs text-slate-400 font-bold">Tap to Upload Front Side</span>
+                </div>
+                <input type="file" accept="image/*" capture="environment" onChange={handleFrontUpload} className="hidden" />
+              </label>
+            )}
+          </div>
+
+          {/* Back Upload */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
+            <label className="flex justify-between items-center mb-3">
+              <span className="text-sm font-bold text-slate-300">Aadhaar Back Side</span>
+              {backPreview && <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Uploaded</span>}
+            </label>
+            {backPreview ? (
+              <div className="relative group">
+                <img src={backPreview} alt="Back" className="w-full h-32 object-contain rounded-lg bg-black/40 border border-white/5" />
+                <button onClick={() => { setAadhaarBack(null); setBackPreview(null); }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-bold text-red-500 text-xs">Remove</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:bg-white/5 hover:border-white/30 transition-all">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl text-slate-600"><FaCloudUploadAlt /></span>
+                  <span className="text-xs text-slate-500 font-bold">Tap to Upload Back Side</span>
+                </div>
+                <input type="file" accept="image/*" capture="environment" onChange={handleBackUpload} className="hidden" />
+              </label>
+            )}
+          </div>
+
+          {/* PAN Upload */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 hover:border-white/20 transition-colors">
+            <label className="flex justify-between items-center mb-3">
+              <span className="text-sm font-bold text-slate-300">PAN Card (Optional)</span>
+              {panPreview && <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-bold">Uploaded</span>}
+            </label>
+            {panPreview ? (
+              <div className="relative group">
+                <img src={panPreview} alt="PAN" className="w-full h-32 object-contain rounded-lg bg-black/40 border border-white/5" />
+                <button onClick={() => { setPanCard(null); setPanPreview(null); }} className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity font-bold text-red-500 text-xs">Remove</button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-white/10 rounded-lg cursor-pointer hover:bg-white/5 hover:border-white/30 transition-all">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl text-slate-600"><FaCloudUploadAlt /></span>
+                  <span className="text-xs text-slate-500 font-bold">Tap to Upload PAN Card</span>
+                </div>
+                <input type="file" accept="image/*" capture="environment" onChange={handlePanUpload} className="hidden" />
+              </label>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-white/10 bg-[#0b0f14]/80 backdrop-blur-md sticky bottom-0 z-10 flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-semibold"
+            className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-bold transition-all border border-transparent hover:border-white/10"
           >
             Cancel
           </button>
           <button
             onClick={handleUpload}
             disabled={!aadhaarFront || !aadhaarNumber || aadhaarNumber.replace(/\D/g, '').length !== 12 || uploading}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            className="flex-1 px-4 py-3 bg-[#ff8a3d] hover:bg-[#ff9f63] text-black rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,138,61,0.2)] hover:shadow-[0_0_30px_rgba(255,138,61,0.4)]"
           >
-            {uploading ? (
-              <span className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Uploading...
-              </span>
-            ) : (
-              "Upload Documents"
-            )}
+            {uploading ? "Uploading..." : "Submit Verification"}
           </button>
         </div>
       </div>
